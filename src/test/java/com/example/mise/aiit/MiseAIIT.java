@@ -1,17 +1,25 @@
 package com.example.mise.aiit;
 
 import com.example.mise.ai.HouseholdOrchestrator;
+import com.example.mise.ai.tools.InsightTools;
+import com.example.mise.ai.tools.NavigationTools;
 import com.example.mise.ai.tools.PlanTools;
+import com.example.mise.ai.tools.ReportsTools;
 import com.example.mise.ai.tools.ShoppingTools;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
 import com.example.mise.domain.conversation.ConversationMessageRepository;
 import com.example.mise.domain.household.Household;
 import com.example.mise.domain.household.HouseholdRepository;
 import com.example.mise.domain.household.HouseholdService;
+import com.example.mise.domain.insights.InsightRepository;
+import com.example.mise.domain.insights.InsightService;
 import com.example.mise.domain.plan.MealEditRepository;
 import com.example.mise.domain.plan.MealRepository;
 import com.example.mise.domain.plan.PlanRepository;
 import com.example.mise.domain.plan.PlanService;
+import com.example.mise.domain.preferences.ViewPreferenceRepository;
+import com.example.mise.domain.preferences.ViewPreferenceService;
+import com.example.mise.domain.reports.ReportService;
 import com.example.mise.domain.shopping.ExtraShoppingItemRepository;
 import com.example.mise.domain.shopping.PantryRepository;
 import com.example.mise.domain.shopping.ShoppingService;
@@ -47,6 +55,9 @@ public abstract class MiseAIIT {
     @Autowired protected ChatModel chatModel;
     @Autowired protected PlanTools planTools;
     @Autowired protected ShoppingTools shoppingTools;
+    @Autowired protected ReportsTools reportsTools;
+    @Autowired protected NavigationTools navigationTools;
+    @Autowired protected InsightTools insightTools;
 
     @Autowired protected HouseholdService householdService;
     @Autowired protected HouseholdRepository householdRepository;
@@ -59,6 +70,11 @@ public abstract class MiseAIIT {
     @Autowired protected PantryRepository pantryRepository;
     @Autowired protected ExtraShoppingItemRepository extraShoppingItemRepository;
     @Autowired protected ShoppingService shoppingService;
+    @Autowired protected ReportService reportService;
+    @Autowired protected InsightService insightService;
+    @Autowired protected ViewPreferenceService viewPreferenceService;
+    @Autowired protected ViewPreferenceRepository viewPreferenceRepository;
+    @Autowired protected InsightRepository insightRepository;
 
     @BeforeEach
     protected void wipeBeforeEach() {
@@ -75,6 +91,8 @@ public abstract class MiseAIIT {
         conversationMessageRepository.deleteAll();
         extraShoppingItemRepository.deleteAll();
         pantryRepository.deleteAll();
+        insightRepository.deleteAll();
+        viewPreferenceRepository.deleteAll();
         householdRepository.findAll().forEach(hh ->
                 planRepository.findByHouseholdIdOrderByWeekStartDateDesc(hh.getId())
                         .forEach(plan -> {
@@ -126,5 +144,46 @@ public abstract class MiseAIIT {
                 .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
                 .defaultTools(planTools, shoppingTools)
                 .build();
+    }
+
+    /**
+     * Returns a {@link ChatClient} with PlanTools + ShoppingTools + ReportsTools.
+     * Used by UC-007 AI integration tests.
+     */
+    protected ChatClient reportsChat() {
+        return ChatClient.builder(chatModel)
+                .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
+                .defaultTools(planTools, shoppingTools, reportsTools)
+                .build();
+    }
+
+    /**
+     * Returns a {@link ChatClient} with PlanTools + ShoppingTools + ReportsTools + NavigationTools.
+     * Used by UC-008 AI integration tests.
+     */
+    protected ChatClient navigationChat() {
+        return ChatClient.builder(chatModel)
+                .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
+                .defaultTools(planTools, shoppingTools, reportsTools, navigationTools)
+                .build();
+    }
+
+    /**
+     * Returns a {@link ChatClient} with all tools registered — mirrors the full production set.
+     * Used by UC-009 AI integration tests.
+     */
+    protected ChatClient insightsChat() {
+        return ChatClient.builder(chatModel)
+                .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
+                .defaultTools(planTools, shoppingTools, reportsTools, navigationTools, insightTools)
+                .build();
+    }
+
+    /**
+     * Seeds {@code weeks} historical plans (HISTORICAL status, COOKED meals) going back
+     * from the current Monday. Used by reports/insights tests that need plan history.
+     */
+    protected void seedFourWeeksHistory(Household h) {
+        planService.seedHistory(h, 4, recipeCatalog);
     }
 }
