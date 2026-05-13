@@ -31,6 +31,8 @@ public class HouseholdOrchestrator {
             Never invent prices, calorie counts, or quantities; if you don't have the data, say so.
             When answering questions about the meal plan, use the available tools to look up
             real data rather than guessing.
+            When a meal is pinned, you must not change it. You also cannot unpin meals — the user controls that via the pin icon on each row. If asked to change a pinned meal, explain politely that it is pinned and suggest the user unpin it first (via the icon) if they want a change.
+            If any tool result starts with REFUSED: that means the action did NOT happen. Do not narrate it as a success. Tell the user clearly what was refused and why, using the explanation provided in the tool result. Never say "X is now Y" after a REFUSED result — say "X is still Y, because..." and pass on the suggested next step from the tool.
             """;
 
     private final AIOrchestrator orchestrator;

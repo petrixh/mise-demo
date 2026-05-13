@@ -5,6 +5,7 @@ import com.example.mise.ai.tools.PlanTools;
 import com.example.mise.domain.conversation.ConversationService;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.plan.PlanService;
+import com.example.mise.ui.plan.PlanRefreshBroadcaster;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
 import com.vaadin.flow.component.html.Div;
@@ -47,7 +48,8 @@ public class MainLayout extends VerticalLayout
                       ConversationService conversationService,
                       HouseholdService householdService,
                       PlanService planService,
-                      PlanTools planTools) {
+                      PlanTools planTools,
+                      PlanRefreshBroadcaster planRefreshBroadcaster) {
         // ── Chat components shared across all views ───────────────────────
         messageList = new MessageList();
         messageList.setMarkdown(true);
@@ -66,6 +68,8 @@ public class MainLayout extends VerticalLayout
                     if (ui != null && !ui.isClosing()) {
                         ui.access(() -> updateLastAiMessage(text));
                     }
+                    // BR-08: push plan refresh to all attached PlanView instances after every AI turn
+                    planRefreshBroadcaster.fireRefresh();
                 },
                 planTools);
 

@@ -244,6 +244,7 @@
     padding: 0 16px 16px;
     flex-shrink: 0;
     overflow-y: visible;
+    box-sizing: border-box;
   }
 }
 
@@ -257,5 +258,6 @@
   }
   .mise-plan-sidebar {
     padding: 0 10px 16px;
+    box-sizing: border-box;
   }
 }

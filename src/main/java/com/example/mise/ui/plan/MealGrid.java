@@ -65,6 +65,8 @@ public class MealGrid extends Div {
         var row = new Div();
         row.addClassName("mise-meal-row");
         row.getElement().setAttribute("data-testid", "meal-row");
+        // Stable per-date testid for IT assertions (e.g. meal-row-2026-05-14)
+        row.getElement().setAttribute("data-meal-date", date.toString());
 
         // Day chip
         var dayChip = new Span(date.format(DAY_FMT).toUpperCase());
@@ -130,7 +132,11 @@ public class MealGrid extends Div {
                             || i.getName().toLowerCase().contains("prawn"));
             if (hasFish) tags.add(pill("fish", "mise-tag-fish"));
         }
-        if (isEdited) tags.add(pill("edited", "mise-tag-edited"));
+        if (isEdited) {
+            var editedPill = pill("edited", "mise-tag-edited");
+            editedPill.getElement().setAttribute("data-testid", "meal-status-edited-pill");
+            tags.add(editedPill);
+        }
 
         row.add(tags);
 
@@ -143,6 +149,9 @@ public class MealGrid extends Div {
         pinBtn.setThemeName("tertiary icon small");
         if (meal.isPinned()) pinBtn.getElement().setAttribute("title", "Unpin meal");
         else pinBtn.getElement().setAttribute("title", "Pin meal");
+        // Stable testids for IT: generic + per-date variant
+        pinBtn.getElement().setAttribute("data-testid", "meal-action-pin");
+        pinBtn.getElement().setAttribute("data-pin-date", date.toString());
         pinBtn.addClickListener(e -> {
             if (onPinToggle != null) onPinToggle.accept(meal.getId());
         });

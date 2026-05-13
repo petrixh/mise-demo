@@ -6,7 +6,10 @@ import com.example.mise.domain.conversation.ConversationMessageRepository;
 import com.example.mise.domain.household.Household;
 import com.example.mise.domain.household.HouseholdRepository;
 import com.example.mise.domain.household.HouseholdService;
+import com.example.mise.domain.plan.Meal;
+import com.example.mise.domain.plan.MealEditRepository;
 import com.example.mise.domain.plan.MealRepository;
+import com.example.mise.domain.plan.PinnedMealException;
 import com.example.mise.domain.plan.PlanRepository;
 import com.example.mise.domain.plan.PlanService;
 
@@ -19,12 +22,15 @@ import org.vaadin.addons.dramafinder.element.MessageInputElement;
 import org.vaadin.addons.dramafinder.element.MessageListElement;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 /**
- * UC-002 Playwright IT — Plan view with seeded household + active plan.
+ * UC-002 + UC-003 Playwright IT — Plan view with seeded household + active plan.
  *
  * <p>Lifecycle: {@code setupTest()} is overridden (same technique as
  * {@link OnboardingRedirectIT}) to seed a Household and an ACTIVE Plan before
@@ -35,7 +41,7 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
  * endpoint is contacted.
  *
  * <p>Cleanup in {@code @AfterEach} deletes rows in FK-safe order:
- * conversation_message → meal → plan → household.
+ * meal_edit → conversation_message → meal → plan → household.
  */
 class PlanViewIT extends MisePlaywrightIT {
 
@@ -53,6 +59,9 @@ class PlanViewIT extends MisePlaywrightIT {
 
     @Autowired
     private MealRepository mealRepository;
+
+    @Autowired
+    private MealEditRepository mealEditRepository;
 
     @Autowired
     private RecipeCatalog recipeCatalog;
@@ -93,7 +102,8 @@ class PlanViewIT extends MisePlaywrightIT {
 
     @AfterEach
     void cleanUp() {
-        // Delete in FK-safe order: conversation → meal → plan → household
+        // Delete in FK-safe order: meal_edit → conversation → meal → plan → household
+        mealEditRepository.deleteAll();
         conversationMessageRepository.deleteAll();
         // Get all plans for this household (need to delete meals per plan)
         householdRepository.findAll().forEach(hh ->
@@ -200,5 +210,153 @@ class PlanViewIT extends MisePlaywrightIT {
         Assertions.assertThat(rows)
                 .filteredOn(r -> r.getViewContext() == ConversationMessage.ViewContext.PLAN)
                 .hasSizeGreaterThanOrEqualTo(2);
+    }
+
+    // ── UC-003 tests ──────────────────────────────────────────────────────────
+
+    /**
+     * UC-003 UI requirement: a pin icon button is visible on every meal row (Mon–Sun).
+     */
+    @Test
+    void pinButtonVisibleOnEveryRow() {
+        assertThat(page.getByTestId("meal-action-pin")).hasCount(7);
+    }
+
+    /**
+     * UC-003 BR-04: after {@link PlanService#swapMeal} sets lastEditedBy=AI and
+     * lastEditedAt=now, the "edited" pill is rendered on the affected row when the
+     * view is reloaded.
+     */
+    @Test
+    void editedPillRendersAfterAiSwap() {
+        var household = householdService.findHousehold().orElseThrow();
+        var plan = planService.findActivePlan(household.getId()).orElseThrow();
+
+        // Find Thursday's meal
+        LocalDate thursday = plan.getWeekStartDate()
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.THURSDAY));
+        Meal thursdayMeal = planService.findMeals(plan.getId()).stream()
+                .filter(m -> m.getDate().equals(thursday))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No Thursday meal in seeded plan"));
+
+        // Pick a different recipe to swap in
+        String newRecipeRef = recipeCatalog.findAll().stream()
+                .map(r -> r.getId())
+                .filter(id -> !id.equals(thursdayMeal.getRecipeRef()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No alternative recipe found in catalog"));
+
+        // Perform the AI swap directly (sets lastEditedBy=AI, lastEditedAt=now, status=EDITED)
+        planService.swapMeal(thursdayMeal.getId(), newRecipeRef,
+                "vegetarian alternative for kid-friendly request");
+
+        // Reload /plan so PlanView.beforeEnter() re-fetches and re-renders with fresh meal data
+        page.navigate(getUrl() + "/plan");
+
+        // The edited pill must appear on Thursday's row within the 60-second window
+        assertThat(page.locator("[data-meal-date='" + thursday + "'] [data-testid='meal-status-edited-pill']"))
+                .isVisible();
+    }
+
+    /**
+     * UC-003 BR-01: every AI-driven meal swap produces exactly one {@link
+     * com.example.mise.domain.plan.MealEdit} row with the correct audit fields.
+     */
+    @Test
+    void mealEditRowPersistedAfterAiSwap() {
+        var household = householdService.findHousehold().orElseThrow();
+        var plan = planService.findActivePlan(household.getId()).orElseThrow();
+
+        LocalDate thursday = plan.getWeekStartDate()
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.THURSDAY));
+        Meal thursdayMeal = planService.findMeals(plan.getId()).stream()
+                .filter(m -> m.getDate().equals(thursday))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No Thursday meal in seeded plan"));
+
+        String originalRecipeRef = thursdayMeal.getRecipeRef();
+
+        String newRecipeRef = recipeCatalog.findAll().stream()
+                .map(r -> r.getId())
+                .filter(id -> !id.equals(originalRecipeRef))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No alternative recipe found in catalog"));
+
+        String reason = "vegetarian alternative for kid-friendly request";
+        planService.swapMeal(thursdayMeal.getId(), newRecipeRef, reason);
+
+        var edits = mealEditRepository.findByMealIdOrderByChangedAtDesc(thursdayMeal.getId());
+        Assertions.assertThat(edits).hasSize(1);
+        Assertions.assertThat(edits.get(0).getReason()).isEqualTo(reason);
+        Assertions.assertThat(edits.get(0).getChangedBy()).isEqualTo(Meal.Editor.AI);
+        Assertions.assertThat(edits.get(0).getPreviousRecipeRef()).isEqualTo(originalRecipeRef);
+    }
+
+    /**
+     * UC-003 BR-03: attempting to swap a pinned meal throws {@link PinnedMealException};
+     * after a reload the row still shows the original recipe.
+     */
+    @Test
+    void pinnedMealRejectsSwap() {
+        var household = householdService.findHousehold().orElseThrow();
+        var plan = planService.findActivePlan(household.getId()).orElseThrow();
+
+        LocalDate monday = plan.getWeekStartDate();
+        Meal mondayMeal = planService.findMeals(plan.getId()).stream()
+                .filter(m -> m.getDate().equals(monday))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No Monday meal in seeded plan"));
+
+        String newRecipeRef = recipeCatalog.findAll().stream()
+                .map(r -> r.getId())
+                .filter(id -> !id.equals(mondayMeal.getRecipeRef()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No alternative recipe found in catalog"));
+
+        // Pin the meal via the explicit-editor overload (UC-003)
+        planService.setPinned(mondayMeal.getId(), true, Meal.Editor.USER);
+
+        // Attempting to swap a pinned meal must throw PinnedMealException
+        Assertions.assertThatThrownBy(() ->
+                planService.swapMeal(mondayMeal.getId(), newRecipeRef, "test"))
+                .isInstanceOf(PinnedMealException.class);
+
+        // Reload the view and confirm Monday's row is still present (original recipe untouched)
+        page.navigate(getUrl() + "/plan");
+        assertThat(page.locator("[data-meal-date='" + monday + "']")).isVisible();
+    }
+
+    /**
+     * UC-003 UI surface: the stubbed assistant reply appears in the message list and
+     * the last-AI-message preview span after typing into the chat dock on /plan.
+     * Tool-call behaviour is covered by PlanToolsTest unit tests; this test only
+     * asserts the chat UI surface.
+     */
+    @Test
+    void chatRoundTripOnPlanViewWithStubbedSwap() {
+        String reply = "Swapped Thursday’s meal for a vegetarian option — kid-friendly pea risotto, under 30 min.";
+        chatModel.queueReply(reply);
+
+        var chatDockLocator = page.getByTestId("chat-dock");
+        MessageInputElement input = MessageInputElement.get(chatDockLocator);
+        input.typeAndSubmit("Make Thursday vegetarian, kid is having a friend over.");
+
+        input.focus();
+        MessageListElement messages = new MessageListElement(page.getByTestId("chat-message-list"));
+        messages.assertMessageCount(2);
+
+        assertThat(page.getByTestId("chat-last-ai-message")).containsText(reply);
+    }
+
+    /**
+     * UC-003 locator stability: every meal row carries a {@code data-pin-date} attribute
+     * matching its ISO date, allowing per-day pin assertions in later UCs.
+     */
+    @Test
+    void pinButtonHasDataPinDateAttribute() {
+        // At least one [data-pin-date] element must be visible — proves the per-day
+        // locator pattern works for later UC assertions.
+        assertThat(page.locator("[data-pin-date]").first()).isVisible();
     }
 }

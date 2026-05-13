@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
@@ -28,10 +29,14 @@ public class PlanService {
 
     private final PlanRepository planRepository;
     private final MealRepository mealRepository;
+    private final MealEditRepository mealEditRepository;
 
-    public PlanService(PlanRepository planRepository, MealRepository mealRepository) {
+    public PlanService(PlanRepository planRepository,
+                       MealRepository mealRepository,
+                       MealEditRepository mealEditRepository) {
         this.planRepository = planRepository;
         this.mealRepository = mealRepository;
+        this.mealEditRepository = mealEditRepository;
     }
 
     /** Returns the active plan for a household, if any. */
@@ -174,6 +179,76 @@ public class PlanService {
         return mealRepository.findByPlanIdOrderByDateAsc(planId).stream()
                 .filter(m -> m.getDate().equals(date))
                 .findFirst();
+    }
+
+    /**
+     * Swaps the recipe on a single meal, recording a {@link MealEdit} audit row.
+     * Throws {@link PinnedMealException} if the meal is pinned.
+     */
+    @Transactional
+    public MealEdit swapMeal(Long mealId, String newRecipeRef, String reason) {
+        var meal = mealRepository.findById(mealId)
+                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
+
+        if (meal.isPinned()) {
+            throw new PinnedMealException(
+                    "Meal on " + meal.getDate() + " (" + meal.getRecipeRef() + ") is pinned and cannot be changed.");
+        }
+
+        // Capture previous state before mutating
+        var edit = new MealEdit();
+        edit.setMealId(mealId);
+        edit.setPreviousRecipeRef(meal.getRecipeRef());
+        edit.setPreviousServings(meal.getServings());
+        edit.setPreviousStatus(meal.getStatus());
+        edit.setChangedBy(Meal.Editor.AI);
+        edit.setReason(reason);
+
+        // Mutate meal
+        meal.setRecipeRef(newRecipeRef);
+        meal.setStatus(Meal.Status.EDITED);
+        meal.setLastEditedBy(Meal.Editor.AI);
+        meal.setLastEditedAt(Instant.now());
+        mealRepository.save(meal);
+
+        return mealEditRepository.save(edit);
+    }
+
+    /**
+     * Atomically applies multiple swaps (UC-003 constraint negotiation).
+     * If any swap targets a pinned meal the whole transaction rolls back.
+     */
+    @Transactional
+    public List<MealEdit> negotiateWeek(Long planId, List<MealSwapRequest> swaps, String reason) {
+        var edits = new ArrayList<MealEdit>();
+        for (var swap : swaps) {
+            // swapMeal validates pin state; PinnedMealException propagates and rolls back the tx
+            edits.add(swapMeal(swap.mealId(), swap.newRecipeRef(), reason));
+        }
+        return edits;
+    }
+
+    /**
+     * Sets the pinned flag on a meal with an explicit editor identity.
+     * Keeps the existing {@link #pinMeal(Long, boolean)} (hardcoded USER) for UI handlers.
+     */
+    @Transactional
+    public void setPinned(Long mealId, boolean pinned, Meal.Editor changedBy) {
+        var meal = mealRepository.findById(mealId)
+                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
+        meal.setPinned(pinned);
+        meal.setLastEditedAt(Instant.now());
+        meal.setLastEditedBy(changedBy);
+        mealRepository.save(meal);
+    }
+
+    /**
+     * Returns all edits for a given meal, newest first.
+     * Used by UC-004 "why?" queries.
+     */
+    @Transactional(readOnly = true)
+    public List<MealEdit> findEdits(Long mealId) {
+        return mealEditRepository.findByMealIdOrderByChangedAtDesc(mealId);
     }
 
     private List<Recipe> pickDistinct(List<Recipe> pool, int count) {

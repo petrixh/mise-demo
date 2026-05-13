@@ -9,6 +9,7 @@ import com.example.mise.domain.plan.MealCostCalculator;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
 import com.example.mise.ui.MainLayout;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
@@ -36,6 +37,10 @@ public class PlanView extends VerticalLayout
     private final RecipeCatalog recipeCatalog;
     private final PriceCatalog priceCatalog;
     private final MealCostCalculator mealCostCalculator;
+    private final PlanRefreshBroadcaster refreshBroadcaster;
+
+    /** Held as a field so we can deregister the exact same lambda on detach. */
+    private Runnable refreshHook;
 
     private Plan activePlan;
 
@@ -45,17 +50,32 @@ public class PlanView extends VerticalLayout
                     PriceCatalog priceCatalog,
                     MealCostCalculator mealCostCalculator,
                     ConversationService conversationService,
-                    PlanTools planTools) {
+                    PlanTools planTools,
+                    PlanRefreshBroadcaster refreshBroadcaster) {
         this.householdService = householdService;
         this.planService = planService;
         this.recipeCatalog = recipeCatalog;
         this.priceCatalog = priceCatalog;
         this.mealCostCalculator = mealCostCalculator;
+        this.refreshBroadcaster = refreshBroadcaster;
         // conversationService and planTools are wired in MainLayout; kept as params for Spring DI
 
         setSizeFull();
         setPadding(false);
         setSpacing(false);
+
+        // Register/deregister broadcaster hook so the AI streaming thread can trigger UI refresh
+        addAttachListener(e -> {
+            UI ui = e.getUI();
+            refreshHook = () -> ui.access(this::aiRefresh);
+            refreshBroadcaster.register(refreshHook);
+        });
+        addDetachListener(e -> {
+            if (refreshHook != null) {
+                refreshBroadcaster.deregister(refreshHook);
+                refreshHook = null;
+            }
+        });
     }
 
     @Override
@@ -147,7 +167,22 @@ public class PlanView extends VerticalLayout
     }
 
     private void refresh() {
-        // Re-fetch meals and rebuild UI in-place
+        // Re-fetch meals and rebuild UI in-place (user-initiated, already on UI thread)
+        var household = householdService.findHousehold().orElse(null);
+        if (household != null) {
+            activePlan = planService.findActivePlan(household.getId()).orElse(activePlan);
+        }
+        buildUI();
+    }
+
+    /**
+     * Called via UI.access() from the PlanRefreshBroadcaster after an AI turn completes.
+     * Re-fetches the active plan so newly-swapped meals appear immediately (BR-08).
+     */
+    private void aiRefresh() {
+        var household = householdService.findHousehold().orElse(null);
+        if (household == null) return;
+        activePlan = planService.findActivePlan(household.getId()).orElse(activePlan);
         buildUI();
     }
 }

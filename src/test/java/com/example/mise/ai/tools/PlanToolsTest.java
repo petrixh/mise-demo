@@ -8,10 +8,11 @@ import com.example.mise.domain.household.Household;
 import com.example.mise.domain.household.HouseholdRepository;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.plan.Meal;
+import com.example.mise.domain.plan.MealCostCalculator;
+import com.example.mise.domain.plan.MealEditRepository;
 import com.example.mise.domain.plan.MealRepository;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanRepository;
-import com.example.mise.domain.plan.PlanService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -47,28 +49,38 @@ class PlanToolsTest {
     @Autowired
     private MealRepository mealRepository;
 
+    @Autowired
+    private MealEditRepository mealEditRepository;
+
     @MockitoBean
     private RecipeCatalog recipeCatalog;
+
+    @MockitoBean
+    private MealCostCalculator mealCostCalculator;
 
     // week of 2026-05-11 (Monday)
     private static final LocalDate WEEK_START = LocalDate.of(2026, 5, 11);
 
+    private Household savedHousehold;
+    private Plan savedPlan;
+
     @BeforeEach
     void setUp() {
+        mealEditRepository.deleteAll();
         mealRepository.deleteAll();
         planRepository.deleteAll();
         householdRepository.deleteAll();
 
-        var household = new Household();
-        household.setSize(2);
-        household.setWeeklyBudget(BigDecimal.valueOf(80));
-        householdRepository.save(household);
+        savedHousehold = new Household();
+        savedHousehold.setSize(2);
+        savedHousehold.setWeeklyBudget(BigDecimal.valueOf(80));
+        householdRepository.save(savedHousehold);
 
-        var plan = new Plan();
-        plan.setHouseholdId(household.getId());
-        plan.setWeekStartDate(WEEK_START);
-        plan.setStatus(Plan.Status.ACTIVE);
-        var savedPlan = planRepository.save(plan);
+        savedPlan = new Plan();
+        savedPlan.setHouseholdId(savedHousehold.getId());
+        savedPlan.setWeekStartDate(WEEK_START);
+        savedPlan.setStatus(Plan.Status.ACTIVE);
+        savedPlan = planRepository.save(savedPlan);
 
         // Add Mon–Sun meals
         String[] recipeIds = {
@@ -93,6 +105,9 @@ class PlanToolsTest {
             return Optional.of(recipe);
         });
         when(recipeCatalog.findAll()).thenReturn(List.of(buildRecipe("chicken-rice")));
+
+        // Mock cost calculator — return a deterministic cost so existing tests stay stable
+        when(mealCostCalculator.costFor(org.mockito.ArgumentMatchers.any())).thenReturn(BigDecimal.valueOf(10.00));
     }
 
     // ── resolveDate tests ─────────────────────────────────────────────────
@@ -164,6 +179,183 @@ class PlanToolsTest {
         assertThat(result).contains("No meal planned");
     }
 
+    // ── UC-003 tool tests ─────────────────────────────────────────────────
+
+    @Test
+    void swapMealOnDay_createsMealEditAndFlipsMeal() {
+        String thursdayDate = WEEK_START.plusDays(3).toString(); // Thursday = curry
+
+        // Mock catalog to also know "lentil-soup"
+        when(recipeCatalog.findById("lentil-soup")).thenReturn(Optional.of(buildVegetarianRecipe("lentil-soup")));
+
+        Instant before = Instant.now();
+        String result = planTools.swapMealOnDay(thursdayDate, "lentil-soup", "Make Thursday vegetarian", "");
+
+        assertThat(result).contains("lentil-soup-name");
+        assertThat(result).doesNotContain("Cannot").doesNotContain("pinned");
+
+        // Verify meal was mutated
+        var updatedMeal = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START.plusDays(3)))
+                .findFirst().orElseThrow();
+        assertThat(updatedMeal.getRecipeRef()).isEqualTo("lentil-soup");
+        assertThat(updatedMeal.getStatus()).isEqualTo(Meal.Status.EDITED);
+        assertThat(updatedMeal.getLastEditedBy()).isEqualTo(Meal.Editor.AI);
+        assertThat(updatedMeal.getLastEditedAt()).isAfterOrEqualTo(before);
+
+        // Verify exactly one MealEdit row was created
+        var edits = mealEditRepository.findByMealIdOrderByChangedAtDesc(updatedMeal.getId());
+        assertThat(edits).hasSize(1);
+        assertThat(edits.get(0).getPreviousRecipeRef()).isEqualTo("curry");
+        assertThat(edits.get(0).getChangedBy()).isEqualTo(Meal.Editor.AI);
+        assertThat(edits.get(0).getReason()).isEqualTo("Make Thursday vegetarian");
+    }
+
+    @Test
+    void swapMealOnDay_refusesPinnedMeal() {
+        // Pin Thursday's meal first
+        var thursday = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START.plusDays(3)))
+                .findFirst().orElseThrow();
+        thursday.setPinned(true);
+        mealRepository.save(thursday);
+
+        when(recipeCatalog.findById("lentil-soup")).thenReturn(Optional.of(buildVegetarianRecipe("lentil-soup")));
+
+        String result = planTools.swapMealOnDay(WEEK_START.plusDays(3).toString(), "lentil-soup", "reason", "");
+
+        assertThat(result).containsIgnoringCase("REFUSED");
+        assertThat(result).containsIgnoringCase("not changed");
+        assertThat(result).containsIgnoringCase("pinned");
+        // Meal should NOT have been changed
+        var unchanged = mealRepository.findById(thursday.getId()).orElseThrow();
+        assertThat(unchanged.getRecipeRef()).isEqualTo("curry");
+        assertThat(mealEditRepository.findByMealIdOrderByChangedAtDesc(thursday.getId())).isEmpty();
+    }
+
+    @Test
+    void swapMealOnDay_refusesAllergenRecipe() {
+        // Set peanut allergy on household
+        savedHousehold.setAllergies(List.of("peanut"));
+        householdRepository.save(savedHousehold);
+
+        // Build a recipe that contains peanut
+        var peanutRecipe = buildRecipe("peanut-noodles");
+        var peanutIng = new RecipeIngredient();
+        peanutIng.setName("peanut sauce");
+        peanutIng.setQuantity(50);
+        peanutIng.setUnit("g");
+        peanutIng.setAisle("dry-goods");
+        peanutRecipe.setIngredients(List.of(peanutIng));
+        when(recipeCatalog.findById("peanut-noodles")).thenReturn(Optional.of(peanutRecipe));
+
+        String result = planTools.swapMealOnDay(WEEK_START.plusDays(0).toString(), "peanut-noodles", "reason", "");
+
+        assertThat(result.toLowerCase()).containsAnyOf("allergy", "allergen");
+        // Meal must not have changed
+        var unchanged = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START))
+                .findFirst().orElseThrow();
+        assertThat(unchanged.getRecipeRef()).isEqualTo("chicken-rice");
+    }
+
+    @Test
+    void negotiateWeekChanges_atomicRollbackOnPinConflict() {
+        // Pin Saturday (day 5 = index 5 from Monday = Saturday)
+        var saturday = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START.plusDays(5)))
+                .findFirst().orElseThrow();
+        saturday.setPinned(true);
+        mealRepository.save(saturday);
+
+        when(recipeCatalog.findById("lentil-soup")).thenReturn(Optional.of(buildVegetarianRecipe("lentil-soup")));
+        when(recipeCatalog.findById("veggie-pasta")).thenReturn(Optional.of(buildVegetarianRecipe("veggie-pasta")));
+
+        // Pre-validation in negotiateWeekChanges tool resolves all days and checks pin state
+        // before calling planService.negotiateWeek. The tool itself iterates the directives
+        // in order and will encounter the pinned Saturday during per-day meal lookup, but
+        // since we call planService.negotiateWeek only after ALL directives are validated,
+        // no DB writes happen when a pin conflict is detected pre-flight.
+        // Note: the current tool validates allergy + recipe existence upfront but NOT pin state
+        // (pin state is checked by planService.swapMeal). To ensure true atomic rollback in the
+        // tool layer we verify: result contains "pinned" AND no MealEdit row was persisted for Monday.
+
+        String mondayDate = WEEK_START.toString();
+        String saturdayDate = WEEK_START.plusDays(5).toString();
+        String result = planTools.negotiateWeekChanges(
+                mondayDate + "=lentil-soup;" + saturdayDate + "=veggie-pasta",
+                "reduce cost"
+        );
+
+        assertThat(result).containsIgnoringCase("REFUSED");
+        assertThat(result).containsIgnoringCase("pinned");
+
+        // Pre-flight pin check prevents any DB write — Monday's recipe must be unchanged
+        // and no MealEdit row should exist for it.
+        var mondayMeal = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START))
+                .findFirst().orElseThrow();
+        assertThat(mondayMeal.getRecipeRef()).isEqualTo("chicken-rice");
+        assertThat(mealEditRepository.findByMealIdOrderByChangedAtDesc(mondayMeal.getId())).isEmpty();
+    }
+
+    @Test
+    void setMealPin_updatesAuditFields() {
+        String mondayDate = WEEK_START.toString();
+        Instant before = Instant.now();
+
+        String result = planTools.setMealPin(mondayDate, true);
+
+        assertThat(result).containsIgnoringCase("pinned");
+
+        var meal = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START))
+                .findFirst().orElseThrow();
+        assertThat(meal.isPinned()).isTrue();
+        assertThat(meal.getLastEditedBy()).isEqualTo(Meal.Editor.AI);
+        assertThat(meal.getLastEditedAt()).isAfterOrEqualTo(before);
+    }
+
+    @Test
+    void setMealPin_unpin_refusedByChat() {
+        // First pin it (user-side via direct repo, simulating a user click)
+        var monday = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START))
+                .findFirst().orElseThrow();
+        monday.setPinned(true);
+        mealRepository.save(monday);
+
+        // Attempt to unpin via chat — must be refused (BR-03)
+        String result = planTools.setMealPin(WEEK_START.toString(), false);
+
+        assertThat(result).containsIgnoringCase("REFUSED");
+        assertThat(result).containsIgnoringCase("not allowed");
+
+        // Meal must still be pinned
+        var unchanged = mealRepository.findById(monday.getId()).orElseThrow();
+        assertThat(unchanged.isPinned()).isTrue();
+    }
+
+    @Test
+    void setMealPin_refusesUnpinFromChat() {
+        // Seed a pinned meal on Saturday
+        var saturday = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START.plusDays(5)))
+                .findFirst().orElseThrow();
+        saturday.setPinned(true);
+        mealRepository.save(saturday);
+
+        // Chat tries to unpin Saturday — must be refused
+        String result = planTools.setMealPin("Saturday", false);
+
+        assertThat(result).containsIgnoringCase("REFUSED");
+        assertThat(result).containsIgnoringCase("not allowed");
+
+        // Meal is still pinned in the DB
+        var reloaded = mealRepository.findById(saturday.getId()).orElseThrow();
+        assertThat(reloaded.isPinned()).isTrue();
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     private Recipe buildRecipe(String id) {
@@ -183,6 +375,27 @@ class PlanToolsTest {
         ing.setQuantity(400);
         ing.setUnit("g");
         ing.setAisle("meat");
+        recipe.setIngredients(List.of(ing));
+        return recipe;
+    }
+
+    private Recipe buildVegetarianRecipe(String id) {
+        var recipe = new Recipe();
+        recipe.setId(id);
+        recipe.setName(id + "-name");
+        recipe.setCuisine("Test");
+        recipe.setCategoryTags(List.of("vegetarian", "dinner"));
+        recipe.setPrepMinutes(30);
+        recipe.setDefaultServings(4);
+        recipe.setEstimatedCost(7.0);
+        var macros = new RecipeMacros();
+        macros.setKcal(320);
+        recipe.setMacros(macros);
+        var ing = new RecipeIngredient();
+        ing.setName("lentil");
+        ing.setQuantity(300);
+        ing.setUnit("g");
+        ing.setAisle("dry-goods");
         recipe.setIngredients(List.of(ing));
         return recipe;
     }
