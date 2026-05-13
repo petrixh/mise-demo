@@ -6,17 +6,13 @@
 
 ## 1. Problem Statement
 
-[Describe the problem in concrete terms. Who is affected and what happens today?]
-
-- [Pain point 1 — what goes wrong and what it costs]
-- [Pain point 2]
-- [Pain point 3]
+As a user I want a weekly plan for my dinners so that I don't need to run to the grocery store every day. I like certain things and dislike others. I want to makse sure in general I get the food from the cheapest overal place, but also don't want to run after every sale. I'm also a bit curious about my weekly spending as well as calorie intakes. 
 
 ---
 
 ## 2. Vision
 
-[One to two paragraphs describing the desired future state. What does success look like for the users?]
+A concept of the AI powered weekly meal plnaner "Mise" is under "ai-meal-planner/mise". In short, a mobile first app that can help plan out the weekly dinners, make a shopping list and suggest where to go shop. It also keeps track of my alergies and preferences. 
 
 ---
 
