@@ -1,5 +1,6 @@
 package com.example.mise.ai;
 
+import com.example.mise.domain.conversation.ConversationMessage;
 import com.example.mise.domain.conversation.ConversationService;
 import com.vaadin.flow.component.ai.orchestrator.AIOrchestrator;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
@@ -7,6 +8,7 @@ import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
 
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Per-UI wrapper around {@link AIOrchestrator}. The orchestrator binds to a
@@ -33,17 +35,25 @@ public class HouseholdOrchestrator {
 
     private final AIOrchestrator orchestrator;
     private final ConversationService conversationService;
+    private final Consumer<String> responseCompleteCallback;
 
     /**
      * Builds the orchestrator with optional tools (e.g. PlanTools).
      * Tools may be null or empty for contexts that don't require them.
+     *
+     * @param responseCompleteCallback optional; called on the background streaming thread
+     *                                 with the latest assistant response text. The caller
+     *                                 is responsible for wrapping any UI updates in
+     *                                 {@code ui.access(...)}.
      */
     public HouseholdOrchestrator(LLMProvider provider,
                                  ConversationService conversationService,
                                  MessageList messageList,
                                  MessageInput messageInput,
+                                 Consumer<String> responseCompleteCallback,
                                  Object... tools) {
         this.conversationService = conversationService;
+        this.responseCompleteCallback = responseCompleteCallback;
 
         var history = conversationService.loadHistory();
 
@@ -70,7 +80,20 @@ public class HouseholdOrchestrator {
 
     private void onResponseComplete(
             com.vaadin.flow.component.ai.orchestrator.ResponseCompleteListener.ResponseCompleteEvent event) {
-        // After each assistant turn finishes, persist any new messages.
-        conversationService.syncFromOrchestrator(orchestrator.getHistory());
+        // After each assistant turn finishes, persist any new messages stamped with PLAN.
+        // TODO (UC-008): replace PLAN with a route-aware lookup so rows are stamped with
+        //   the actual view the user was on when the turn completed. For now, every turn
+        //   from MainLayout's orchestrator is tagged PLAN (the only view using it today).
+        conversationService.syncFromOrchestrator(
+                orchestrator.getHistory(), ConversationMessage.ViewContext.PLAN);
+
+        // Notify MainLayout (or any other caller) with the latest assistant text.
+        // Runs on the background streaming thread; callers must wrap UI updates in ui.access().
+        if (responseCompleteCallback != null) {
+            String response = event.getResponse();
+            if (response != null && !response.isBlank()) {
+                responseCompleteCallback.accept(response);
+            }
+        }
     }
 }

@@ -46,6 +46,7 @@ public class CostByCategoryPanel extends Div {
                                 RecipeCatalog recipeCatalog,
                                 PriceCatalog priceCatalog) {
         addClassName("mise-category-panel");
+        getElement().setAttribute("data-testid", "cost-by-category-panel");
 
         var title = new Paragraph("COST BY CATEGORY");
         title.addClassName("mise-category-panel-title");

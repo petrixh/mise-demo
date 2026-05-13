@@ -27,6 +27,7 @@ public class WeeklyStatsBar extends Div {
                           RecipeCatalog recipeCatalog,
                           MealCostCalculator costCalculator) {
         addClassName("mise-kpi-strip");
+        getElement().setAttribute("data-testid", "kpi-strip");
 
         List<Meal> meals = planService.findMeals(plan.getId());
 
@@ -64,15 +65,16 @@ public class WeeklyStatsBar extends Div {
                 ? prepHours + "h " + (prepMins > 0 ? prepMins + "m" : "")
                 : prepMins + "m";
 
-        add(kpiCard("WEEKLY COST", String.format("€%.2f", totalCost)));
-        add(kpiCard("AVG / MEAL", String.format("€%.2f", avgMeal)));
-        add(kpiCard("TOTAL PREP", prepStr.trim()));
-        add(kpiCard("AVG KCAL", String.format("%.0f", avgKcal)));
+        add(kpiCard("WEEKLY COST", String.format("€%.2f", totalCost), "kpi-card-weekly-cost"));
+        add(kpiCard("AVG / MEAL", String.format("€%.2f", avgMeal), "kpi-card-avg-meal"));
+        add(kpiCard("TOTAL PREP", prepStr.trim(), "kpi-card-total-prep"));
+        add(kpiCard("AVG KCAL", String.format("%.0f", avgKcal), "kpi-card-avg-kcal"));
     }
 
-    private Div kpiCard(String label, String value) {
+    private Div kpiCard(String label, String value, String testId) {
         var card = new Div();
         card.addClassName("mise-kpi-card");
+        card.getElement().setAttribute("data-testid", testId);
 
         var lbl = new Paragraph(label);
         lbl.addClassName("mise-kpi-label");

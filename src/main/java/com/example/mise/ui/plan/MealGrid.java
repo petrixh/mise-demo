@@ -64,6 +64,7 @@ public class MealGrid extends Div {
                          Consumer<Long> onMarkSkipped) {
         var row = new Div();
         row.addClassName("mise-meal-row");
+        row.getElement().setAttribute("data-testid", "meal-row");
 
         // Day chip
         var dayChip = new Span(date.format(DAY_FMT).toUpperCase());

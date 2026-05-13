@@ -124,3 +124,21 @@
   font-size: 13px;
   flex-shrink: 0;
 }
+
+/*
+ * Chat history within the dock: collapsed by default (0 height, invisible)
+ * so the dock stays compact. Expands to a scrollable region when the dock
+ * receives focus (user clicks the input) providing an "expand chat" affordance
+ * without requiring a full drawer/popover implementation (those come in UC-005/007).
+ * The data-testid="chat-message-list" element is always in the DOM.
+ */
+.mise-chat-dock .mise-chat-history {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+
+.mise-chat-dock:focus-within .mise-chat-history {
+  max-height: 240px;
+  overflow-y: auto;
+}

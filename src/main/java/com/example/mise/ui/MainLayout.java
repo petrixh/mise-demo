@@ -6,12 +6,9 @@ import com.example.mise.domain.conversation.ConversationService;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.plan.PlanService;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.HasComponents;
-import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
@@ -39,6 +36,7 @@ public class MainLayout extends VerticalLayout
     private final HouseholdOrchestrator household;
     private final MessageList messageList;
     private final Span lastAiMessageText;
+    private UI ui;
 
     // Tab elements kept as fields for active-state management
     private final Div planTab;
@@ -58,8 +56,18 @@ public class MainLayout extends VerticalLayout
         var messageInput = new MessageInput();
         messageInput.setWidthFull();
 
+        // Capture UI reference (on UI thread) for use in the response-complete
+        // callback which runs on a background streaming thread.
+        this.ui = UI.getCurrent();
+
         this.household = new HouseholdOrchestrator(
-                llmProvider, conversationService, messageList, messageInput, planTools);
+                llmProvider, conversationService, messageList, messageInput,
+                text -> {
+                    if (ui != null && !ui.isClosing()) {
+                        ui.access(() -> updateLastAiMessage(text));
+                    }
+                },
+                planTools);
 
         // ── Shell layout ─────────────────────────────────────────────────
         setSizeFull();
@@ -154,10 +162,17 @@ public class MainLayout extends VerticalLayout
         var lastMsgRow = new Div(sparkle, lastAiMessageText);
         lastMsgRow.addClassName("mise-last-ai-message");
 
+        // Message history scrollable region — visible in DOM at page load (Finding 1).
+        // Collapsed to a fixed height so it doesn't dominate the viewport;
+        // CSS (.mise-chat-dock:focus-within) can grow it via a focus affordance.
+        messageList.addClassName("mise-chat-history");
+        messageList.getElement().setAttribute("data-testid", "chat-message-list");
+
         messageInput.setWidthFull();
 
-        var dock = new Div(lastMsgRow, messageInput);
+        var dock = new Div(messageList, lastMsgRow, messageInput);
         dock.addClassName("mise-chat-dock");
+        dock.getElement().setAttribute("data-testid", "chat-dock");
         return dock;
     }
 
