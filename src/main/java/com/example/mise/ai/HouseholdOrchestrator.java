@@ -33,6 +33,13 @@ public class HouseholdOrchestrator {
             real data rather than guessing.
             When a meal is pinned, you must not change it. You also cannot unpin meals — the user controls that via the pin icon on each row. If asked to change a pinned meal, explain politely that it is pinned and suggest the user unpin it first (via the icon) if they want a change.
             If any tool result starts with REFUSED: that means the action did NOT happen. Do not narrate it as a success. Tell the user clearly what was refused and why, using the explanation provided in the tool result. Never say "X is now Y" after a REFUSED result — say "X is still Y, because..." and pass on the suggested next step from the tool.
+
+            UC-004 Undo and explain:
+            - When the user says "put X back", "undo Thursday", "revert that", "restore Monday's meal", or similar, call the undoLastEdit tool for that day.
+            - When the user asks "why did you change/swap X?", "why that swap?", "what was the reason for Thursday?", call the explainEdit tool.
+            - "Why?" answers must be brief: at most 3 sentences for a single swap, at most 5 sentences for a multi-meal negotiation. No apologies, no preamble.
+            - If explainEdit returns "I don't have the reasoning for that change recorded", relay that verbatim or near-verbatim — do NOT fabricate or guess a reason.
+            - If the user asks about a non-most-recent change (e.g., "the change before that"), call explainEdit with whichEdit=2 (or higher). If totalEdits is less than requested, clarify which edits are available by citing the date and meal name of each.
             """;
 
     private final AIOrchestrator orchestrator;

@@ -359,4 +359,189 @@ class PlanViewIT extends MisePlaywrightIT {
         // locator pattern works for later UC assertions.
         assertThat(page.locator("[data-pin-date]").first()).isVisible();
     }
+
+    // ─── UC-004 ──────────────────────────────────────────────────────────────
+
+    /**
+     * Helper: finds the first meal for the given day of week in the active plan
+     * and returns an alternative recipe ref that differs from the meal's current one.
+     */
+    private Meal findMealForDay(DayOfWeek dayOfWeek) {
+        var household = householdService.findHousehold().orElseThrow();
+        var plan = planService.findActivePlan(household.getId()).orElseThrow();
+        LocalDate targetDate = plan.getWeekStartDate()
+                .with(TemporalAdjusters.nextOrSame(dayOfWeek));
+        return planService.findMeals(plan.getId()).stream()
+                .filter(m -> m.getDate().equals(targetDate))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No meal on " + dayOfWeek + " in seeded plan"));
+    }
+
+    private String findAlternativeRecipe(String excludeRef) {
+        return recipeCatalog.findAll().stream()
+                .map(r -> r.getId())
+                .filter(id -> !id.equals(excludeRef))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No alternative recipe found in catalog"));
+    }
+
+    /**
+     * UC-004 AC: the undo icon button is visible on a row that has a MealEdit history row.
+     * Seeds one AI swap via planService.swapMeal(), reloads the view, asserts the
+     * per-day undo button is visible.
+     */
+    @Test
+    void undoButtonVisibleOnRowWithEditHistory() {
+        Meal wednesday = findMealForDay(DayOfWeek.WEDNESDAY);
+        String altRef = findAlternativeRecipe(wednesday.getRecipeRef());
+        planService.swapMeal(wednesday.getId(), altRef, "vegetarian swap for IT");
+
+        page.navigate(getUrl() + "/plan");
+
+        assertThat(page.getByTestId("meal-action-undo").first()).isVisible();
+    }
+
+    /**
+     * UC-004 AC: the undo icon button is NOT visible on a row with no edit history.
+     * Only meals that have been swapped by AI get undo buttons; the seeded plan has
+     * no edits on any row. After seeding a swap for Wednesday only, Monday must NOT
+     * have an undo button.
+     */
+    @Test
+    void undoButtonNotVisibleOnRowWithNoHistory() {
+        // Swap Wednesday so that "at least one undo button" exists (confirms the feature
+        // is active) but Monday has no history — its undo button must be absent.
+        Meal wednesday = findMealForDay(DayOfWeek.WEDNESDAY);
+        String altRef = findAlternativeRecipe(wednesday.getRecipeRef());
+        planService.swapMeal(wednesday.getId(), altRef, "vegetarian swap for IT");
+
+        page.navigate(getUrl() + "/plan");
+
+        // Monday has no edit history — its undo button must not be in the DOM / visible.
+        assertThat(page.locator("#mise-meal-undo-monday")).not().isVisible();
+    }
+
+    /**
+     * UC-004 AC #3: clicking the row undo button (a) restores the meal's recipeRef,
+     * (b) creates a NEW MealEdit row with reason starting "Undo of edit",
+     * (c) the post-undo MealEdit count for that meal = pre-undo count + 1.
+     */
+    @Test
+    void clickingRowUndoRestoresPreviousRecipeAndWritesUndoAuditRow() {
+        Meal thursday = findMealForDay(DayOfWeek.THURSDAY);
+        String originalRef = thursday.getRecipeRef();
+        String altRef = findAlternativeRecipe(originalRef);
+
+        planService.swapMeal(thursday.getId(), altRef, "swap for IT undo test");
+
+        int preUndoCount = mealEditRepository.findByMealIdOrderByChangedAtDesc(thursday.getId()).size();
+
+        page.navigate(getUrl() + "/plan");
+
+        // Click the per-day undo button for Thursday
+        page.locator("#mise-meal-undo-thursday").click();
+
+        // Wait for the Vaadin notification to confirm undo was applied
+        assertThat(page.getByText("Undo applied")).isVisible();
+
+        // Assert DB state: recipeRef restored
+        Meal reloaded = mealRepository.findById(thursday.getId()).orElseThrow();
+        Assertions.assertThat(reloaded.getRecipeRef()).isEqualTo(originalRef);
+
+        // Assert DB state: new undo audit row created
+        var editsAfter = mealEditRepository.findByMealIdOrderByChangedAtDesc(thursday.getId());
+        Assertions.assertThat(editsAfter).hasSize(preUndoCount + 1);
+        Assertions.assertThat(editsAfter.get(0).getReason()).startsWith("Undo of edit");
+    }
+
+    /**
+     * UC-004 AC: clicking the "why?" button for a day with edit history causes a user
+     * message containing "why did you change [Day]?" to appear in the chat MessageList,
+     * and the stubbed assistant reply lands as a second message.
+     */
+    @Test
+    void whyButtonClickSubmitsChatMessageAndReceivesReply() {
+        Meal friday = findMealForDay(DayOfWeek.FRIDAY);
+        String altRef = findAlternativeRecipe(friday.getRecipeRef());
+        planService.swapMeal(friday.getId(), altRef, "fish swap for IT why test");
+
+        page.navigate(getUrl() + "/plan");
+
+        chatModel.queueReply("I swapped Friday because of your fish allergy preference.");
+
+        // Focus the chat input to expand the dock so the message list is visible
+        var chatDockLocator = page.getByTestId("chat-dock");
+        MessageInputElement input = MessageInputElement.get(chatDockLocator);
+        input.focus();
+
+        // Click the "why?" button for Friday — this pre-fills and submits the chat prompt
+        page.locator("#mise-meal-why-friday").click();
+
+        // Wait for both user message and assistant reply to land (total = 2)
+        MessageListElement messages = new MessageListElement(page.getByTestId("chat-message-list"));
+        messages.assertMessageCount(2);
+
+        // The first message must be the user turn containing the why-prompt text
+        assertThat(page.getByTestId("chat-message-list")
+                .locator("vaadin-message").first())
+                .containsText("why did you change Friday?");
+    }
+
+    /**
+     * UC-004 AC: the "why?" button is visible on a row that has edit history.
+     */
+    @Test
+    void whyButtonVisibleOnRowWithEditHistory() {
+        Meal tuesday = findMealForDay(DayOfWeek.TUESDAY);
+        String altRef = findAlternativeRecipe(tuesday.getRecipeRef());
+        planService.swapMeal(tuesday.getId(), altRef, "swap for IT why-visible test");
+
+        page.navigate(getUrl() + "/plan");
+
+        assertThat(page.locator("#mise-meal-why-tuesday")).isVisible();
+    }
+
+    /**
+     * UC-004 AC: attempting to undo a pinned meal shows a "Cannot undo — meal is pinned"
+     * Vaadin notification. The service layer throws PinnedMealException; the UI surfaces it.
+     */
+    @Test
+    void undoOnPinnedMealShowsPinnedNotification() {
+        Meal monday = findMealForDay(DayOfWeek.MONDAY);
+        String altRef = findAlternativeRecipe(monday.getRecipeRef());
+
+        // Create an edit so the undo button appears
+        planService.swapMeal(monday.getId(), altRef, "swap for IT pinned-undo test");
+        // Then pin the meal so undoLastEdit() throws PinnedMealException
+        planService.setPinned(monday.getId(), true, Meal.Editor.USER);
+
+        page.navigate(getUrl() + "/plan");
+
+        // Click the per-day undo button for Monday
+        page.locator("#mise-meal-undo-monday").click();
+
+        // The view must surface the pinned-rejection notification
+        assertThat(page.getByText("Cannot undo — meal is pinned")).isVisible();
+    }
+
+    /**
+     * UC-004 AC: after an undo the weekly KPI strip is still present and visible,
+     * confirming that a successful undo doesn't break the view's KPI rendering.
+     */
+    @Test
+    void kpiStripStillRenderedAfterUndo() {
+        Meal wednesday = findMealForDay(DayOfWeek.WEDNESDAY);
+        String altRef = findAlternativeRecipe(wednesday.getRecipeRef());
+        planService.swapMeal(wednesday.getId(), altRef, "swap for IT kpi-post-undo test");
+
+        page.navigate(getUrl() + "/plan");
+
+        page.locator("#mise-meal-undo-wednesday").click();
+
+        // Confirm undo applied
+        assertThat(page.getByText("Undo applied")).isVisible();
+
+        // KPI strip must still be visible after the view refreshes
+        assertThat(page.getByTestId("kpi-strip")).isVisible();
+    }
 }

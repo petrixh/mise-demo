@@ -6,6 +6,7 @@ import com.example.mise.capabilities.recipes.RecipeCatalog;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.plan.Meal;
 import com.example.mise.domain.plan.MealCostCalculator;
+import com.example.mise.domain.plan.MealEdit;
 import com.example.mise.domain.plan.MealSwapRequest;
 import com.example.mise.domain.plan.PinnedMealException;
 import com.example.mise.domain.plan.PlanService;
@@ -428,6 +429,131 @@ public class PlanTools {
             log.warn("setMealPin error: {}", e.getMessage());
             return "Could not update pin state: " + e.getMessage();
         }
+    }
+
+    // ─────────────────────── UC-004 tools ────────────────────────────────────
+
+    /**
+     * Undoes the most recent AI-driven edit for the meal on the given day.
+     * Restores the previous recipeRef, servings, and status; writes a new MealEdit row
+     * documenting the revert so there is a full audit trail (BR-03).
+     */
+    @Tool(description = "Undo the most recent edit for the meal on a given day. Restores the previous recipe, servings, and status, and writes a new audit row. Use when the user says 'put X back', 'undo Thursday', 'revert that', or similar. If no edit history exists, reports that explicitly.")
+    public String undoLastEdit(
+            @ToolParam(description = "Day reference (Monday/Mon/today/tomorrow/ISO date)") String dayOrDate) {
+        var plan = getActivePlan();
+        if (plan == null) return "No active plan found.";
+
+        LocalDate target = resolveDate(dayOrDate);
+        if (target == null) return "Could not understand the date '" + dayOrDate + "'. Please use a day name or ISO date.";
+
+        var mealOpt = planService.findMealByDate(plan.getId(), target);
+        if (mealOpt.isEmpty()) {
+            return "No meal planned for " + target.format(DateTimeFormatter.ofPattern("EEEE d MMMM")) + ".";
+        }
+
+        var meal = mealOpt.get();
+        String dayLabel = target.format(DateTimeFormatter.ofPattern("EEEE"));
+
+        // Check for edit history before attempting undo
+        var edits = planService.findEdits(meal.getId());
+        if (edits.isEmpty()) {
+            return "No edit history found for " + dayLabel + "'s meal — nothing to undo.";
+        }
+
+        // Find what we're restoring to (before calling undoLastEdit, which mutates)
+        var lastEdit = edits.get(0);
+        String previousRef = lastEdit.getPreviousRecipeRef();
+        var previousRecipe = recipeCatalog.findById(previousRef).orElse(null);
+        String previousName = previousRecipe != null ? previousRecipe.getName() : previousRef;
+
+        try {
+            planService.undoLastEdit(meal.getId(), Meal.Editor.AI);
+            return String.format("Restored %s's meal to %s. Undo audit row written.", dayLabel, previousName);
+        } catch (PinnedMealException e) {
+            return "REFUSED: " + dayLabel + "'s meal is pinned and cannot be undone. "
+                    + "Tell the user they need to click the pin icon on the row to unpin it first.";
+        } catch (IllegalArgumentException e) {
+            return "Could not undo: " + e.getMessage();
+        } catch (Exception e) {
+            log.warn("undoLastEdit error: {}", e.getMessage());
+            return "Could not undo the edit: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Returns the reason stored on a MealEdit row for the given day.
+     * Supports a {@code whichEdit} ordinal (1 = most recent, 2 = second-most-recent, etc.)
+     * so the model can disambiguate when the user asks about a non-most-recent change.
+     * Returns a structured result the model can use to give a grounded "why?" answer.
+     */
+    @Tool(description = "Return the recorded reason for a meal change on a given day. Use when the user asks 'why did you change/swap X?'. Returns the reason stored on the MealEdit row plus the recipe transition (previous → current). If reason is missing, returns an explicit 'no reasoning recorded' string — do NOT fabricate a reason. If whichEdit is 2 or higher, returns that specific edit from history (newest-first). Also returns totalEdits so you can clarify if the user is asking about a non-most-recent change (BR-05).")
+    public String explainEdit(
+            @ToolParam(description = "Day reference (Monday/Mon/today/tomorrow/ISO date)") String dayOrDate,
+            @ToolParam(description = "Which edit to explain: 1 = most recent (default), 2 = second-most-recent, etc.") int whichEdit) {
+        var plan = getActivePlan();
+        if (plan == null) return "No active plan found.";
+
+        LocalDate target = resolveDate(dayOrDate);
+        if (target == null) return "Could not understand the date '" + dayOrDate + "'. Please use a day name or ISO date.";
+
+        var mealOpt = planService.findMealByDate(plan.getId(), target);
+        if (mealOpt.isEmpty()) {
+            return "No meal planned for " + target.format(DateTimeFormatter.ofPattern("EEEE d MMMM")) + ".";
+        }
+
+        var meal = mealOpt.get();
+        String dayLabel = target.format(DateTimeFormatter.ofPattern("EEEE"));
+
+        var edits = planService.findEdits(meal.getId());
+        int totalEdits = edits.size();
+
+        if (edits.isEmpty()) {
+            return "No edit history found for " + dayLabel + "'s meal — this meal has not been changed.";
+        }
+
+        int idx = Math.max(1, whichEdit) - 1; // convert 1-based to 0-based
+        if (idx >= totalEdits) {
+            return String.format(
+                    "Only %d edit(s) found for %s. Requested edit #%d does not exist. "
+                    + "Ask the user to clarify which change they mean.",
+                    totalEdits, dayLabel, whichEdit);
+        }
+
+        MealEdit edit = edits.get(idx);
+
+        // Current recipe ref is the meal's current recipeRef; previous is from the edit row.
+        // For non-most-recent edits, "current" at that point is the next edit's previous.
+        String prevRef = edit.getPreviousRecipeRef();
+        var prevRecipe = recipeCatalog.findById(prevRef).orElse(null);
+        String prevName = prevRecipe != null ? prevRecipe.getName() : prevRef;
+
+        // The "current" recipe after this edit was applied is what the meal had before the
+        // edit directly above this one in the history (idx-1), or the meal's current value if this is the top edit.
+        String afterRef;
+        if (idx == 0) {
+            afterRef = meal.getRecipeRef();
+        } else {
+            afterRef = edits.get(idx - 1).getPreviousRecipeRef();
+        }
+        var afterRecipe = recipeCatalog.findById(afterRef).orElse(null);
+        String afterName = afterRecipe != null ? afterRecipe.getName() : afterRef;
+
+        String reasonText;
+        if (edit.getReason() == null || edit.getReason().isBlank()) {
+            reasonText = "I don't have the reasoning for that change recorded";
+        } else {
+            reasonText = edit.getReason();
+        }
+
+        return String.format(
+                "Edit #%d of %d for %s (changed %s by %s): %s → %s. Reason: %s",
+                idx + 1, totalEdits, dayLabel,
+                edit.getChangedAt().toString().substring(0, 10),
+                edit.getChangedBy(),
+                prevName, afterName,
+                reasonText
+        );
     }
 
     // ─────────────────────── helpers ────────────────────────────────────────

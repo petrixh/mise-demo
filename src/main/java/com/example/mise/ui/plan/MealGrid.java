@@ -21,14 +21,17 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+
 /**
- * UC-002 meal grid: one row per Mon–Sun day.
+ * UC-002/004 meal grid: one row per Mon–Sun day.
  * Renders meal name, meta line, tag pills, pin / status icon buttons.
+ * UC-004 adds "undo" and "why?" inline buttons on rows with the "edited" pill.
  * Uses custom Div rows (not Vaadin Grid) for the flexible multi-column row structure.
  */
 public class MealGrid extends Div {
 
     private static final DateTimeFormatter DAY_FMT = DateTimeFormatter.ofPattern("EEE");
+    private static final DateTimeFormatter FULL_DAY_FMT = DateTimeFormatter.ofPattern("EEEE");
     /** Threshold for "edited" pill: 60 seconds. */
     private static final long EDITED_THRESHOLD_SECONDS = 60;
 
@@ -38,7 +41,9 @@ public class MealGrid extends Div {
                     MealCostCalculator costCalculator,
                     Consumer<Long> onPinToggle,
                     Consumer<Long> onMarkCooked,
-                    Consumer<Long> onMarkSkipped) {
+                    Consumer<Long> onMarkSkipped,
+                    Consumer<Long> onUndo,
+                    Consumer<String> onSubmitChatMessage) {
         addClassName("mise-meal-grid");
 
         // Build a date-to-meal map for fast lookup
@@ -51,7 +56,8 @@ public class MealGrid extends Div {
         for (int d = 0; d < 7; d++) {
             LocalDate date = monday.plusDays(d);
             Meal meal = byDate.get(date);
-            add(buildRow(date, meal, recipeCatalog, costCalculator, onPinToggle, onMarkCooked, onMarkSkipped));
+            add(buildRow(date, meal, recipeCatalog, costCalculator,
+                    planService, onPinToggle, onMarkCooked, onMarkSkipped, onUndo, onSubmitChatMessage));
         }
     }
 
@@ -59,9 +65,12 @@ public class MealGrid extends Div {
                          Meal meal,
                          RecipeCatalog recipeCatalog,
                          MealCostCalculator costCalculator,
+                         PlanService planService,
                          Consumer<Long> onPinToggle,
                          Consumer<Long> onMarkCooked,
-                         Consumer<Long> onMarkSkipped) {
+                         Consumer<Long> onMarkSkipped,
+                         Consumer<Long> onUndo,
+                         Consumer<String> onSubmitChatMessage) {
         var row = new Div();
         row.addClassName("mise-meal-row");
         row.getElement().setAttribute("data-testid", "meal-row");
@@ -88,7 +97,11 @@ public class MealGrid extends Div {
             return row;
         }
 
-        // Check "edited" state (BR-04: within 60s of AI edit)
+        // UC-004: "edited" pill is visible when the meal has any AI edits in history,
+        // not just within the 60-second window, so undo/why buttons are always available.
+        var editHistory = planService.findEdits(meal.getId());
+        boolean hasEditHistory = !editHistory.isEmpty();
+        // The "edited" row highlight stays within the 60-second window for visual emphasis.
         boolean isEdited = meal.getLastEditedBy() == Meal.Editor.AI
                 && meal.getLastEditedAt() != null
                 && Instant.now().minusSeconds(EDITED_THRESHOLD_SECONDS)
@@ -132,10 +145,23 @@ public class MealGrid extends Div {
                             || i.getName().toLowerCase().contains("prawn"));
             if (hasFish) tags.add(pill("fish", "mise-tag-fish"));
         }
-        if (isEdited) {
+        if (isEdited || hasEditHistory) {
             var editedPill = pill("edited", "mise-tag-edited");
             editedPill.getElement().setAttribute("data-testid", "meal-status-edited-pill");
             tags.add(editedPill);
+        }
+
+        // UC-004: "why?" button — pre-fills chat with "why did you change [Day]?" and submits
+        if (hasEditHistory && onSubmitChatMessage != null) {
+            String dayName = date.format(FULL_DAY_FMT);
+            String dayLower = dayName.toLowerCase();
+            var whyBtn = new Button("why?");
+            whyBtn.addClassName("mise-row-why-btn");
+            whyBtn.getElement().setAttribute("aria-label", "Why " + dayName);
+            whyBtn.setId("mise-meal-why-" + dayLower);
+            whyBtn.getElement().setAttribute("data-testid", "meal-action-why");
+            whyBtn.addClickListener(e -> onSubmitChatMessage.accept("why did you change " + dayName + "?"));
+            tags.add(whyBtn);
         }
 
         row.add(tags);
@@ -169,6 +195,22 @@ public class MealGrid extends Div {
         skipBtn.addClickListener(e -> {
             if (onMarkSkipped != null) onMarkSkipped.accept(meal.getId());
         });
+
+        // UC-004: "undo" inline button — available when there is edit history (AC #1)
+        // Calls planService.undoLastEdit directly (no LLM round-trip) then the broadcaster reflows.
+        if (hasEditHistory && onUndo != null) {
+            String dayName = date.format(FULL_DAY_FMT);
+            String dayLower = dayName.toLowerCase();
+            var undoBtn = new Button((com.vaadin.flow.component.Component) VaadinIcon.ROTATE_LEFT.create());
+            undoBtn.setThemeName("tertiary icon small");
+            undoBtn.addClassName("mise-row-undo-btn");
+            undoBtn.getElement().setAttribute("title", "Undo last AI change");
+            undoBtn.getElement().setAttribute("aria-label", "Undo " + dayName);
+            undoBtn.setId("mise-meal-undo-" + dayLower);
+            undoBtn.getElement().setAttribute("data-testid", "meal-action-undo");
+            undoBtn.addClickListener(e -> onUndo.accept(meal.getId()));
+            actions.add(undoBtn);
+        }
 
         actions.add(pinBtn, cookedBtn, skipBtn);
         row.add(actions);

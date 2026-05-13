@@ -37,6 +37,8 @@ public class MainLayout extends VerticalLayout
     private final HouseholdOrchestrator household;
     private final MessageList messageList;
     private final Span lastAiMessageText;
+    /** UC-004: holds the "Undo last AI change" button strip shown above the chat input. Hidden when no recent edit. */
+    private final Div chatUndoStrip;
     private UI ui;
 
     // Tab elements kept as fields for active-state management
@@ -101,7 +103,11 @@ public class MainLayout extends VerticalLayout
 
         // Chat dock
         lastAiMessageText = new Span();
-        add(buildChatDock(messageInput));
+        chatUndoStrip = new Div();
+        chatUndoStrip.addClassName("mise-chat-undo-strip");
+        chatUndoStrip.setId("mise-chat-undo-last");
+        chatUndoStrip.setVisible(false);
+        add(buildChatDock(messageInput, chatUndoStrip));
     }
 
     // ── RouterLayout contract: the framework will call getContent() to find where to put the child ──
@@ -158,7 +164,7 @@ public class MainLayout extends VerticalLayout
         return tab;
     }
 
-    private Div buildChatDock(MessageInput messageInput) {
+    private Div buildChatDock(MessageInput messageInput, Div undoStrip) {
         var sparkle = new Span("✦");
         sparkle.addClassName("sparkle");
         lastAiMessageText.setText("Ask Mise anything about your week…");
@@ -175,7 +181,8 @@ public class MainLayout extends VerticalLayout
 
         messageInput.setWidthFull();
 
-        var dock = new Div(messageList, lastMsgRow, messageInput);
+        // UC-004: undo strip sits between the last-AI-message row and the input field
+        var dock = new Div(messageList, lastMsgRow, undoStrip, messageInput);
         dock.addClassName("mise-chat-dock");
         dock.getElement().setAttribute("data-testid", "chat-dock");
         return dock;
@@ -211,5 +218,55 @@ public class MainLayout extends VerticalLayout
 
     public MessageList messageList() {
         return messageList;
+    }
+
+    /**
+     * UC-004: Programmatically submits a message to the AI orchestrator as if the user typed it.
+     * Used by MealGrid's "why?" button to pre-fill and send the chat prompt.
+     * Must be called from the UI thread (or wrapped in {@code UI.access(...)}).
+     */
+    public void submitChatMessage(String text) {
+        if (text != null && !text.isBlank()) {
+            household.orchestrator().prompt(text);
+        }
+    }
+
+    /**
+     * UC-004: Shows a compact "Undo: [dayLabel]'s [recipe]" pill in the chat dock.
+     * Clicking the pill calls the provided undoAction. Hidden when undoAction is null.
+     * Must be called from the UI thread.
+     *
+     * @param dayLabel  e.g. "Thursday"
+     * @param recipeName e.g. "Green Thai Curry" (the recipe that was just replaced)
+     * @param undoAction the action to run when the user clicks the undo pill; null = hide the strip
+     */
+    public void showChatUndoStrip(String dayLabel, String recipeName, Runnable undoAction) {
+        chatUndoStrip.removeAll();
+        if (undoAction == null) {
+            chatUndoStrip.setVisible(false);
+            return;
+        }
+        var undoBtn = new com.vaadin.flow.component.button.Button(
+                "↩ Undo: " + dayLabel + "'s " + recipeName);
+        undoBtn.addClassName("mise-chat-undo-btn");
+        undoBtn.setId("mise-chat-undo-last");
+        undoBtn.getElement().setAttribute("aria-label", "Undo last AI change for " + dayLabel);
+        undoBtn.getElement().setAttribute("data-testid", "chat-action-undo-last");
+        undoBtn.addClickListener(e -> {
+            undoAction.run();
+            chatUndoStrip.setVisible(false);
+            chatUndoStrip.removeAll();
+        });
+        chatUndoStrip.add(undoBtn);
+        chatUndoStrip.setVisible(true);
+    }
+
+    /**
+     * UC-004: Hides the chat-reply undo strip without doing any action.
+     * Call when the undo is no longer the most-recent edit for the affected meal.
+     */
+    public void hideChatUndoStrip() {
+        chatUndoStrip.setVisible(false);
+        chatUndoStrip.removeAll();
     }
 }

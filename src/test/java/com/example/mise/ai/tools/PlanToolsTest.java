@@ -356,6 +356,110 @@ class PlanToolsTest {
         assertThat(reloaded.isPinned()).isTrue();
     }
 
+    // ── UC-004 tool tests ─────────────────────────────────────────────────
+
+    @Test
+    void undoLastEdit_tool_restoresPreviousMealAndReportsSuccess() {
+        // First swap Thursday to lentil-soup
+        when(recipeCatalog.findById("lentil-soup")).thenReturn(Optional.of(buildVegetarianRecipe("lentil-soup")));
+        String swapResult = planTools.swapMealOnDay(WEEK_START.plusDays(3).toString(), "lentil-soup", "Make Thursday vegetarian", "");
+        assertThat(swapResult).contains("lentil-soup-name");
+
+        // Now undo via the tool
+        String undoResult = planTools.undoLastEdit("Thursday");
+
+        assertThat(undoResult).containsIgnoringCase("curry-name");
+        assertThat(undoResult).containsIgnoringCase("Restored");
+
+        // Verify meal was reverted in the DB
+        var thursday = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START.plusDays(3)))
+                .findFirst().orElseThrow();
+        assertThat(thursday.getRecipeRef()).isEqualTo("curry");
+
+        // Verify undo audit row was written
+        var edits = mealEditRepository.findByMealIdOrderByChangedAtDesc(thursday.getId());
+        assertThat(edits).hasSize(2); // swap + undo
+        assertThat(edits.get(0).getReason()).contains("Undo of edit #");
+    }
+
+    @Test
+    void undoLastEdit_tool_noHistory_reportsExplicitly() {
+        String result = planTools.undoLastEdit("Monday");
+        assertThat(result).containsIgnoringCase("no edit history");
+        // Nothing changed
+        var monday = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START))
+                .findFirst().orElseThrow();
+        assertThat(monday.getRecipeRef()).isEqualTo("chicken-rice");
+    }
+
+    @Test
+    void undoLastEdit_tool_pinnedMeal_returnsRefused() {
+        // Swap then pin Thursday
+        when(recipeCatalog.findById("lentil-soup")).thenReturn(Optional.of(buildVegetarianRecipe("lentil-soup")));
+        planTools.swapMealOnDay(WEEK_START.plusDays(3).toString(), "lentil-soup", "test", "");
+        var thursday = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START.plusDays(3)))
+                .findFirst().orElseThrow();
+        thursday.setPinned(true);
+        mealRepository.save(thursday);
+
+        String result = planTools.undoLastEdit("Thursday");
+        assertThat(result).containsIgnoringCase("REFUSED");
+        assertThat(result).containsIgnoringCase("pinned");
+    }
+
+    @Test
+    void explainEdit_tool_returnsStoredReason() {
+        // Swap Thursday with a known reason
+        when(recipeCatalog.findById("lentil-soup")).thenReturn(Optional.of(buildVegetarianRecipe("lentil-soup")));
+        planTools.swapMealOnDay(WEEK_START.plusDays(3).toString(), "lentil-soup", "Budget constraint — lentil soup saves €2", "");
+
+        String result = planTools.explainEdit("Thursday", 1);
+
+        assertThat(result).containsIgnoringCase("Budget constraint");
+        assertThat(result).containsIgnoringCase("curry");
+        assertThat(result).containsIgnoringCase("lentil");
+    }
+
+    @Test
+    void explainEdit_tool_missingReason_returnsNoReasonSentinel() {
+        // Directly insert a MealEdit with null reason
+        var thursday = mealRepository.findByPlanIdOrderByDateAsc(savedPlan.getId()).stream()
+                .filter(m -> m.getDate().equals(WEEK_START.plusDays(3)))
+                .findFirst().orElseThrow();
+        var edit = new com.example.mise.domain.plan.MealEdit();
+        edit.setMealId(thursday.getId());
+        edit.setPreviousRecipeRef("curry");
+        edit.setPreviousServings(thursday.getServings());
+        edit.setPreviousStatus(thursday.getStatus());
+        edit.setChangedBy(Meal.Editor.AI);
+        edit.setReason(null); // no reason stored
+        mealEditRepository.save(edit);
+
+        String result = planTools.explainEdit("Thursday", 1);
+
+        // Must NOT fabricate — must surface the sentinel (AC #4)
+        assertThat(result).containsIgnoringCase("don't have the reasoning");
+    }
+
+    @Test
+    void explainEdit_tool_noHistory_reportsExplicitly() {
+        String result = planTools.explainEdit("Monday", 1);
+        assertThat(result).containsIgnoringCase("no edit history");
+    }
+
+    @Test
+    void explainEdit_tool_requestingOrdinalBeyondHistory_reportsMiscount() {
+        // Only one swap — requesting edit #2 should report "only 1 edit found"
+        when(recipeCatalog.findById("lentil-soup")).thenReturn(Optional.of(buildVegetarianRecipe("lentil-soup")));
+        planTools.swapMealOnDay(WEEK_START.plusDays(3).toString(), "lentil-soup", "test", "");
+
+        String result = planTools.explainEdit("Thursday", 2);
+        assertThat(result).contains("Only 1 edit");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     private Recipe buildRecipe(String id) {

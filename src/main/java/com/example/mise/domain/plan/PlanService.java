@@ -251,6 +251,62 @@ public class PlanService {
         return mealEditRepository.findByMealIdOrderByChangedAtDesc(mealId);
     }
 
+    /**
+     * UC-004: Undoes the most recent edit for the given meal by restoring the
+     * previous recipe ref, servings, and status from the latest {@link MealEdit} row.
+     * Writes a new {@link MealEdit} row documenting the revert (BR-03).
+     * Refuses if the meal is currently pinned.
+     *
+     * @param mealId    the meal to revert
+     * @param changedBy whether the undo was initiated by USER or AI
+     * @return the newly created {@link MealEdit} documenting the revert
+     * @throws PinnedMealException      if the meal is pinned
+     * @throws IllegalArgumentException if the meal has no edit history
+     */
+    @Transactional
+    public MealEdit undoLastEdit(Long mealId, Meal.Editor changedBy) {
+        var meal = mealRepository.findById(mealId)
+                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
+
+        if (meal.isPinned()) {
+            throw new PinnedMealException(
+                    "Meal on " + meal.getDate() + " (" + meal.getRecipeRef() + ") is pinned and cannot be undone.");
+        }
+
+        var edits = mealEditRepository.findByMealIdOrderByChangedAtDesc(mealId);
+        if (edits.isEmpty()) {
+            throw new IllegalArgumentException("No edit history for meal " + mealId);
+        }
+
+        var lastEdit = edits.get(0);
+
+        // Capture current state before reverting (to record in the undo MealEdit row)
+        String currentRecipeRef = meal.getRecipeRef();
+        int currentServings = meal.getServings();
+        Meal.Status currentStatus = meal.getStatus();
+
+        // Restore previous state
+        meal.setRecipeRef(lastEdit.getPreviousRecipeRef());
+        meal.setServings(lastEdit.getPreviousServings());
+        meal.setStatus(lastEdit.getPreviousStatus());
+        meal.setLastEditedBy(changedBy);
+        meal.setLastEditedAt(Instant.now());
+        mealRepository.save(meal);
+
+        // Write undo audit row (BR-03)
+        var undoEdit = new MealEdit();
+        undoEdit.setMealId(mealId);
+        undoEdit.setPreviousRecipeRef(currentRecipeRef);
+        undoEdit.setPreviousServings(currentServings);
+        undoEdit.setPreviousStatus(currentStatus);
+        undoEdit.setChangedBy(changedBy);
+        String undoReason = "Undo of edit #" + lastEdit.getId()
+                + " (was: " + (lastEdit.getReason() != null ? lastEdit.getReason() : "no reason recorded") + ")";
+        undoEdit.setReason(undoReason);
+
+        return mealEditRepository.save(undoEdit);
+    }
+
     private List<Recipe> pickDistinct(List<Recipe> pool, int count) {
         if (pool.isEmpty()) return List.of();
         var shuffled = new ArrayList<>(pool);

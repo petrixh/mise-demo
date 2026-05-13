@@ -154,3 +154,68 @@
   max-height: 240px;
   overflow-y: auto;
 }
+
+/* ── UC-004: chat-reply undo strip ─────────────────────────────────────── */
+
+/*
+ * Compact pill shown just above the chat input after an AI-driven meal swap.
+ * Allows the user to undo the last AI change without re-opening the grid.
+ * Hidden (display: none) until MainLayout.showChatUndoStrip() sets it visible.
+ */
+.mise-chat-undo-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 4px 0;
+}
+
+.mise-chat-undo-btn {
+  font-size: 11px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 10px !important;
+  border-radius: 12px !important;
+  background: rgba(250, 238, 218, 0.15) !important;
+  color: var(--vaadin-body-text-color) !important;
+  border: 1px solid rgba(250, 238, 218, 0.3) !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mise-chat-undo-btn:hover {
+  background: rgba(250, 238, 218, 0.28) !important;
+}
+
+/* ── UC-004: inline row buttons ─────────────────────────────────────────── */
+
+/*
+ * "why?" inline button — compact text button in the tags area of an edited row.
+ */
+.mise-row-why-btn {
+  font-size: 10px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  padding: 0 7px !important;
+  border-radius: 10px !important;
+  background: rgba(230, 241, 251, 0.12) !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  border: 1px solid rgba(230, 241, 251, 0.2) !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mise-row-why-btn:hover {
+  background: rgba(230, 241, 251, 0.24) !important;
+  color: var(--vaadin-body-text-color) !important;
+}
+
+/*
+ * "undo" inline icon button — styled consistently with existing row action buttons.
+ */
+.mise-row-undo-btn {
+  color: rgba(250, 238, 218, 0.6) !important;
+}
+
+.mise-row-undo-btn:hover {
+  color: rgba(250, 238, 218, 1) !important;
+}
