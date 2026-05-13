@@ -16,3 +16,6 @@ vite.generated.ts
 # Playwright MCP output and ad-hoc screenshots at project root
 .playwright-mcp/
 /*.png
+
+# H2 database (file mode) — see application.properties
+/data/

@@ -9,7 +9,7 @@
     
     <properties>
         <java.version>21</java.version>
-        <vaadin.version>25.1.5</vaadin.version>
+        <vaadin.version>25.2.0-alpha5</vaadin.version>
     </properties>
     
     <parent>
@@ -49,6 +49,21 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>browserless-test-junit6</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Persistence: Spring Data JPA + H2 (file mode, see application.properties) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
         </dependency>
     </dependencies>
     
