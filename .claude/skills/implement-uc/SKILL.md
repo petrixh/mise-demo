@@ -198,6 +198,18 @@ You are generating a Playwright IT for UC-NNN against the just-implemented view(
 - One `@Test` method per piece of functionality.
 - User-facing locators only (label, aria-label, role, stable id, stable text). If the implementator did not add a stable locator for a component you need to assert against, **report this back** — do not reach for css-class or generated-id selectors.
 
+## Behaviour-vs-spec mismatches — do NOT write workaround tests
+
+If you find the implementation doesn't match the UC's spec (a component not in the DOM, a field that should be persisted isn't, a redirect doesn't fire, a callback never runs), do **NOT** write a workaround test that asserts the broken behaviour and explains it away with a TODO comment. Tests that pass by encoding a known bug are worse than red tests — they lock in the broken behaviour and the TODO comment rots in the codebase.
+
+Instead, route through one of these channels:
+
+- **Write the test against the SPEC.** It will fail. That is the correct outcome. Report it with root cause `view-bug` and paste the failure message. The orchestrator routes a Functional-Fix and re-runs Phase 1.5 after.
+- **Stable locator missing.** Do not fall back to `.css-class` or generated-id selectors. Stop, list the elements that need `setId` / `aria-label` / `data-testid`, mark `missing-locators`. The orchestrator routes a scoped implementer-fix.
+- **Ambiguity in the spec.** If you can't tell whether a mismatch is a real bug or a spec gap, stop and ask in your report rather than guessing.
+
+Forbidden patterns: `@Disabled`, `// TODO: change this once X is implemented` placeholders, assertions against `null`/missing state that should be present, `isGreaterThanOrEqualTo(0)` "any state is fine" non-assertions, and css-class selectors when a stable locator is the right answer.
+
 ## Verification
 After writing the IT, run `./mvnw -Pit verify -Dit.test=<View>IT`. Report:
 - Exit code, test count, pass/fail.
