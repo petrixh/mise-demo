@@ -161,6 +161,7 @@ public class MainLayout extends VerticalLayout
 
         var lastMsgRow = new Div(sparkle, lastAiMessageText);
         lastMsgRow.addClassName("mise-last-ai-message");
+        lastMsgRow.getElement().setAttribute("data-testid", "chat-last-ai-message");
 
         // Message history scrollable region — visible in DOM at page load (Finding 1).
         // Collapsed to a fixed height so it doesn't dominate the viewport;
