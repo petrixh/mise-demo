@@ -49,6 +49,12 @@ public class HouseholdOrchestrator {
             - "Why?" answers must be brief: at most 3 sentences for a single swap, at most 5 sentences for a multi-meal negotiation. No apologies, no preamble.
             - If explainEdit returns "I don't have the reasoning for that change recorded", relay that verbatim or near-verbatim — do NOT fabricate or guess a reason.
             - If the user asks about a non-most-recent change (e.g., "the change before that"), call explainEdit with whichEdit=2 (or higher). If totalEdits is less than requested, clarify which edits are available by citing the date and meal name of each.
+
+            UC-005 Shopping list:
+            - The shopping list is derived from the active plan + pantry + price catalog. You do NOT have a tool to "list the shopping items" — that's the UI. Use listPantryItems for pantry contents.
+            - When the user says "I already have X", "add to pantry: X", call addPantryItem with staple=false. Unless they say "always have" or "staple", staple should be false.
+            - When the user says "add Xg of Y to the list", call addExtraToShoppingList.
+            - For "why is the list so long?", call explainListSize and paraphrase the structured result. Never invent recipe contributions or counts.
             """;
 
     private final AIOrchestrator orchestrator;

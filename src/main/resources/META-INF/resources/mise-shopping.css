@@ -1,0 +1,483 @@
+/* ── Shopping view ───────────────────────────────────────────────────────── */
+
+.mise-shopping-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+/* ── Two-column grid (desktop) / single-column (mobile) ──────────────────── */
+
+.mise-shopping-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mise-shopping-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Header strip (store + total + mode toggle) ──────────────────────────── */
+
+.mise-shopping-header-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--vaadin-background-container);
+  border-radius: var(--vaadin-radius-m, 8px);
+  padding: 10px 14px;
+  flex-wrap: wrap;
+}
+
+.mise-shopping-store-badge {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vaadin-body-text-color);
+  flex-shrink: 0;
+}
+
+.mise-shopping-total-cost {
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--vaadin-body-text-color);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Segmented control */
+.mise-shopping-mode-control {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.mise-shopping-mode-btn {
+  font-size: 11px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 10px !important;
+  border-radius: 13px !important;
+  background: transparent !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  border: 1px solid rgba(255,255,255,0.16) !important;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.mise-shopping-mode-btn.active {
+  background: rgba(255,255,255,0.12) !important;
+  color: var(--vaadin-body-text-color) !important;
+  border-color: rgba(255,255,255,0.32) !important;
+}
+
+.mise-shopping-mode-btn:hover {
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--vaadin-body-text-color) !important;
+}
+
+/* ── Pantry "You already have" section ───────────────────────────────────── */
+
+.mise-shopping-pantry-section {
+  background: var(--vaadin-background-container);
+  border-radius: var(--vaadin-radius-m, 8px);
+  overflow: hidden;
+}
+
+.mise-shopping-pantry-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0 4px 0;
+}
+
+.mise-shopping-pantry-chip {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.07);
+  color: var(--vaadin-secondary-text-color);
+  white-space: nowrap;
+}
+
+/* ── Aisle groups ─────────────────────────────────────────────────────────── */
+
+.mise-shopping-aisle-group {
+  background: var(--vaadin-background-container);
+  border-radius: var(--vaadin-radius-m, 8px);
+  /* overflow:hidden removed — it breaks position:sticky on the aisle header */
+}
+
+.mise-shopping-aisle-header {
+  padding: 8px 14px 6px 14px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+  position: sticky;
+  top: 0;
+  /* Opaque background so scrolled rows don't bleed through the sticky header.
+     --vaadin-background resolves to the solid page background; fallback is a near-black. */
+  background: var(--vaadin-background, #18181b);
+  z-index: 1;
+}
+
+.mise-shopping-aisle-header span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--vaadin-secondary-text-color);
+  text-transform: uppercase;
+}
+
+/* ── Shopping row ─────────────────────────────────────────────────────────── */
+
+.mise-shopping-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  gap: 10px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.04);
+  min-height: 52px;
+  transition: opacity 0.15s;
+}
+
+.mise-shopping-row:last-child {
+  border-bottom: none;
+}
+
+.mise-shopping-row.checked {
+  opacity: 0.45;
+}
+
+.mise-shopping-row.checked .mise-shopping-item-name {
+  text-decoration: line-through;
+}
+
+/* Check-off button */
+.mise-shopping-check-btn {
+  font-size: 14px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.mise-shopping-check-btn:hover {
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--vaadin-body-text-color) !important;
+}
+
+/* Item info */
+.mise-shopping-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mise-shopping-item-name {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--vaadin-body-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mise-shopping-item-qty {
+  font-size: 11px;
+  color: var(--vaadin-secondary-text-color);
+}
+
+.mise-shopping-item-store {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(29, 158, 117, 0.15);
+  color: var(--mise-category-produce-text, #04342C);
+  align-self: flex-start;
+}
+
+/* "saves €X at Y" hint (BR-06) */
+.mise-shopping-item-hint {
+  font-size: 10px;
+  color: var(--vaadin-secondary-text-color);
+  font-style: italic;
+}
+
+/* Price column */
+.mise-shopping-item-price {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vaadin-body-text-color);
+  flex-shrink: 0;
+}
+
+/* "Already have" button */
+.mise-shopping-already-have-btn {
+  font-size: 10px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  min-width: 44px !important;
+  padding: 0 10px !important;
+  border-radius: 16px !important;
+  background: rgba(255,255,255,0.05) !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  flex-shrink: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mise-shopping-already-have-btn:hover {
+  background: rgba(255,255,255,0.12) !important;
+  color: var(--vaadin-body-text-color) !important;
+}
+
+/* Empty state */
+.mise-shopping-empty {
+  font-size: 13px;
+  color: var(--vaadin-secondary-text-color);
+  font-style: italic;
+  padding: 24px;
+  text-align: center;
+}
+
+/* ── Responsive overrides ─────────────────────────────────────────────────── */
+
+@media (max-width: 639px) {
+  .mise-shopping-layout {
+    padding: 10px;
+  }
+
+  .mise-shopping-header-strip {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .mise-shopping-total-cost {
+    margin-left: 0;
+  }
+
+  .mise-shopping-item-name {
+    font-size: 15px;
+  }
+
+  .mise-shopping-row {
+    min-height: 56px;
+  }
+
+  .mise-shopping-check-btn {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+
+  /* UC-005: mobile is the primary form factor — large tap targets (iOS HIG / Material minimum 44pt) */
+  .mise-shopping-already-have-btn {
+    height: 44px !important;
+    min-height: 44px !important;
+    min-width: 44px !important;
+    font-size: 11px !important;
+    border-radius: 22px !important;
+    padding: 0 14px !important;
+  }
+}
+
+/* ── Recommendation panel ─────────────────────────────────────────────────── */
+
+.mise-shopping-recommendation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--vaadin-background-container);
+  border: 2px solid var(--vaadin-color-info, #2B9AF3);
+  border-radius: var(--vaadin-radius-m, 8px);
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* "BEST STORE THIS WEEK" uppercase label in info color */
+.mise-shopping-rec-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vaadin-color-info, #2B9AF3);
+}
+
+/* Store name headline */
+.mise-shopping-rec-store-name {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--vaadin-body-text-color);
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* Total cost row */
+.mise-shopping-rec-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+  padding-bottom: 10px;
+}
+
+.mise-shopping-rec-total-label {
+  font-size: 13px;
+  color: var(--vaadin-secondary-text-color);
+}
+
+.mise-shopping-rec-total-value {
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--vaadin-body-text-color);
+}
+
+/* Cost-by-aisle breakdown */
+.mise-shopping-rec-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mise-shopping-rec-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mise-shopping-rec-breakdown-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--vaadin-secondary-text-color);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Category color dots via ::before pseudo-element */
+.mise-shopping-rec-breakdown-label.mise-shopping-cat-produce::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mise-category-produce, #1D9E75);
+  flex-shrink: 0;
+}
+
+.mise-shopping-rec-breakdown-label.mise-shopping-cat-protein::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mise-category-protein, #7F77DD);
+  flex-shrink: 0;
+}
+
+.mise-shopping-rec-breakdown-label.mise-shopping-cat-dairy::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mise-category-dairy, #D4537E);
+  flex-shrink: 0;
+}
+
+.mise-shopping-rec-breakdown-label.mise-shopping-cat-pantry::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mise-category-pantry, #D85A30);
+  flex-shrink: 0;
+}
+
+.mise-shopping-rec-breakdown-label.mise-shopping-cat-other::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mise-category-other, #B4B2A9);
+  flex-shrink: 0;
+}
+
+.mise-shopping-rec-breakdown-value {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vaadin-body-text-color);
+}
+
+/* Mode control visibility: mobile shows in header strip, desktop shows in panel */
+.mise-shopping-mode-control-desktop {
+  display: none;
+}
+
+/* ── Desktop two-column layout (≥ 1024px) ────────────────────────────────── */
+
+@media (min-width: 1024px) {
+  /* Switch layout outer to have a max-width that accommodates both columns */
+  .mise-shopping-layout {
+    max-width: none;
+  }
+
+  /* Two-column grid: list left, recommendation panel right */
+  .mise-shopping-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    grid-template-rows: auto;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* Left column scrolls independently so sticky headers work within it */
+  .mise-shopping-left-col {
+    /* Sticky context: left col is the scroll ancestor for aisle headers */
+    overflow-y: auto;
+    max-height: calc(100vh - 180px);
+  }
+
+  /* Right panel is the second grid cell — sticks to top on scroll */
+  .mise-shopping-recommendation-panel {
+    position: sticky;
+    top: 0;
+  }
+
+  /* Desktop mode control visible; mobile one hidden */
+  .mise-shopping-mode-control-mobile {
+    display: none;
+  }
+
+  .mise-shopping-mode-control-desktop {
+    display: flex;
+  }
+
+  /* Header strip slims down on desktop — store name moves to right panel */
+  .mise-shopping-store-badge {
+    display: none;
+  }
+}

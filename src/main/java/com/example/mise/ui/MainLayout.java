@@ -2,10 +2,12 @@ package com.example.mise.ui;
 
 import com.example.mise.ai.HouseholdOrchestrator;
 import com.example.mise.ai.tools.PlanTools;
+import com.example.mise.ai.tools.ShoppingTools;
 import com.example.mise.domain.conversation.ConversationService;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.plan.PlanService;
 import com.example.mise.ui.plan.PlanRefreshBroadcaster;
+import com.example.mise.ui.shopping.ShoppingRefreshBroadcaster;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
 import com.vaadin.flow.component.html.Div;
@@ -51,7 +53,9 @@ public class MainLayout extends VerticalLayout
                       HouseholdService householdService,
                       PlanService planService,
                       PlanTools planTools,
-                      PlanRefreshBroadcaster planRefreshBroadcaster) {
+                      ShoppingTools shoppingTools,
+                      PlanRefreshBroadcaster planRefreshBroadcaster,
+                      ShoppingRefreshBroadcaster shoppingRefreshBroadcaster) {
         // ── Chat components shared across all views ───────────────────────
         messageList = new MessageList();
         messageList.setMarkdown(true);
@@ -72,8 +76,12 @@ public class MainLayout extends VerticalLayout
                     }
                     // BR-08: push plan refresh to all attached PlanView instances after every AI turn
                     planRefreshBroadcaster.fireRefresh();
+                    // BR-08: push shopping refresh to all attached ShoppingView instances after every AI turn
+                    // Both broadcasters fire here so meal mutations propagate to both views simultaneously.
+                    // UC-008 will introduce view-scoped tool registration; for now both tool sets are global.
+                    shoppingRefreshBroadcaster.fireRefresh();
                 },
-                planTools);
+                planTools, shoppingTools);
 
         // ── Shell layout ─────────────────────────────────────────────────
         setSizeFull();
@@ -86,7 +94,7 @@ public class MainLayout extends VerticalLayout
 
         // Tabs
         planTab = makeTab("Plan", "plan");
-        shoppingTab = makeTab("Shopping", null);
+        shoppingTab = makeTab("Shopping", "shopping");
         reportsTab = makeTab("Reports", null);
 
         var tabsBar = new Div(planTab, shoppingTab, reportsTab);
