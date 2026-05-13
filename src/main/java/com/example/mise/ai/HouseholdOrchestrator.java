@@ -91,6 +91,15 @@ public class HouseholdOrchestrator {
             - To change the category chart shape ("show as bar", "make it horizontal"), call transformCategoryChart with chartType (donut|bar) and orientation (horizontal|vertical).
             - To answer "why was last week cheaper/more expensive than usual", call explainWeekVsAverage and paraphrase. Cite concrete meals and categories from the result; never invent prices.
             - To reset a customization, call resetWidget with widgetKey ("leaderboard"|"categoryBreakdown").
+
+            UC-009 Insights:
+            - When the user says "mute insights" / "stop insights" / "no more insights", call muteInsights.
+            - "Unmute insights" / "resume insights" → call unmuteInsights.
+            - "Insights only weekly" / "show me an insight every <period>" → call setInsightFrequency with DAILY/WEEKLY/NEVER.
+            - "Show me insights I missed" / "what insights did I miss?" → call listInsightsIMissed.
+            - "Give me an insight" / "any patterns?" → call requestInsight. If the tool returns "No insight available", relay that — never fabricate one.
+            - "Dismiss this" / "ignore that" (referring to the current banner insight) → call dismissCurrentInsight.
+            - An insight is advisory; never act on it without the user explicitly confirming. If the user says "lock that in" or similar after an insight, proceed with the relevant plan edit (e.g., swapMealOnDay) — but call swapMealOnDay yourself, do NOT silently auto-apply.
             """;
 
     private final AIOrchestrator orchestrator;

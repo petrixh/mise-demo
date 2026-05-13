@@ -1,7 +1,9 @@
 package com.example.mise.domain.reports;
 
+import com.example.mise.capabilities.pricing.PriceCatalog;
 import com.example.mise.capabilities.recipes.Recipe;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
+import com.example.mise.capabilities.recipes.RecipeIngredient;
 import com.example.mise.domain.plan.Meal;
 import com.example.mise.domain.plan.MealCostCalculator;
 import com.example.mise.domain.plan.Plan;
@@ -23,16 +25,41 @@ import java.util.stream.Collectors;
 @Service
 public class ReportService {
 
+    /**
+     * Maps raw ingredient aisle values (from seed YAML files) to the design-system
+     * canonical five-category labels: Protein, Produce, Pantry, Dairy, Other.
+     *
+     * <p>Seed YAML values observed: meat, fish, produce, dairy, dry-goods, beverages, frozen.</p>
+     */
+    static final Map<String, String> AISLE_TO_CATEGORY = Map.of(
+            "meat",      "Protein",
+            "fish",      "Protein",
+            "seafood",   "Protein",
+            "poultry",   "Protein",
+            "produce",   "Produce",
+            "dairy",     "Dairy",
+            "dry-goods", "Pantry",
+            "pantry",    "Pantry",
+            "beverages", "Pantry",
+            "frozen",    "Pantry"
+    );
+
+    /** Canonical display order for the five aisle categories. */
+    static final List<String> CANONICAL_ORDER = List.of("Protein", "Produce", "Pantry", "Dairy", "Other");
+
     private final PlanService planService;
     private final RecipeCatalog recipeCatalog;
     private final MealCostCalculator mealCostCalculator;
+    private final PriceCatalog priceCatalog;
 
     public ReportService(PlanService planService,
                          RecipeCatalog recipeCatalog,
-                         MealCostCalculator mealCostCalculator) {
+                         MealCostCalculator mealCostCalculator,
+                         PriceCatalog priceCatalog) {
         this.planService = planService;
         this.recipeCatalog = recipeCatalog;
         this.mealCostCalculator = mealCostCalculator;
+        this.priceCatalog = priceCatalog;
     }
 
     /**
@@ -62,9 +89,18 @@ public class ReportService {
     }
 
     /**
-     * Returns per-category cost breakdown for a single week.
-     * If {@code weekStartDate} is null, defaults to the most recent ACTIVE plan.
-     * Category = first tag from {@link Recipe#getCategoryTags()}, falling back to "Other".
+     * Returns per-category cost breakdown for a single week, aggregated by ingredient
+     * aisle (design-system canonical: Protein / Produce / Pantry / Dairy / Other).
+     *
+     * <p>Each ingredient's cost is computed as
+     * {@code quantity × priceCatalog.findPrice(name).orElse(0.0)}, then bucketed
+     * into the ingredient's aisle.  Aisle labels are normalised via
+     * {@link #AISLE_TO_CATEGORY}; unknown aisles fall to "Other".
+     * Results are ordered by {@link #CANONICAL_ORDER} and only non-zero categories
+     * are included.</p>
+     *
+     * <p>If {@code weekStartDate} is null, defaults to the most recent ACTIVE or
+     * HISTORICAL plan.</p>
      */
     @Transactional(readOnly = true)
     public CategoryBreakdown computeCategoryBreakdown(Long householdId, LocalDate weekStartDate) {
@@ -93,17 +129,41 @@ public class ReportService {
         }
 
         List<Meal> meals = planService.findMeals(targetPlan.getId());
-        Map<String, BigDecimal> byCat = new LinkedHashMap<>();
 
-        for (Meal meal : meals) {
-            BigDecimal cost = mealCostCalculator.costFor(meal);
-            String category = primaryCategory(meal.getRecipeRef());
-            byCat.merge(category, cost, BigDecimal::add);
+        // Aggregate costs by design-system aisle category (ingredient-aisle, not recipe tag)
+        Map<String, BigDecimal> byCat = new LinkedHashMap<>();
+        for (String canonical : CANONICAL_ORDER) {
+            byCat.put(canonical, BigDecimal.ZERO);
         }
 
-        List<CategoryCostEntry> entries = byCat.entrySet().stream()
-                .map(e -> new CategoryCostEntry(e.getKey(), e.getValue().setScale(2, RoundingMode.HALF_UP)))
-                .sorted(Comparator.comparing(CategoryCostEntry::totalCost).reversed())
+        for (Meal meal : meals) {
+            Recipe recipe = recipeCatalog.findById(meal.getRecipeRef()).orElse(null);
+            if (recipe == null || recipe.getIngredients() == null) continue;
+
+            // Serving scale factor (same logic as LiveMealCostCalculator)
+            int mealServings     = meal.getServings() > 0 ? meal.getServings() : 1;
+            int defaultServings  = recipe.getDefaultServings() > 0 ? recipe.getDefaultServings() : 1;
+            double servingScale  = (double) mealServings / defaultServings;
+
+            for (RecipeIngredient ing : recipe.getIngredients()) {
+                if (ing.isOptional()) continue;
+
+                double price = priceCatalog.findPrice(ing.getName()).orElse(0.0);
+                // price is per default store unit; quantity is the recipe quantity.
+                // We use raw quantity × price as a proportional cost signal — same
+                // granularity as LiveMealCostCalculator's per-ingredient computation.
+                double ingredientCost = ing.getQuantity() * price * servingScale;
+
+                String canonical = normaliseAisle(ing.getAisle());
+                byCat.merge(canonical, BigDecimal.valueOf(ingredientCost), BigDecimal::add);
+            }
+        }
+
+        // Build ordered entries, dropping zero-cost categories so the chart isn't cluttered
+        List<CategoryCostEntry> entries = CANONICAL_ORDER.stream()
+                .map(cat -> new CategoryCostEntry(cat, byCat.getOrDefault(cat, BigDecimal.ZERO)
+                        .setScale(2, RoundingMode.HALF_UP)))
+                .filter(e -> e.totalCost().compareTo(BigDecimal.ZERO) > 0)
                 .toList();
 
         return new CategoryBreakdown(targetPlan.getWeekStartDate(), entries);
@@ -261,6 +321,24 @@ public class ReportService {
 
     // ── private helpers ────────────────────────────────────────────────────────
 
+    /**
+     * Normalises a raw ingredient aisle string (e.g. "meat", "dry-goods") to one
+     * of the five design-system canonical labels: Protein / Produce / Pantry / Dairy / Other.
+     * Null/blank aisle values fall to "Other".
+     */
+    static String normaliseAisle(String aisle) {
+        if (aisle == null || aisle.isBlank()) return "Other";
+        String lower = aisle.trim().toLowerCase();
+        return AISLE_TO_CATEGORY.getOrDefault(lower, "Other");
+    }
+
+    /**
+     * @deprecated Category breakdown now aggregates by ingredient aisle via
+     *   {@link #normaliseAisle(String)}.  This method is kept only for
+     *   {@link #buildWeekVsAverageAnalysis} which still uses recipe-tag grouping
+     *   for its human-readable narrative text (not part of the chart).
+     */
+    @Deprecated
     private String primaryCategory(String recipeRef) {
         return recipeCatalog.findById(recipeRef)
                 .map(r -> {

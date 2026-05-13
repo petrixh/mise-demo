@@ -2,6 +2,7 @@ package com.example.mise.domain.reports;
 
 import com.example.mise.capabilities.recipes.Recipe;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
+import com.example.mise.capabilities.recipes.RecipeIngredient;
 import com.example.mise.capabilities.recipes.RecipeMacros;
 import com.example.mise.domain.household.Household;
 import com.example.mise.domain.household.HouseholdRepository;
@@ -113,25 +114,67 @@ class ReportServiceTest {
 
     // ── computeCategoryBreakdown ──────────────────────────────────────────────
 
+    /**
+     * Category breakdown now aggregates costs by ingredient aisle (design-system canonical),
+     * not by recipe categoryTag.  A recipe with a "produce" aisle ingredient should map to
+     * "Produce"; a recipe with a "meat" aisle ingredient should map to "Protein".
+     *
+     * <p>With the mock PriceCatalog returning empty (cost = 0 per ingredient), only recipes
+     * with non-zero price catalog responses can produce non-zero category entries.  We stub
+     * the catalog to return a price for "chicken breast" so that the Protein category appears.</p>
+     */
     @Test
-    void computeCategoryBreakdown_splitsVegetarianAndMeatCorrectly() {
-        // Seed a plan with a vegetarian meal and a meat meal
-        Recipe vegRecipe = buildRecipe("veg-curry", "Vegetarian Curry", List.of("vegetarian"), 450, 8.0);
-        Recipe meatRecipe = buildRecipe("chicken-stir-fry", "Chicken Stir Fry", List.of("meat"), 600, 12.0);
+    void computeCategoryBreakdown_splitsAislesIntoDesignSystemCategories() {
+        // Recipe 1: a produce-aisle ingredient (tomato → Produce)
+        Recipe vegRecipe = buildRecipeWithIngredients(
+                "veg-curry", "Vegetarian Curry", List.of("vegetarian"), 450,
+                ingredient("tomato", "produce", 2.0, "piece"),
+                ingredient("garlic", "produce", 3.0, "cloves")
+        );
+        // Recipe 2: a protein-aisle ingredient (chicken breast → Protein)
+        Recipe meatRecipe = buildRecipeWithIngredients(
+                "chicken-stir-fry", "Chicken Stir Fry", List.of("chicken"), 600,
+                ingredient("chicken breast", "meat", 400.0, "g"),
+                ingredient("soy sauce", "dry-goods", 30.0, "ml")
+        );
+
         when(recipeCatalog.findById("veg-curry")).thenReturn(Optional.of(vegRecipe));
         when(recipeCatalog.findById("chicken-stir-fry")).thenReturn(Optional.of(meatRecipe));
 
-        // We also need the price catalog to return costs (estimatedCost on Recipe is the fallback)
-        // Since LiveMealCostCalculator uses PriceCatalog (not estimatedCost), costs are 0 here.
-        // Category grouping is still testable — just verify the categories appear.
-        Plan plan = seedPlanWithRecipes(WEEK1, Plan.Status.ACTIVE, "veg-curry", "chicken-stir-fry");
+        // Stub prices so we get non-zero costs to confirm bucketing
+        when(priceCatalog.findPrice("tomato")).thenReturn(Optional.of(0.50));
+        when(priceCatalog.findPrice("garlic")).thenReturn(Optional.of(0.10));
+        when(priceCatalog.findPrice("chicken breast")).thenReturn(Optional.of(12.0));
+        when(priceCatalog.findPrice("soy sauce")).thenReturn(Optional.of(2.0));
+
+        seedPlanWithRecipes(WEEK1, Plan.Status.ACTIVE, "veg-curry", "chicken-stir-fry");
 
         CategoryBreakdown bd = reportService.computeCategoryBreakdown(household.getId(), WEEK1);
 
         assertThat(bd.weekStartDate()).isEqualTo(WEEK1);
-        // Both category entries should be present (vegetarian and meat)
         List<String> cats = bd.entries().stream().map(CategoryCostEntry::category).toList();
-        assertThat(cats).contains("vegetarian", "meat");
+
+        // Must use design-system canonical labels — not raw tags or raw aisle strings
+        assertThat(cats).contains("Produce", "Protein");
+        // Must NOT contain raw aisle values or recipe tags
+        assertThat(cats).doesNotContain("vegetarian", "meat", "chicken", "produce", "dry-goods");
+
+        // "Pantry" should appear because "soy sauce" in dry-goods → Pantry
+        assertThat(cats).contains("Pantry");
+    }
+
+    @Test
+    void normaliseAisle_mapsKnownAislesToCanonicalLabels() {
+        assertThat(ReportService.normaliseAisle("meat")).isEqualTo("Protein");
+        assertThat(ReportService.normaliseAisle("fish")).isEqualTo("Protein");
+        assertThat(ReportService.normaliseAisle("produce")).isEqualTo("Produce");
+        assertThat(ReportService.normaliseAisle("dairy")).isEqualTo("Dairy");
+        assertThat(ReportService.normaliseAisle("dry-goods")).isEqualTo("Pantry");
+        assertThat(ReportService.normaliseAisle("beverages")).isEqualTo("Pantry");
+        assertThat(ReportService.normaliseAisle("frozen")).isEqualTo("Pantry");
+        assertThat(ReportService.normaliseAisle(null)).isEqualTo("Other");
+        assertThat(ReportService.normaliseAisle("")).isEqualTo("Other");
+        assertThat(ReportService.normaliseAisle("exotic")).isEqualTo("Other");
     }
 
     @Test
@@ -242,5 +285,23 @@ class ReportServiceTest {
         macros.setKcal(kcal);
         r.setMacros(macros);
         return r;
+    }
+
+    private Recipe buildRecipeWithIngredients(String id, String name, List<String> tags,
+                                               int kcal, RecipeIngredient... ings) {
+        var r = buildRecipe(id, name, tags, kcal, 0.0);
+        r.setIngredients(List.of(ings));
+        return r;
+    }
+
+    private static RecipeIngredient ingredient(String name, String aisle,
+                                                double qty, String unit) {
+        var ing = new RecipeIngredient();
+        ing.setName(name);
+        ing.setAisle(aisle);
+        ing.setQuantity(qty);
+        ing.setUnit(unit);
+        ing.setOptional(false);
+        return ing;
     }
 }

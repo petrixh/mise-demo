@@ -25,6 +25,7 @@ import com.vaadin.flow.router.Route;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.IntStream;
 
 /**
  * UC-007 Reports view at /reports.
@@ -45,6 +46,18 @@ import java.util.*;
 @Route(value = "reports", layout = com.example.mise.ui.MainLayout.class)
 @PageTitle("Mise — Reports")
 public class ReportsView extends VerticalLayout implements BeforeEnterObserver, BeforeLeaveObserver {
+
+    /**
+     * Design-system category colors keyed by canonical aisle label.
+     * Hex values match --mise-category-* CSS custom properties in styles.css.
+     */
+    private static final Map<String, String> CATEGORY_COLORS = Map.of(
+            "Protein", "#7F77DD",
+            "Produce", "#1D9E75",
+            "Pantry",  "#D85A30",
+            "Dairy",   "#D4537E",
+            "Other",   "#B4B2A9"
+    );
 
     private final HouseholdService householdService;
     private final ReportService reportService;
@@ -222,13 +235,19 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
             conf.setTitle("");
 
             if (ChartType.PIE.equals(type)) {
-                // Donut
+                // Donut — apply design-system category colors per slice
                 DataSeries series = new DataSeries("Cost");
                 PlotOptionsPie plotOpts = new PlotOptionsPie();
                 plotOpts.setInnerSize("50%");
                 conf.setPlotOptions(plotOpts);
                 for (var entry : breakdown.entries()) {
-                    series.add(new DataSeriesItem(entry.category(), entry.totalCost().doubleValue()));
+                    DataSeriesItem item = new DataSeriesItem(
+                            entry.category(), entry.totalCost().doubleValue());
+                    String color = CATEGORY_COLORS.get(entry.category());
+                    if (color != null) {
+                        item.setColor(new com.vaadin.flow.component.charts.model.style.SolidColor(color));
+                    }
+                    series.add(item);
                 }
                 conf.addSeries(series);
             } else {
@@ -269,10 +288,12 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
                 .filter(c -> c instanceof Div && ((Div) c).hasClassName("mise-reports-widget-body"))
                 .findFirst().orElseGet(Div::new);
 
+        // ── Desktop: standard Vaadin Grid (hidden on mobile via CSS) ─────────
         Grid<LeaderboardEntry> grid = new Grid<>();
         grid.setId("mise-reports-leaderboard");
         grid.getElement().setAttribute("data-testid", "leaderboard-grid");
         grid.addClassName("mise-reports-leaderboard");
+        grid.addClassName("mise-reports-leaderboard-desktop");
         grid.setWidthFull();
         grid.setAllRowsVisible(true);
 
@@ -290,7 +311,47 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         }
 
         grid.setItems(entries);
-        body.add(grid);
+
+        // ── Mobile: card list (shown on mobile via CSS, hidden on desktop) ───
+        var cardList = new Div();
+        cardList.addClassName("mise-reports-leaderboard-cards");
+        cardList.getElement().setAttribute("data-testid", "leaderboard-cards");
+
+        for (var entry : entries) {
+            var card = new Div();
+            card.addClassName("mise-reports-leaderboard-card");
+
+            // Top row: rank + meal name + times cooked
+            var topRow = new Div();
+            topRow.addClassName("mise-reports-leaderboard-card-top");
+
+            var rankSpan = new Span("#" + entry.rank());
+            rankSpan.addClassName("mise-reports-leaderboard-card-rank");
+
+            var nameSpan = new Span(entry.recipeName());
+            nameSpan.addClassName("mise-reports-leaderboard-card-name");
+
+            var timesSpan = new Span("×" + entry.frequency());
+            timesSpan.addClassName("mise-reports-leaderboard-card-times");
+
+            topRow.add(rankSpan, nameSpan, timesSpan);
+
+            // Bottom row: avg cost + avg kcal
+            var bottomRow = new Div();
+            bottomRow.addClassName("mise-reports-leaderboard-card-bottom");
+
+            var costSpan = new Span("€" + entry.averageCost().toPlainString());
+            costSpan.addClassName("mise-reports-leaderboard-card-cost");
+
+            var kcalSpan = new Span(Math.round(entry.averageKcal()) + " kcal");
+            kcalSpan.addClassName("mise-reports-leaderboard-card-kcal");
+
+            bottomRow.add(costSpan, kcalSpan);
+            card.add(topRow, bottomRow);
+            cardList.add(card);
+        }
+
+        body.add(grid, cardList);
         return widget;
     }
 

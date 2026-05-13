@@ -1,6 +1,7 @@
 package com.example.mise.ui;
 
 import com.example.mise.ai.HouseholdOrchestrator;
+import com.example.mise.ai.tools.InsightTools;
 import com.example.mise.ai.tools.NavigationTools;
 import com.example.mise.ai.tools.PlanTools;
 import com.example.mise.ai.tools.ReportsTools;
@@ -8,12 +9,15 @@ import com.example.mise.ai.tools.ShoppingTools;
 import com.example.mise.domain.conversation.ConversationMessage;
 import com.example.mise.domain.conversation.ConversationService;
 import com.example.mise.domain.household.HouseholdService;
+import com.example.mise.domain.insights.Insight;
+import com.example.mise.domain.insights.InsightService;
 import com.example.mise.domain.plan.PlanService;
 import com.example.mise.ui.plan.PlanRefreshBroadcaster;
 import com.example.mise.ui.reports.ReportsRefreshBroadcaster;
 import com.example.mise.ui.shopping.ShoppingRefreshBroadcaster;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
@@ -45,6 +49,10 @@ public class MainLayout extends VerticalLayout
     private final Span lastAiMessageText;
     /** UC-004: holds the "Undo last AI change" button strip shown above the chat input. Hidden when no recent edit. */
     private final Div chatUndoStrip;
+    /** UC-009: insight banner shown above the view outlet. Hidden when no undismissed insight. */
+    private final Div insightBanner;
+    private final InsightService insightService;
+    private final HouseholdService householdServiceRef;
     private UI ui;
 
     // Tab elements kept as fields for active-state management
@@ -60,9 +68,13 @@ public class MainLayout extends VerticalLayout
                       ShoppingTools shoppingTools,
                       ReportsTools reportsTools,
                       NavigationTools navigationTools,
+                      InsightTools insightTools,
+                      InsightService insightService,
                       PlanRefreshBroadcaster planRefreshBroadcaster,
                       ShoppingRefreshBroadcaster shoppingRefreshBroadcaster,
                       ReportsRefreshBroadcaster reportsRefreshBroadcaster) {
+        this.insightService = insightService;
+        this.householdServiceRef = householdService;
         // ── Chat components shared across all views ───────────────────────
         messageList = new MessageList();
         messageList.setMarkdown(true);
@@ -93,7 +105,7 @@ public class MainLayout extends VerticalLayout
                     // UC-007: push reports refresh to all attached ReportsView instances after every AI turn
                     reportsRefreshBroadcaster.fireRefresh();
                 },
-                planTools, shoppingTools, reportsTools, navigationTools);
+                planTools, shoppingTools, reportsTools, navigationTools, insightTools);
 
         // ── Shell layout ─────────────────────────────────────────────────
         setSizeFull();
@@ -112,6 +124,15 @@ public class MainLayout extends VerticalLayout
         var tabsBar = new Div(planTab, shoppingTab, reportsTab);
         tabsBar.addClassName("mise-tabs");
         add(tabsBar);
+
+        // UC-009: insight banner — sits between the tabs and the view outlet.
+        // Populated/hidden in afterNavigation.
+        insightBanner = new Div();
+        insightBanner.setId("mise-insight-banner");
+        insightBanner.addClassName("mise-insight-banner");
+        insightBanner.getElement().setAttribute("data-testid", "insight-banner");
+        insightBanner.setVisible(false);
+        add(insightBanner);
 
         // View outlet — Vaadin RouterLayout injects the child route's component here
         // We use a Div as a container; content is managed by RouterLayout
@@ -208,7 +229,7 @@ public class MainLayout extends VerticalLayout
         return dock;
     }
 
-    /** Sync active tab indicator and orchestrator view context after navigation (UC-008, BR-03). */
+    /** Sync active tab indicator, orchestrator view context, and insight banner after navigation. */
     @Override
     public void afterNavigation(AfterNavigationEvent event) {
         String location = event.getLocation().getPath();
@@ -233,6 +254,88 @@ public class MainLayout extends VerticalLayout
         // UC-008 (BR-03): keep the orchestrator's view context in sync with the active route
         // so every subsequent conversation message is stamped with the correct view.
         household.setCurrentView(viewContext);
+
+        // UC-009: update insight banner — skip on the onboarding/welcome route
+        boolean isWelcome = location.startsWith("welcome") || location.startsWith("onboarding");
+        updateInsightBanner(isWelcome);
+    }
+
+    /**
+     * UC-009: Rebuilds the insight banner from the current undismissed insight.
+     * Hidden on the welcome/onboarding route (spec: "No insights shown on /welcome").
+     */
+    private void updateInsightBanner(boolean hideForWelcome) {
+        if (hideForWelcome) {
+            insightBanner.setVisible(false);
+            insightBanner.removeAll();
+            return;
+        }
+
+        try {
+            var hhOpt = householdServiceRef.findHousehold();
+            if (hhOpt.isEmpty()) {
+                insightBanner.setVisible(false);
+                return;
+            }
+
+            var insightOpt = insightService.currentInsight(hhOpt.get().getId());
+            if (insightOpt.isEmpty()) {
+                insightBanner.setVisible(false);
+                insightBanner.removeAll();
+                return;
+            }
+
+            Insight insight = insightOpt.get();
+            renderInsightBanner(insight);
+        } catch (Exception e) {
+            // Never break navigation for insight rendering
+            insightBanner.setVisible(false);
+        }
+    }
+
+    private void renderInsightBanner(Insight insight) {
+        insightBanner.removeAll();
+
+        var bodySpan = new Span(insight.getBody());
+        bodySpan.getElement().setAttribute("data-testid", "insight-banner-body");
+        bodySpan.addClassName("mise-insight-banner-body");
+
+        // Derive the "act on it" phrase
+        String actPhrase = deriveActPhrase(insight.getBody());
+        var actBtn = new Button("Act on it");
+        actBtn.addClassName("mise-insight-banner-act");
+        actBtn.getElement().setAttribute("data-testid", "insight-banner-act");
+        actBtn.getElement().setAttribute("aria-label", "Act on this insight");
+        actBtn.addClickListener(e -> submitChatMessage(actPhrase));
+
+        var dismissBtn = new Button("×");
+        dismissBtn.addClassName("mise-insight-banner-dismiss");
+        dismissBtn.getElement().setAttribute("data-testid", "insight-banner-dismiss");
+        dismissBtn.getElement().setAttribute("aria-label", "Dismiss insight");
+        dismissBtn.addClickListener(e -> {
+            try {
+                insightService.dismiss(insight.getId());
+            } catch (Exception ex) {
+                // ignore — banner disappears anyway
+            }
+            insightBanner.setVisible(false);
+            insightBanner.removeAll();
+        });
+
+        insightBanner.add(bodySpan, actBtn, dismissBtn);
+        insightBanner.setVisible(true);
+    }
+
+    /**
+     * Derives the "act on it" chat phrase from the insight body.
+     * If the insight mentions "vegetarian", pre-fills a plan-lock request.
+     * Otherwise sends the insight body verbatim for the model to interpret.
+     */
+    private String deriveActPhrase(String body) {
+        if (body != null && body.toLowerCase().contains("vegetarian")) {
+            return "lock in 3 vegetarian dinners this week";
+        }
+        return body;
     }
 
     /** Updates the most-recent AI message line in the chat dock. */

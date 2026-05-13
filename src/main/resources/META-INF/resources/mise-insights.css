@@ -1,0 +1,82 @@
+/* ── UC-009: Insight banner ──────────────────────────────────────────────── */
+
+/*
+ * Info accent color — a muted teal-blue used only for the banner's left bar.
+ * NOT the 2px info border (reserved for AI recommendation cards).
+ */
+:root {
+  --mise-info: hsl(200, 60%, 50%);
+}
+
+/*
+ * Banner container: neutral surface with a left accent bar.
+ * Sits between the tab strip and the routed view content.
+ * Hidden by default; made visible via MainLayout when an undismissed insight exists.
+ */
+.mise-insight-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--vaadin-background-container);
+  border-left: 4px solid var(--mise-info);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.mise-insight-banner-body {
+  flex: 1;
+  font-size: 13px;
+  color: var(--vaadin-body-text-color);
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.mise-insight-banner vaadin-button.mise-insight-banner-act {
+  font-size: 11px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 10px !important;
+  border-radius: 12px !important;
+  background: rgba(100, 180, 220, 0.18) !important;
+  color: var(--vaadin-body-text-color) !important;
+  border: 1px solid rgba(100, 180, 220, 0.35) !important;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mise-insight-banner vaadin-button.mise-insight-banner-act:hover {
+  background: rgba(100, 180, 220, 0.32) !important;
+}
+
+.mise-insight-banner vaadin-button.mise-insight-banner-dismiss {
+  font-size: 16px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  border: none !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.mise-insight-banner vaadin-button.mise-insight-banner-dismiss:hover {
+  color: var(--vaadin-body-text-color) !important;
+  background: rgba(255,255,255,0.08) !important;
+}
+
+/* ── Mobile: sticky at top of viewport ─────────────────────────────────── */
+
+@media (max-width: 639px) {
+  .mise-insight-banner {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+}

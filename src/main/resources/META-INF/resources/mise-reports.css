@@ -35,8 +35,11 @@
 
 .mise-reports-widget-title {
   margin: 0;
-  font-size: var(--lumo-font-size-l);
+  font-size: var(--lumo-font-size-s);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--lumo-secondary-text-color);
 }
 
 .mise-reports-reset-btn {
@@ -74,4 +77,89 @@
 .mise-reports-extra-col {
   font-weight: 600;
   color: var(--lumo-primary-text-color);
+}
+
+/* Mobile card list — hidden on desktop, visible on mobile */
+.mise-reports-leaderboard-cards {
+  display: none;
+}
+
+/* Desktop Grid — visible on desktop, hidden on mobile */
+.mise-reports-leaderboard-desktop {
+  display: block;
+}
+
+/* ── Mobile leaderboard card layout ────────────────────────────────────── */
+@media (max-width: 639px) {
+  /* Hide the desktop Grid on mobile */
+  .mise-reports-leaderboard-desktop {
+    display: none !important;
+  }
+
+  /* Show card list on mobile */
+  .mise-reports-leaderboard-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--lumo-space-xs);
+  }
+
+  .mise-reports-leaderboard-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--lumo-space-xs);
+    padding: var(--lumo-space-s) var(--lumo-space-xs);
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+  }
+
+  .mise-reports-leaderboard-card:last-child {
+    border-bottom: none;
+  }
+
+  /* Top row: rank + name + times */
+  .mise-reports-leaderboard-card-top {
+    display: flex;
+    align-items: baseline;
+    gap: var(--lumo-space-xs);
+    flex-wrap: nowrap;
+  }
+
+  .mise-reports-leaderboard-card-rank {
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+    flex-shrink: 0;
+    min-width: 1.8em;
+  }
+
+  .mise-reports-leaderboard-card-name {
+    font-size: var(--lumo-font-size-s);
+    font-weight: 500;
+    flex: 1 1 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .mise-reports-leaderboard-card-times {
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+    flex-shrink: 0;
+  }
+
+  /* Bottom row: cost · kcal */
+  .mise-reports-leaderboard-card-bottom {
+    display: flex;
+    align-items: center;
+    gap: var(--lumo-space-s);
+    padding-left: 1.8em;
+  }
+
+  .mise-reports-leaderboard-card-cost,
+  .mise-reports-leaderboard-card-kcal {
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+  }
+
+  .mise-reports-leaderboard-card-cost {
+    font-weight: 500;
+    color: var(--lumo-primary-text-color);
+  }
 }

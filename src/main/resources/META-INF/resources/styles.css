@@ -6,6 +6,7 @@
 @import "mise-plan.css";
 @import "mise-shopping.css";
 @import "mise-reports.css";
+@import "mise-insights.css";
 
 /* ── Mise category colors (app-level custom properties) ─────────────────── */
 html {
