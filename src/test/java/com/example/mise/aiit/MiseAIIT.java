@@ -2,6 +2,7 @@ package com.example.mise.aiit;
 
 import com.example.mise.ai.HouseholdOrchestrator;
 import com.example.mise.ai.tools.PlanTools;
+import com.example.mise.ai.tools.ShoppingTools;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
 import com.example.mise.domain.conversation.ConversationMessageRepository;
 import com.example.mise.domain.household.Household;
@@ -11,6 +12,9 @@ import com.example.mise.domain.plan.MealEditRepository;
 import com.example.mise.domain.plan.MealRepository;
 import com.example.mise.domain.plan.PlanRepository;
 import com.example.mise.domain.plan.PlanService;
+import com.example.mise.domain.shopping.ExtraShoppingItemRepository;
+import com.example.mise.domain.shopping.PantryRepository;
+import com.example.mise.domain.shopping.ShoppingService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.ai.chat.client.ChatClient;
@@ -42,6 +46,7 @@ public abstract class MiseAIIT {
 
     @Autowired protected ChatModel chatModel;
     @Autowired protected PlanTools planTools;
+    @Autowired protected ShoppingTools shoppingTools;
 
     @Autowired protected HouseholdService householdService;
     @Autowired protected HouseholdRepository householdRepository;
@@ -51,6 +56,9 @@ public abstract class MiseAIIT {
     @Autowired protected MealEditRepository mealEditRepository;
     @Autowired protected ConversationMessageRepository conversationMessageRepository;
     @Autowired protected RecipeCatalog recipeCatalog;
+    @Autowired protected PantryRepository pantryRepository;
+    @Autowired protected ExtraShoppingItemRepository extraShoppingItemRepository;
+    @Autowired protected ShoppingService shoppingService;
 
     @BeforeEach
     protected void wipeBeforeEach() {
@@ -65,6 +73,8 @@ public abstract class MiseAIIT {
     private void cleanRows() {
         mealEditRepository.deleteAll();
         conversationMessageRepository.deleteAll();
+        extraShoppingItemRepository.deleteAll();
+        pantryRepository.deleteAll();
         householdRepository.findAll().forEach(hh ->
                 planRepository.findByHouseholdIdOrderByWeekStartDateDesc(hh.getId())
                         .forEach(plan -> {
@@ -102,6 +112,19 @@ public abstract class MiseAIIT {
         return ChatClient.builder(chatModel)
                 .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
                 .defaultTools(planTools)
+                .build();
+    }
+
+    /**
+     * Returns a {@link ChatClient} configured with the production system prompt and
+     * BOTH {@link PlanTools} and {@link ShoppingTools} — mirroring the global tool
+     * registration used in the production {@link com.example.mise.ai.HouseholdOrchestrator}.
+     * Used by UC-005 (and future shopping-related) AI integration tests.
+     */
+    protected ChatClient shoppingChat() {
+        return ChatClient.builder(chatModel)
+                .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
+                .defaultTools(planTools, shoppingTools)
                 .build();
     }
 }
