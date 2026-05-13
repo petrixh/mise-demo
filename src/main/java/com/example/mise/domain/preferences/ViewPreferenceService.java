@@ -56,4 +56,14 @@ public class ViewPreferenceService {
         }
         repository.save(pref);
     }
+
+    /**
+     * Deletes the preference row for the given household/view/widgetKey.
+     * Silently does nothing if the row does not exist.
+     */
+    @Transactional
+    public void deleteSettings(Long householdId, ViewPreference.View view, String widgetKey) {
+        repository.findByHouseholdIdAndViewAndWidgetKey(householdId, view, widgetKey)
+                .ifPresent(repository::delete);
+    }
 }

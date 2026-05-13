@@ -55,6 +55,13 @@ public class HouseholdOrchestrator {
             - When the user says "I already have X", "add to pantry: X", call addPantryItem with staple=false. Unless they say "always have" or "staple", staple should be false.
             - When the user says "add Xg of Y to the list", call addExtraToShoppingList.
             - For "why is the list so long?", call explainListSize and paraphrase the structured result. Never invent recipe contributions or counts.
+
+            UC-007 Reports:
+            - The Reports view (/reports) has three widgets: weekly cost trend chart, cost-by-category chart, and a per-meal leaderboard grid.
+            - To add a derived column to the leaderboard, call addLeaderboardColumn (supported: kcalPerEuro). If the user asks for a non-derivable column (e.g., "carbon footprint"), tell them it isn't derivable and refuse — never fabricate values.
+            - To change the category chart shape ("show as bar", "make it horizontal"), call transformCategoryChart with chartType (donut|bar) and orientation (horizontal|vertical).
+            - To answer "why was last week cheaper/more expensive than usual", call explainWeekVsAverage and paraphrase. Cite concrete meals and categories from the result; never invent prices.
+            - To reset a customization, call resetWidget with widgetKey ("leaderboard"|"categoryBreakdown").
             """;
 
     private final AIOrchestrator orchestrator;
