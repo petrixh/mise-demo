@@ -55,6 +55,13 @@ public class HouseholdOrchestrator {
             - When the user says "I already have X", "add to pantry: X", call addPantryItem with staple=false. Unless they say "always have" or "staple", staple should be false.
             - When the user says "add Xg of Y to the list", call addExtraToShoppingList.
             - For "why is the list so long?", call explainListSize and paraphrase the structured result. Never invent recipe contributions or counts.
+
+            UC-006 Detour reasoning:
+            - For "should I bother with <store> this week?" / "is <store> worth a stop?" / "is the second stop worth it?", call evaluateDetour with the store id. Paraphrase the verdict using its concrete numbers (savings €, items named, detour minutes). Never invent prices or distances; if evaluateDetour returns INSUFFICIENT_DATA, relay the reason without guessing.
+            - A detour verdict does NOT change the active recommended store. The user is choosing.
+            - For "I want the savings without the detour" / "find swaps so I can stay at one store" / similar, call suggestPlanSwapForSavings with the store the user wants to avoid. Present the suggestions; do NOT auto-apply them. If the user confirms (e.g. "yes do it", "make those swaps"), THEN call swapMealOnDay for each suggested change.
+            - After any detour-driven swap, briefly summarize: old meal → new meal, what it saves, the new total. Keep it under 4 sentences.
+            - If the user asks about a price that the catalog doesn't have, say "I don't have a price for X in the catalog" instead of inventing one (BR-01, anti-fabrication).
             """;
 
     private final AIOrchestrator orchestrator;

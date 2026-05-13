@@ -2,7 +2,10 @@ package com.example.mise.ai.tools;
 
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.plan.PlanService;
+import com.example.mise.domain.plan.PlanSwapSuggester;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
+import com.example.mise.domain.shopping.DetourEvaluator;
+import com.example.mise.domain.shopping.DetourVerdict;
 import com.example.mise.domain.shopping.ExtraShoppingItem;
 import com.example.mise.domain.shopping.ExtraShoppingItemRepository;
 import com.example.mise.domain.shopping.PantryItem;
@@ -34,19 +37,25 @@ public class ShoppingTools {
     private final ShoppingService shoppingService;
     private final PlanService planService;
     private final RecipeCatalog recipeCatalog;
+    private final DetourEvaluator detourEvaluator;
+    private final PlanSwapSuggester planSwapSuggester;
 
     public ShoppingTools(HouseholdService householdService,
                          PantryService pantryService,
                          ExtraShoppingItemRepository extraShoppingItemRepository,
                          ShoppingService shoppingService,
                          PlanService planService,
-                         RecipeCatalog recipeCatalog) {
+                         RecipeCatalog recipeCatalog,
+                         DetourEvaluator detourEvaluator,
+                         PlanSwapSuggester planSwapSuggester) {
         this.householdService = householdService;
         this.pantryService = pantryService;
         this.extraShoppingItemRepository = extraShoppingItemRepository;
         this.shoppingService = shoppingService;
         this.planService = planService;
         this.recipeCatalog = recipeCatalog;
+        this.detourEvaluator = detourEvaluator;
+        this.planSwapSuggester = planSwapSuggester;
     }
 
     /**
@@ -131,6 +140,90 @@ public class ShoppingTools {
         } catch (Exception e) {
             log.warn("addExtraToShoppingList error: {}", e.getMessage());
             return "Could not add to shopping list: " + e.getMessage();
+        }
+    }
+
+    // ─────────────────────── UC-006 tools ────────────────────────────────────
+
+    /**
+     * Evaluates whether a detour to a second store this week is worth it (UC-006).
+     * Grounds the verdict in real shopping-list data from ShoppingService.
+     */
+    @Tool(description = "Evaluate whether a detour to a second store this week is worth it. Returns the savings, the detour minutes, and a recommended verdict grounded in real shopping-list data.")
+    public String evaluateDetour(
+            @ToolParam(description = "Store id (e.g. 'lidl', 'prima', 'local-market')") String storeId) {
+        try {
+            var hh = householdService.findHousehold().orElse(null);
+            if (hh == null) return "No household found.";
+
+            DetourVerdict verdict = detourEvaluator.evaluate(hh.getId(), storeId);
+
+            if (verdict.verdict() == DetourVerdict.Verdict.INSUFFICIENT_DATA) {
+                return "INSUFFICIENT_DATA: " + verdict.reasoning();
+            }
+
+            // Format items list
+            String itemsStr;
+            if (verdict.itemsWorthSwitching().isEmpty()) {
+                itemsStr = "none";
+            } else {
+                itemsStr = verdict.itemsWorthSwitching().stream()
+                        .map(i -> i.ingredientName() + " (save €" + i.savingsPerItem().toPlainString() + ")")
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("none");
+            }
+
+            return String.format(
+                    "%s would save €%s across %d item(s) (%s). The detour adds %d minute(s). "
+                    + "Verdict: %s. %s",
+                    verdict.storeName(),
+                    verdict.totalSavings().toPlainString(),
+                    verdict.itemsWorthSwitching().size(),
+                    itemsStr,
+                    verdict.detourMinutes(),
+                    verdict.verdict(),
+                    verdict.reasoning());
+        } catch (Exception e) {
+            log.warn("evaluateDetour error: {}", e.getMessage());
+            return "Could not evaluate detour: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Suggests plan-level meal swaps to achieve savings without a second store stop (UC-006).
+     * Does NOT auto-apply — the model presents suggestions; the user confirms.
+     */
+    @Tool(description = "Suggest plan-level meal swaps that would keep all shopping at one store, achieving similar savings without the detour. Use AFTER evaluateDetour when the user says they want the savings but not the second stop.")
+    public String suggestPlanSwapForSavings(
+            @ToolParam(description = "Store the user wants to avoid (e.g. 'lidl')") String storeToAvoid) {
+        try {
+            var hh = householdService.findHousehold().orElse(null);
+            if (hh == null) return "No household found.";
+
+            var suggestions = planSwapSuggester.suggestSwapsToAvoidStore(hh.getId(), storeToAvoid);
+
+            if (suggestions.isEmpty()) {
+                return "No beneficial meal swaps found to avoid " + storeToAvoid
+                        + " — the current plan already minimises that store's impact.";
+            }
+
+            var lines = new ArrayList<String>();
+            lines.add("Plan-level swaps to avoid " + storeToAvoid + ":");
+            for (var s : suggestions) {
+                var currentRecipe = recipeCatalog.findById(s.currentRecipeRef()).orElse(null);
+                var suggestedRecipe = recipeCatalog.findById(s.suggestedRecipeRef()).orElse(null);
+                String currentName = currentRecipe != null ? currentRecipe.getName() : s.currentRecipeRef();
+                String suggestedName = suggestedRecipe != null ? suggestedRecipe.getName() : s.suggestedRecipeRef();
+                lines.add(String.format("  Meal #%d: %s → %s — %s (saves approx. €%s)",
+                        s.mealId(), currentName, suggestedName,
+                        s.reason(), s.estimatedSavings().toPlainString()));
+            }
+            lines.add("To apply any of these, confirm with the meal id and I will call swapMealOnDay.");
+
+            return String.join("\n", lines);
+        } catch (Exception e) {
+            log.warn("suggestPlanSwapForSavings error: {}", e.getMessage());
+            return "Could not suggest swaps: " + e.getMessage();
         }
     }
 
