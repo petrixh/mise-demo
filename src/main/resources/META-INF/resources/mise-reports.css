@@ -162,4 +162,11 @@
     font-weight: 500;
     color: var(--lumo-primary-text-color);
   }
+
+  /* Add a · separator between cost and kcal */
+  .mise-reports-leaderboard-card-cost::after {
+    content: " ·";
+    font-weight: 400;
+    color: var(--lumo-secondary-text-color);
+  }
 }
