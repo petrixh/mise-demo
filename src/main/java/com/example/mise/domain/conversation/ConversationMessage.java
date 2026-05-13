@@ -28,6 +28,10 @@ public class ConversationMessage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Stable identifier from {@code com.vaadin.flow.component.ai.common.ChatMessage#messageId}. */
+    @Column(name = "message_id", length = 128, unique = true)
+    private String messageId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     private Role role;
@@ -54,6 +58,8 @@ public class ConversationMessage {
     }
 
     public Long getId() { return id; }
+    public String getMessageId() { return messageId; }
+    public void setMessageId(String messageId) { this.messageId = messageId; }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
     public String getContent() { return content; }
