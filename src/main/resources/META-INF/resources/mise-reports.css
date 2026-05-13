@@ -20,6 +20,16 @@
   align-items: start;
 }
 
+/* M-5: KPI strip spans full grid width */
+#mise-reports-kpi-strip {
+  grid-column: 1 / -1;
+}
+
+/* M-5: over-budget KPI value in warning amber */
+.mise-kpi-value-warn {
+  color: var(--mise-edited-text, #633806) !important;
+}
+
 /* ── Widget card ────────────────────────────────────────────────────────── */
 .mise-reports-widget {
   background: var(--lumo-base-color);
@@ -87,6 +97,15 @@
 /* Desktop Grid — visible on desktop, hidden on mobile */
 .mise-reports-leaderboard-desktop {
   display: block;
+}
+
+/* ── Mobile overrides ───────────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  /* KPI strip: 2x2 grid on mobile */
+  #mise-reports-kpi-strip.mise-kpi-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* ── Mobile leaderboard card layout ────────────────────────────────────── */

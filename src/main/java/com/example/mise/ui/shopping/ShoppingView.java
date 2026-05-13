@@ -1,5 +1,6 @@
 package com.example.mise.ui.shopping;
 
+import com.example.mise.capabilities.pricing.PriceCatalog;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.preferences.ViewPreference;
 import com.example.mise.domain.preferences.ViewPreferenceService;
@@ -37,6 +38,8 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
     private final PantryService pantryService;
     private final ViewPreferenceService viewPreferenceService;
     private final ShoppingRefreshBroadcaster refreshBroadcaster;
+    private final DetourEvaluator detourEvaluator;
+    private final PriceCatalog priceCatalog;
 
     /** Session-local check-off state (BR-07 — not persisted). */
     private final Set<String> checkedItems = new HashSet<>();
@@ -57,12 +60,16 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
                         ShoppingService shoppingService,
                         PantryService pantryService,
                         ViewPreferenceService viewPreferenceService,
-                        ShoppingRefreshBroadcaster refreshBroadcaster) {
+                        ShoppingRefreshBroadcaster refreshBroadcaster,
+                        DetourEvaluator detourEvaluator,
+                        PriceCatalog priceCatalog) {
         this.householdService = householdService;
         this.shoppingService = shoppingService;
         this.pantryService = pantryService;
         this.viewPreferenceService = viewPreferenceService;
         this.refreshBroadcaster = refreshBroadcaster;
+        this.detourEvaluator = detourEvaluator;
+        this.priceCatalog = priceCatalog;
 
         setSizeFull();
         setPadding(false);
@@ -185,11 +192,16 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
 
     /** Builds the store-mode segmented control. Used in both header strip (mobile) and recommendation panel (desktop). */
     private Div buildModeControl(Long householdId, String id, String extraClass) {
+        // Outer wrapper carries the visible id / extra class for CSS visibility toggling
         var modeControl = new Div();
         if (id != null) modeControl.setId(id);
         modeControl.getElement().setAttribute("data-testid", "store-mode-toggle");
         modeControl.addClassName("mise-shopping-mode-control");
         if (extraClass != null) modeControl.addClassName(extraClass);
+
+        // M-2: shared track container per design-system §"Toggle track"
+        var track = new Div();
+        track.addClassName("mise-shopping-mode-track");
 
         var oneStoreBtn = new Button("One store");
         oneStoreBtn.getElement().setAttribute("data-testid", "store-mode-one");
@@ -203,7 +215,8 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         if (currentStoreMode == StoreMode.CHEAPEST_MIX) cheapestMixBtn.addClassName("active");
         cheapestMixBtn.addClickListener(e -> onStoreModeChange(householdId, StoreMode.CHEAPEST_MIX));
 
-        modeControl.add(oneStoreBtn, cheapestMixBtn);
+        track.add(oneStoreBtn, cheapestMixBtn);
+        modeControl.add(track);
         return modeControl;
     }
 
@@ -248,12 +261,18 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         // Store name as headline
         var storeHeadline = new H2();
         storeHeadline.addClassName("mise-shopping-rec-store-name");
-        if (list.recommendedStore() != null) {
-            storeHeadline.setText(list.recommendedStore().getName());
-        } else {
-            storeHeadline.setText("—");
-        }
+        String defaultStoreName = list.recommendedStore() != null
+                ? list.recommendedStore().getName() : "—";
+        storeHeadline.setText(defaultStoreName);
         panel.add(storeHeadline);
+
+        // M-1: comparison narrative — context sentence per design system §"Recommendation card"
+        String narrative = buildComparisonNarrative(householdId, list, defaultStoreName);
+        if (narrative != null && !narrative.isBlank()) {
+            var narrativeSpan = new Span(narrative);
+            narrativeSpan.addClassName("mise-shopping-rec-narrative");
+            panel.add(narrativeSpan);
+        }
 
         // Total cost row
         var totalRow = new Div();
@@ -481,6 +500,58 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────
+
+    /**
+     * M-1: Builds the 1-2 sentence comparison narrative for the recommendation panel.
+     * Scope: private, inline in this view — no new public service method.
+     *
+     * Format: "Compared {N} stores — {DefaultStore} covers everything."
+     * If Lidl detour is WORTH_IT: append "Lidl saves €X.XX across {N} items — worth a detour."
+     * If NOT_WORTH_IT: append "Lidl only saves €X.XX — not worth a second stop."
+     * If INSUFFICIENT_DATA: no second sentence.
+     */
+    private String buildComparisonNarrative(Long householdId, ShoppingList list, String defaultStoreName) {
+        try {
+            int storeCount = priceCatalog.findAllStores().size();
+            String coverage = defaultStoreName.isBlank() ? "Your store" : defaultStoreName;
+            String base = "Compared " + storeCount + " store" + (storeCount == 1 ? "" : "s")
+                    + " — " + coverage + " covers everything.";
+
+            // Find the first non-default store to evaluate as detour candidate
+            String defaultStoreId = list.recommendedStore() != null
+                    ? list.recommendedStore().getId() : null;
+            String detourStoreId = priceCatalog.findAllStores().stream()
+                    .filter(s -> !s.getId().equals(defaultStoreId))
+                    .map(com.example.mise.capabilities.pricing.Store::getId)
+                    .findFirst()
+                    .orElse(null);
+
+            if (detourStoreId == null || householdId == null) return base;
+
+            DetourVerdict verdict = detourEvaluator.evaluate(householdId, detourStoreId);
+            String detourName = verdict.storeName();
+
+            return switch (verdict.verdict()) {
+                case WORTH_IT -> base + " " + detourName + " saves €"
+                        + String.format("%.2f", verdict.totalSavings())
+                        + " across " + verdict.itemsWorthSwitching().size()
+                        + " item" + (verdict.itemsWorthSwitching().size() == 1 ? "" : "s")
+                        + " — worth a detour.";
+                case NOT_WORTH_IT -> {
+                    if (verdict.totalSavings().compareTo(java.math.BigDecimal.ZERO) > 0) {
+                        yield base + " " + detourName + " only saves €"
+                                + String.format("%.2f", verdict.totalSavings())
+                                + " — not worth a second stop.";
+                    }
+                    yield base;
+                }
+                case INSUFFICIENT_DATA -> base;
+            };
+        } catch (Exception e) {
+            // Never break the panel for a narrative failure
+            return null;
+        }
+    }
 
     private String formatQuantity(double qty) {
         if (qty == Math.floor(qty) && !Double.isInfinite(qty)) {

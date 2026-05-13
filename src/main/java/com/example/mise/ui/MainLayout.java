@@ -339,6 +339,10 @@ public class MainLayout extends VerticalLayout
     private void renderInsightBanner(Insight insight) {
         insightBanner.removeAll();
 
+        // M-7: bulb icon prefix per design system §"AI insight callout"
+        var bulbIcon = VaadinIcon.LIGHTBULB.create();
+        bulbIcon.addClassName("mise-insight-banner-icon");
+
         var bodySpan = new Span(insight.getBody());
         bodySpan.getElement().setAttribute("data-testid", "insight-banner-body");
         bodySpan.addClassName("mise-insight-banner-body");
@@ -365,7 +369,7 @@ public class MainLayout extends VerticalLayout
             insightBanner.removeAll();
         });
 
-        insightBanner.add(bodySpan, actBtn, dismissBtn);
+        insightBanner.add(bulbIcon, bodySpan, actBtn, dismissBtn);
         insightBanner.setVisible(true);
     }
 

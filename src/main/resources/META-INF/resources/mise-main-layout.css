@@ -144,15 +144,11 @@
 }
 
 /*
- * When the chat dock receives focus, its chat-history region expands to
- * max-height: 240px (see below). Match the view's bottom padding so the
- * scrollable region pushes upward instead of being overlapped — the user
- * can still see the meal grid above the now-tall dock and the chat
- * history scrolls in its own region.
+ * M-6: Chat history is now off-screen (not expanded on focus).
+ * The dock height stays constant — no extra bottom padding needed.
+ * This rule is kept as a no-op to avoid removing it breaking older test references.
  */
-.mise-shell:has(.mise-chat-dock:focus-within) > vaadin-vertical-layout {
-  padding-bottom: 340px !important;
-}
+/* .mise-shell:has(.mise-chat-dock:focus-within) > vaadin-vertical-layout { padding-bottom: 340px !important; } */
 
 /* ── Chat dock (bottom, full width) ─────────────────────────────────────── */
 
@@ -192,21 +188,27 @@
 }
 
 /*
- * Chat history within the dock: collapsed by default (0 height, invisible)
- * so the dock stays compact. Expands to a scrollable region when the dock
- * receives focus (user clicks the input) providing an "expand chat" affordance
- * without requiring a full drawer/popover implementation (those come in UC-005/007).
- * The data-testid="chat-message-list" element is always in the DOM.
+ * M-6 fix: The MessageList is kept in the DOM so the AIOrchestrator can write
+ * to it, but positioned off-screen so the full conversation thread is never
+ * visible in the dock. The single-line AI hint row (.mise-last-ai-message) is
+ * the only chat history shown to the user in the compact dock.
+ *
+ * Using absolute off-screen positioning (not display:none) because display:none
+ * would prevent the Vaadin element from receiving server-side updates.
  */
 .mise-chat-dock .mise-chat-history {
-  max-height: 0;
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  transition: max-height 0.2s ease;
+  pointer-events: none;
+  /* Remove the expand-on-focus behavior — dock stays compact at all times */
 }
 
+/* Remove the old focus-within expansion — no longer applicable */
 .mise-chat-dock:focus-within .mise-chat-history {
-  max-height: 240px;
-  overflow-y: auto;
+  /* Intentionally empty — history stays off-screen even when input is focused */
 }
 
 /* ── UC-004: chat-reply undo strip ─────────────────────────────────────── */
