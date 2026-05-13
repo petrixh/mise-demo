@@ -1,10 +1,13 @@
 package com.example.mise.domain.conversation;
 
 import com.vaadin.flow.component.ai.common.ChatMessage;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -15,16 +18,64 @@ import java.util.List;
 @Service
 public class ConversationService {
 
+    /** Default rolling-window size (BR-06). */
+    public static final int DEFAULT_ROLLING_WINDOW = 50;
+
     private final ConversationMessageRepository repository;
 
     public ConversationService(ConversationMessageRepository repository) {
         this.repository = repository;
     }
 
-    /** Load the full history in chronological order, mapped to Vaadin's ChatMessage. */
+    /**
+     * Load history with the default rolling window ({@value #DEFAULT_ROLLING_WINDOW} messages).
+     * If there are more messages in the DB, a synthetic breadcrumb is prepended.
+     */
     @Transactional(readOnly = true)
     public List<ChatMessage> loadHistory() {
-        var rows = repository.findAllByOrderByCreatedAtAscIdAsc();
+        return loadHistory(DEFAULT_ROLLING_WINDOW);
+    }
+
+    /**
+     * Load history with a configurable rolling window (BR-06).
+     * When the DB has more than {@code rollingWindow} messages, only the last
+     * {@code rollingWindow} are returned, preceded by a synthetic ASSISTANT
+     * breadcrumb: {@code "Earlier conversation summary: {N} earlier turns omitted; rolling window={W}"}.
+     *
+     * @param rollingWindow maximum number of real messages to return; must be &gt; 0
+     */
+    @Transactional(readOnly = true)
+    public List<ChatMessage> loadHistory(int rollingWindow) {
+        if (rollingWindow <= 0) throw new IllegalArgumentException("rollingWindow must be > 0");
+
+        long total = repository.count();
+
+        if (total <= rollingWindow) {
+            // All messages fit; return full history.
+            var rows = repository.findAllByOrderByCreatedAtAscIdAsc();
+            return toVaadinList(rows);
+        }
+
+        // More messages than the window: return last N with a breadcrumb at the head.
+        var page = PageRequest.of(0, rollingWindow);
+        var rows = repository.findLastN(page);
+        // findLastN returns newest-first; reverse for chronological order.
+        Collections.reverse(rows);
+
+        long omitted = total - rollingWindow;
+        var breadcrumb = new ChatMessage(
+                ChatMessage.Role.ASSISTANT,
+                "Earlier conversation summary: " + omitted + " earlier turns omitted; rolling window=" + rollingWindow,
+                null,
+                Instant.EPOCH);
+
+        var out = new ArrayList<ChatMessage>(rows.size() + 1);
+        out.add(breadcrumb);
+        out.addAll(toVaadinList(rows));
+        return out;
+    }
+
+    private List<ChatMessage> toVaadinList(List<ConversationMessage> rows) {
         var out = new ArrayList<ChatMessage>(rows.size());
         for (var row : rows) {
             out.add(new ChatMessage(

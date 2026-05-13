@@ -21,13 +21,24 @@ import java.util.function.Consumer;
  *
  * <p>Tools are registered at build time via {@link AIOrchestrator.Builder#withTools}.
  * The tools array is passed in from {@link com.example.mise.ui.MainLayout} which
- * receives them as Spring beans (PlanTools, future ShoppingTools, etc.).
+ * receives them as Spring beans (PlanTools, ShoppingTools, ReportsTools, NavigationTools).
+ *
+ * <p><b>UC-008 per-view tool scoping:</b> {@code AIOrchestrator} only supports tool
+ * registration at construction time (no runtime re-registration API). All tools are
+ * therefore registered globally and the system prompt instructs the model which tools
+ * belong to which view. The {@link #setCurrentView} method updates context stamping
+ * and can be called from {@code MainLayout}'s {@code AfterNavigationEvent} listener.
  */
 public class HouseholdOrchestrator {
 
     /**
-     * The plan-view system prompt. Public so AI integration tests can construct a
+     * The global system prompt. Public so AI integration tests can construct a
      * {@code ChatClient} with the exact same prompt as production.
+     *
+     * <p>UC-008: All view tools are registered globally (AIOrchestrator only supports
+     * construction-time binding). The prompt enumerates which tools belong to which
+     * view and instructs the model to call {@code goToView} before using tools from
+     * a view the user is not currently on.
      */
     public static final String SYSTEM_PROMPT = """
             You are Mise, a warm and pragmatic assistant for a home cook's weekly meal planning.
@@ -42,6 +53,17 @@ public class HouseholdOrchestrator {
             describe what happened — in that order, every time.
             When a meal is pinned, you must not change it. You also cannot unpin meals — the user controls that via the pin icon on each row. If asked to change a pinned meal, explain politely that it is pinned and suggest the user unpin it first (via the icon) if they want a change.
             If any tool result starts with REFUSED: that means the action did NOT happen. Do not narrate it as a success. Tell the user clearly what was refused and why, using the explanation provided in the tool result. Never say "X is now Y" after a REFUSED result — say "X is still Y, because..." and pass on the suggested next step from the tool.
+
+            UC-008 Cross-view navigation:
+            - goToView is ALWAYS available regardless of which view is active. Use it whenever the user asks to navigate to a different view, or whenever the user requests an action that belongs to a view they are not currently on.
+            - Tool scoping by view (all tools are registered globally but conceptually scoped):
+              Plan tools (use when on /plan): swapMealOnDay, undoLastEdit, explainEdit, pinMeal, unpinMeal, negotiateMealOnDay, getCurrentPlan
+              Shopping tools (use when on /shopping): addPantryItem, listPantryItems, addExtraToShoppingList, explainListSize, evaluateDetour, suggestPlanSwapForSavings
+              Reports tools (use when on /reports): addLeaderboardColumn, transformCategoryChart, explainWeekVsAverage, resetWidget
+            - If the user is on /plan and asks for a Reports action (e.g. "add a kcal-per-euro column"), you MUST call goToView("reports") FIRST, then call the Reports tool. Both actions happen in one turn.
+            - If the user is on /reports and asks for a Plan action, call goToView("plan") FIRST, then the Plan tool.
+            - If the user is on /shopping and asks for an action from another view, call goToView with the correct view FIRST, then the tool.
+            - Never call a tool from a view the user is not currently on without first navigating there via goToView.
 
             UC-004 Undo and explain:
             - When the user says "put X back", "undo Thursday", "revert that", "restore Monday's meal", or similar, call the undoLastEdit tool for that day.
@@ -74,6 +96,14 @@ public class HouseholdOrchestrator {
     private final AIOrchestrator orchestrator;
     private final ConversationService conversationService;
     private final Consumer<String> responseCompleteCallback;
+
+    /**
+     * UC-008: The view the user is currently on, used to stamp new conversation rows.
+     * Defaults to PLAN (the first landing view). Updated via {@link #setCurrentView}.
+     * Volatile because it may be written on the Vaadin UI thread while the response
+     * callback reads it on the background streaming thread.
+     */
+    private volatile ConversationMessage.ViewContext currentView = ConversationMessage.ViewContext.PLAN;
 
     /**
      * Builds the orchestrator with optional tools (e.g. PlanTools).
@@ -116,14 +146,32 @@ public class HouseholdOrchestrator {
         return orchestrator;
     }
 
+    /**
+     * UC-008 (BR-03): Sets the view context that will be stamped on conversation rows
+     * produced from this point forward. Called from {@code MainLayout.afterNavigation}.
+     *
+     * @param view the view the user just navigated to; defaults to {@code PLAN} at startup
+     */
+    public void setCurrentView(ConversationMessage.ViewContext view) {
+        if (view != null) {
+            this.currentView = view;
+        }
+    }
+
+    /**
+     * Returns the current view context (for testing).
+     */
+    public ConversationMessage.ViewContext getCurrentView() {
+        return currentView;
+    }
+
     private void onResponseComplete(
             com.vaadin.flow.component.ai.orchestrator.ResponseCompleteListener.ResponseCompleteEvent event) {
-        // After each assistant turn finishes, persist any new messages stamped with PLAN.
-        // TODO (UC-008): replace PLAN with a route-aware lookup so rows are stamped with
-        //   the actual view the user was on when the turn completed. For now, every turn
-        //   from MainLayout's orchestrator is tagged PLAN (the only view using it today).
+        // Persist new messages stamped with the view the user was on when this turn completed.
+        // currentView is updated by MainLayout's AfterNavigationObserver so it reflects the
+        // actual route at the time of each response (UC-008, BR-03).
         conversationService.syncFromOrchestrator(
-                orchestrator.getHistory(), ConversationMessage.ViewContext.PLAN);
+                orchestrator.getHistory(), currentView);
 
         // Notify MainLayout (or any other caller) with the latest assistant text.
         // Runs on the background streaming thread; callers must wrap UI updates in ui.access().

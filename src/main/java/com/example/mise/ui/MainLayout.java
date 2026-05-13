@@ -1,9 +1,11 @@
 package com.example.mise.ui;
 
 import com.example.mise.ai.HouseholdOrchestrator;
+import com.example.mise.ai.tools.NavigationTools;
 import com.example.mise.ai.tools.PlanTools;
 import com.example.mise.ai.tools.ReportsTools;
 import com.example.mise.ai.tools.ShoppingTools;
+import com.example.mise.domain.conversation.ConversationMessage;
 import com.example.mise.domain.conversation.ConversationService;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.plan.PlanService;
@@ -57,6 +59,7 @@ public class MainLayout extends VerticalLayout
                       PlanTools planTools,
                       ShoppingTools shoppingTools,
                       ReportsTools reportsTools,
+                      NavigationTools navigationTools,
                       PlanRefreshBroadcaster planRefreshBroadcaster,
                       ShoppingRefreshBroadcaster shoppingRefreshBroadcaster,
                       ReportsRefreshBroadcaster reportsRefreshBroadcaster) {
@@ -69,8 +72,12 @@ public class MainLayout extends VerticalLayout
         messageInput.setWidthFull();
 
         // Capture UI reference (on UI thread) for use in the response-complete
-        // callback which runs on a background streaming thread.
+        // callback and NavigationTools which both run on background streaming threads.
         this.ui = UI.getCurrent();
+
+        // UC-008: wire the UI supplier into NavigationTools so goToView can call
+        // ui.access(() -> ui.navigate(route)) from the background streaming thread.
+        navigationTools.setUiSupplier(() -> this.ui);
 
         this.household = new HouseholdOrchestrator(
                 llmProvider, conversationService, messageList, messageInput,
@@ -82,12 +89,11 @@ public class MainLayout extends VerticalLayout
                     planRefreshBroadcaster.fireRefresh();
                     // BR-08: push shopping refresh to all attached ShoppingView instances after every AI turn
                     // Both broadcasters fire here so meal mutations propagate to both views simultaneously.
-                    // UC-008 will introduce view-scoped tool registration; for now both tool sets are global.
                     shoppingRefreshBroadcaster.fireRefresh();
                     // UC-007: push reports refresh to all attached ReportsView instances after every AI turn
                     reportsRefreshBroadcaster.fireRefresh();
                 },
-                planTools, shoppingTools, reportsTools);
+                planTools, shoppingTools, reportsTools, navigationTools);
 
         // ── Shell layout ─────────────────────────────────────────────────
         setSizeFull();
@@ -202,7 +208,7 @@ public class MainLayout extends VerticalLayout
         return dock;
     }
 
-    /** Sync active tab indicator after navigation. */
+    /** Sync active tab indicator and orchestrator view context after navigation (UC-008, BR-03). */
     @Override
     public void afterNavigation(AfterNavigationEvent event) {
         String location = event.getLocation().getPath();
@@ -210,13 +216,23 @@ public class MainLayout extends VerticalLayout
         shoppingTab.getElement().removeAttribute("active");
         reportsTab.getElement().removeAttribute("active");
 
+        ConversationMessage.ViewContext viewContext;
         if (location.startsWith("plan") || location.isEmpty()) {
             planTab.getElement().setAttribute("active", true);
+            viewContext = ConversationMessage.ViewContext.PLAN;
         } else if (location.startsWith("shopping")) {
             shoppingTab.getElement().setAttribute("active", true);
+            viewContext = ConversationMessage.ViewContext.SHOPPING;
         } else if (location.startsWith("reports")) {
             reportsTab.getElement().setAttribute("active", true);
+            viewContext = ConversationMessage.ViewContext.REPORTS;
+        } else {
+            viewContext = ConversationMessage.ViewContext.PLAN;
         }
+
+        // UC-008 (BR-03): keep the orchestrator's view context in sync with the active route
+        // so every subsequent conversation message is stamped with the correct view.
+        household.setCurrentView(viewContext);
     }
 
     /** Updates the most-recent AI message line in the chat dock. */
