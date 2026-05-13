@@ -1,0 +1,126 @@
+/* ── MainLayout shell ───────────────────────────────────────────────────── */
+
+.mise-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 48px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.08);
+  background: var(--vaadin-background);
+  flex-shrink: 0;
+}
+
+.mise-brand {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.mise-week-badge {
+  font-size: 11px;
+  color: var(--vaadin-secondary-text-color);
+  margin-left: auto;
+  letter-spacing: 0.03em;
+}
+
+.mise-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid rgba(255,255,255,0.08);
+  background: var(--vaadin-background);
+  padding: 0 16px;
+}
+
+.mise-tab {
+  font-size: 13px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--vaadin-secondary-text-color);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: inherit;
+  font-weight: 400;
+  transition: color 0.15s;
+}
+
+.mise-tab:hover {
+  color: var(--vaadin-body-text-color);
+}
+
+.mise-tab[active] {
+  color: var(--vaadin-body-text-color);
+  font-weight: 500;
+  border-bottom-color: var(--vaadin-body-text-color);
+}
+
+.mise-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--vaadin-background);
+}
+
+/*
+ * The outlet div is unused at runtime — Vaadin appends the routed component
+ * directly to the RouterLayout VerticalLayout AFTER this div. Collapse it
+ * completely so it doesn't consume flex space.
+ */
+.mise-view-outlet {
+  display: none;
+}
+
+/*
+ * Vaadin injects the route component as a direct child vaadin-vertical-layout
+ * inside .mise-shell. Give it flex-grow so it fills available space and
+ * overflow-y: auto so its content scrolls within the viewport (not the page).
+ * Bottom padding compensates for the fixed chat dock (dock is ~75px).
+ */
+.mise-shell > vaadin-vertical-layout {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 90px !important;
+  box-sizing: border-box;
+}
+
+/* ── Chat dock (bottom, full width) ─────────────────────────────────────── */
+
+/*
+ * The dock is fixed to the viewport bottom. Vaadin's RouterLayout appends the
+ * routed view component after the static children (header, tabs, dock), so a
+ * flex-grow approach cannot push the dock below the injected view. Fixed
+ * positioning is the only reliable cross-viewport solution.
+ * Bottom padding on the view outlet/injected content compensates for the dock.
+ */
+.mise-chat-dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--vaadin-background-container);
+  border-top: 0.5px solid rgba(255,255,255,0.08);
+  padding: 8px 16px 10px;
+}
+
+.mise-chat-dock .mise-last-ai-message {
+  font-size: 12px;
+  color: var(--vaadin-secondary-text-color);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mise-chat-dock .mise-last-ai-message .sparkle {
+  font-size: 13px;
+  flex-shrink: 0;
+}

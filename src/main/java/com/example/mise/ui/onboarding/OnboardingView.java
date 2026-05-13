@@ -125,7 +125,6 @@ public class OnboardingView extends VerticalLayout implements BeforeEnterObserve
         var chatContainer = new VerticalLayout(messageList, messageInput);
         chatContainer.setHeightFull();
         chatContainer.setWidth("100%");
-        chatContainer.getStyle().set("max-width", "860px");
         chatContainer.setPadding(false); // padding handled by .mise-chat-container CSS
         chatContainer.setSpacing(true);
         chatContainer.expand(messageList);

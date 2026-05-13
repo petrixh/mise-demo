@@ -79,7 +79,7 @@ public class CostByCategoryPanel extends Div {
         // If everything is zero (no price data), show a note
         if (costs.values().stream().allMatch(v -> v <= 0)) {
             var note = new Paragraph("No price data available.");
-            note.getStyle().set("font-size", "11px").set("color", "var(--vaadin-secondary-text-color)");
+            note.addClassName("mise-plan-no-data-note");
             add(note);
         }
     }
@@ -98,6 +98,8 @@ public class CostByCategoryPanel extends Div {
         var barFill = new Div();
         barFill.addClassName("mise-category-bar-fill");
         double pct = Math.min(100.0, (cost / maxCost) * 100.0);
+        // Inline styles below are runtime-computed per instance:
+        //   width % comes from cost / maxCost; background picked from CATEGORY_FILL by category name.
         barFill.getStyle()
                 .set("width", String.format("%.1f%%", pct))
                 .set("background", CATEGORY_FILL.getOrDefault(category, "var(--mise-category-other)"));

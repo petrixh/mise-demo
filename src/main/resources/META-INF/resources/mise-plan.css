@@ -1,0 +1,261 @@
+/* ── Plan view ──────────────────────────────────────────────────────────── */
+
+.mise-plan-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mise-plan-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.mise-plan-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 16px 16px 16px 0;
+}
+
+/* "No price data available." note shown when CostByCategoryPanel has nothing to plot. */
+.mise-plan-no-data-note {
+  font-size: 11px;
+  color: var(--vaadin-secondary-text-color);
+}
+
+/* KPI strip */
+.mise-kpi-strip {
+  display: flex;
+  gap: 8px;
+}
+
+.mise-kpi-card {
+  flex: 1;
+  background: var(--vaadin-background-container);
+  border-radius: var(--vaadin-radius-m, 8px);
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.mise-kpi-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vaadin-secondary-text-color);
+  margin: 0 0 4px 0;
+}
+
+.mise-kpi-value {
+  font-size: 18px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+  color: var(--vaadin-body-text-color);
+}
+
+/* Meal grid */
+.mise-meal-grid {
+  background: var(--vaadin-background-container);
+  border-radius: var(--vaadin-radius-m, 8px);
+  overflow: hidden;
+}
+
+.mise-meal-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  gap: 12px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+  min-height: 52px;
+}
+
+.mise-meal-row:last-child {
+  border-bottom: none;
+}
+
+.mise-meal-row.edited {
+  background: rgba(250, 238, 218, 0.12);
+}
+
+.mise-day-chip {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vaadin-secondary-text-color);
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.mise-meal-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mise-meal-name {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--vaadin-body-text-color);
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mise-meal-meta {
+  font-size: 11px;
+  color: var(--vaadin-secondary-text-color);
+  margin: 0;
+}
+
+.mise-meal-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.mise-tag {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.mise-tag-veg {
+  background: #EAF3DE;
+  color: #27500A;
+}
+
+.mise-tag-fish {
+  background: #E6F1FB;
+  color: #0C447C;
+}
+
+.mise-tag-edited {
+  background: #FAEEDA;
+  color: #633806;
+}
+
+.mise-meal-empty {
+  font-size: 13px;
+  color: var(--vaadin-disabled-text-color, rgba(255,255,255,0.28));
+  font-style: italic;
+}
+
+/* Row action buttons */
+.mise-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Cost by category panel */
+.mise-category-panel {
+  background: var(--vaadin-background-container);
+  border-radius: var(--vaadin-radius-m, 8px);
+  padding: 12px 14px;
+}
+
+.mise-category-panel-title {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vaadin-secondary-text-color);
+  margin: 0 0 10px 0;
+}
+
+.mise-category-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mise-category-label {
+  font-size: 11px;
+  color: var(--vaadin-secondary-text-color);
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.mise-category-bar-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mise-category-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.mise-category-amount {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vaadin-secondary-text-color);
+  width: 44px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* AI insight callout */
+.mise-ai-insight {
+  background: rgba(230, 241, 251, 0.08);
+  border-radius: var(--vaadin-radius-m, 8px);
+  padding: 10px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--vaadin-secondary-text-color);
+}
+
+/* ── Responsive overrides ────────────────────────────────────────────────── */
+
+/*
+ * Tablet/mobile: the cost-by-category panel stacks BELOW the meal list.
+ * Design system §"Responsive": "Side panels stack below. Same content, same colors."
+ * We never hide the panel — only change the flex direction.
+ */
+@media (max-width: 1023px) {
+  .mise-plan-layout {
+    flex-direction: column;
+    overflow-y: auto;
+    height: auto;
+  }
+  .mise-plan-main {
+    overflow-y: visible;
+  }
+  .mise-plan-sidebar {
+    width: 100%;
+    padding: 0 16px 16px;
+    flex-shrink: 0;
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 639px) {
+  .mise-kpi-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .mise-plan-main {
+    padding: 10px;
+  }
+  .mise-plan-sidebar {
+    padding: 0 10px 16px;
+  }
+}
