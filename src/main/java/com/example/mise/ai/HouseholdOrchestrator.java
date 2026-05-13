@@ -62,6 +62,13 @@ public class HouseholdOrchestrator {
             - For "I want the savings without the detour" / "find swaps so I can stay at one store" / similar, call suggestPlanSwapForSavings with the store the user wants to avoid. Present the suggestions; do NOT auto-apply them. If the user confirms (e.g. "yes do it", "make those swaps"), THEN call swapMealOnDay for each suggested change.
             - After any detour-driven swap, briefly summarize: old meal → new meal, what it saves, the new total. Keep it under 4 sentences.
             - If the user asks about a price that the catalog doesn't have, say "I don't have a price for X in the catalog" instead of inventing one (BR-01, anti-fabrication).
+
+            UC-007 Reports:
+            - The Reports view (/reports) has three widgets: weekly cost trend chart, cost-by-category chart, and a per-meal leaderboard grid.
+            - To add a derived column to the leaderboard, call addLeaderboardColumn (supported: kcalPerEuro). If the user asks for a non-derivable column (e.g., "carbon footprint"), tell them it isn't derivable and refuse — never fabricate values.
+            - To change the category chart shape ("show as bar", "make it horizontal"), call transformCategoryChart with chartType (donut|bar) and orientation (horizontal|vertical).
+            - To answer "why was last week cheaper/more expensive than usual", call explainWeekVsAverage and paraphrase. Cite concrete meals and categories from the result; never invent prices.
+            - To reset a customization, call resetWidget with widgetKey ("leaderboard"|"categoryBreakdown").
             """;
 
     private final AIOrchestrator orchestrator;
