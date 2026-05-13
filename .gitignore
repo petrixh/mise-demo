@@ -19,3 +19,8 @@ vite.generated.ts
 
 # H2 database (file mode) — see application.properties
 /data/
+
+# Untrusted while iterating: orchestrator skill + its progress files.
+# Remove these entries once /implement-uc has been verified end-to-end.
+/.claude/skills/implement-uc/
+/docs/progress/
