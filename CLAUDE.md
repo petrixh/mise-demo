@@ -20,15 +20,21 @@ Mise — a weekly meal planner that demonstrates a deeply AI-integrated Vaadin a
 ```bash
 ./mvnw                            # Run in dev mode (default goal: spring-boot:run)
 ./mvnw clean package              # Production build (JAR in target/)
-./mvnw test                       # Run unit + browserless-component tests
+./mvnw test                       # Run unit + Browserless tests
 ./mvnw test -Dtest=ClassName      # Run a single test class
 ./mvnw -Pit verify                # Run *IT.java Playwright browser tests (opt-in)
 ./mvnw -Pit verify -Dit.test=X    # Run a single IT class
+./mvnw -Pai-it verify             # Run *AIIT.java against the live LLM (2-fork parallel; opt-in)
+./mvnw -Pai-it verify -Dit.test=X # Run a single AIIT class
 ```
 
 The app runs on port 8080 (configurable via `PORT` env var). Default chat model points at the local Qwen at `http://192.168.1.196:8080`; override with `MISE_MODEL_BASE_URL`, `MISE_MODEL_API_KEY`, `MISE_MODEL_NAME`.
 
-Integration tests run a real Chromium via [Microsoft Playwright](https://playwright.dev/java/) with [DramaFinder](https://github.com/parttio/dramafinder) wrappers for Vaadin locators. They live under `src/test/java/com/example/mise/it/`, default to headless (works in the dev container), and isolate themselves from the dev DB via an in-memory H2 in `src/test/resources/application-it.properties`. First run rebuilds the Vaadin frontend bundle (3–5 min); subsequent runs are ~25s. See the **Running integration tests** section in [`README.md`](README.md) for headed-mode usage.
+There are three test layers, each with its own purpose:
+
+- **Unit + Browserless** (`./mvnw test`) — fast in-JVM tests. Unit tests live under their domain packages; Browserless tests use Vaadin's [`browserless-test-spring`](https://vaadin.com/docs/latest/flow/testing/browserless/getting-started) under `src/test/java/com/example/mise/browserless/` and assert on the live Vaadin component tree without a Chromium browser. Browserless is the right tool for click-handler / repository-side-effect tests with no CSS / layout concerns.
+- **Playwright IT** (`./mvnw -Pit verify`) — real Chromium via [Microsoft Playwright](https://playwright.dev/java/) with [DramaFinder](https://github.com/parttio/dramafinder) wrappers for Vaadin locators. Headless by default. Lives under `src/test/java/com/example/mise/it/` and uses an in-memory H2 (`application-it.properties`). First run rebuilds the Vaadin frontend bundle (3–5 min); subsequent runs are ~25 s. Reach for it when CSS / layout / rendering / responsive breakpoints matter.
+- **AI Tool IT** (`./mvnw -Pai-it verify`) — `*AIIT.java` under `src/test/java/com/example/mise/aiit/` that drive the production tool beans + system prompt through Spring AI's `ChatClient` against the **live LLM** endpoint. No Playwright, no dev server; each test seeds its own household + active plan in an in-memory H2 (`application-ai-it.properties`). Two failsafe forks run in parallel — match this with a model endpoint that advertises a `parallel-2` slot (the default Qwen-local model does). Use for tool-invocation correctness, no-fabrication checks, BR clarification rules, and reply tone / length — anything that's about the model's behaviour against real tool descriptions, not about UI integration.
 
 ## Specifications
 

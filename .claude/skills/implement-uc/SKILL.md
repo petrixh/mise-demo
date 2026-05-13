@@ -61,13 +61,14 @@ For each `UC-NNN` argument:
 
 ## Tasks
 
-| # | Task                | Status  | Subagent model | Notes |
-|---|---------------------|---------|----------------|-------|
-| 1 | Implementation      | pending | sonnet         |       |
-| 2 | IT Generate + Run   | pending | sonnet         | new or extended `<View>IT.java`; `./mvnw -Pit verify -Dit.test=<View>IT` must be green before Visual Verify runs |
-| 3 | Visual Verify       | pending | haiku          |       |
-| 4 | Visual Comparison   | pending | haiku × N      | design-system always graded; fans out per mockup/form-factor when more than one exists |
-| 5 | AI Verify           | pending | sonnet         | skip if no `#### AI` block in the UC file's `## Verification` section |
+| # | Task                  | Status  | Subagent model | Notes |
+|---|-----------------------|---------|----------------|-------|
+| 1 | Implementation        | pending | sonnet         |       |
+| 2 | IT Generate + Run     | pending | sonnet         | new or extended `<View>IT.java`; `./mvnw -Pit verify -Dit.test=<View>IT` must be green before Visual Verify runs |
+| 3 | Visual Verify         | pending | haiku          |       |
+| 4 | Visual Comparison     | pending | haiku × N      | design-system always graded; fans out per mockup/form-factor when more than one exists |
+| 5a | AI Tool IT (runs in worktree) | pending | sonnet | new or extended `<View>ToolsAIIT.java`; `./mvnw -Pai-it verify -Dit.test=<View>ToolsAIIT` runs in an isolated worktree so the next UC's Phase 1 can start in parallel. Skip if no `#### AI` block in the UC's `## Verification` section. |
+| 5b | AI Smoke (Playwright) | pending | sonnet         | persistence-across-JVM-restart + the headline UI×AI scenario only. Heavy LLM-correctness checks belong in 5a. Skip if no `#### AI` block. |
 
 ## Iterations
 
@@ -106,6 +107,23 @@ when all tasks are done: set Status = COMPLETED, write final summary
 ```
 
 At the **end of every cycle**, re-read the progress file before deciding the next move — subagent output should not be trusted in place of the file.
+
+### Phase 5a runs in a worktree, concurrent with the next UC's Phase 1
+
+When Phase 4 (Visual Comparison) finishes and Phase 5a is `pending`, fire its agent with `isolation: "worktree"` **AND** `run_in_background: true`. The orchestrator does NOT block on it. Immediately:
+
+1. Move on to the next UC in the argument list (if any). Begin its Phase 0 / Phase 1 in the **main worktree**.
+2. While the next UC's Phase 1 implementation subagent is running, the prior UC's Phase 5a agent is concurrently running `./mvnw -Pai-it verify` in its worktree against the live LLM.
+3. When the Phase 5a agent completes (or is still running when the orchestrator otherwise needs to block), reconcile: read the returned summary, update the prior UC's progress file, run Phase 5b in the main worktree if 5a passed, escalate fixes if 5a failed.
+
+This works because the AI-IT profile uses in-memory H2 isolated per-fork (see `application-ai-it.properties`) — the worktree's tests have no contact with the main worktree's `./data/` H2 or the dev server. The two streams of work are physically isolated. Concretely:
+
+- Foreground (main worktree): Phase 5b → next UC Phase 0/1/1.5/2/2.5/4.
+- Background (worktree): Phase 5a for the prior UC.
+
+Track the background `run_in_background` shell id in the progress file so a resumed run can find it. When Phase 5a returns and is green, mark it done; if red, route a Fix subagent **into the main worktree** scoped to the failure (the LLM-side gap usually lives in a system prompt or tool description, not in code the next UC is also touching — but coordinate if it does).
+
+If the next UC's Phase 1 wants to land changes that affect the prior UC's AI surface (rare — only for cross-cutting UCs like UC-008 cross-view-chat), pause the next UC's Phase 1 until Phase 5a returns. The progress file's `concurrent` field below makes this explicit.
 
 ## Phase 1 — Implementation (Sonnet)
 
@@ -447,47 +465,109 @@ After Visual-Fix returns:
 2. Set Phase 2 (Visual Verify) and Phase 2.5 (Visual Comparison) both back to `pending` — visual fixes can introduce functional regressions and the styling check needs a fresh comparison.
 3. The orchestrator loop will re-run them in order.
 
-## Phase 3 — AI Verify (Sonnet)
+## Phase 5a — AI Tool IT (Sonnet, isolated worktree, runs concurrent with next UC's Phase 1)
 
 **Skip** this task (mark `done` with note "no AI block in UC ## Verification") if the UC file's `## Verification` section has no `#### AI` block.
 
-`Agent` with `subagent_type=general-purpose`, `model=sonnet`. Sonnet is required here because grounding judgment (is the assistant fabricating a price? does the reasoning cite a real `MealEdit.reason`?) is the work.
+This phase covers the **bulk of AI verification** — tool-invocation correctness, no-fabrication when reason is null, BR-style clarification behaviour, reply-length and tone checks. It is fast because:
+- Each test boots a `@SpringBootTest(webEnvironment=MOCK)` against the production tool beans + system prompt; no Playwright, no Chromium, no dev server, no UI.
+- Two failsafe forks run in parallel, exploiting the Qwen-local "parallel-2" slot (see the `ai-it` profile in `pom.xml` and `src/test/resources/application-ai-it.properties`).
+- A typical UC's 4–6 AI checks land in 40–60 s total, vs ~5 min for the equivalent Playwright walkthrough.
+
+It runs in a **worktree** because that lets the next UC's Phase 1 implementation work in the main worktree concurrently. The worktree has its own checkout of the code under verification; the in-memory H2 in `application-ai-it.properties` keeps it isolated from the main `./data/` H2 + the live dev server.
+
+`Agent` with `subagent_type=general-purpose`, `model=sonnet`, `isolation: "worktree"`, `run_in_background: true`.
 
 Prompt skeleton:
 
 ```
-You are verifying AI behaviour for UC-NNN. Use Playwright MCP for UI interaction and Read for cross-checking H2 data via the JPA layer's known seed YAML or recipe files.
+You are writing & running the AI Tool IT for UC-NNN against the live LLM endpoint. You are inside an isolated git worktree — the main work continues elsewhere; treat this worktree as your full scope.
+
+## Implementator's report (Phase 1, just returned)
+{paste files modified, tools added, system-prompt directives added}
 
 ## UC AI checklist
 {paste the #### AI block from the UC file's ## Verification section}
 
-## Global AI checks (from spec/verification.md §2)
-- Conversation persistence across JVM restart.
+## Global AI checks
 - No fabrication: any cited price, kcal, or quantity must match the underlying recipe or stores/*.yaml.
-- Latency: single-meal edit ≤ 2s; negotiation ≤ 5s. Note the model in use; record actual numbers.
+- Tone & length: per the UC's BR (e.g. UC-004 BR-06 ≤ 3 sentences single-swap).
+- BR-style clarification: where the UC names a "must clarify when ambiguous" rule, write a positive assertion (model asks vs. silently picks).
+
+## Existing infrastructure (do not reimplement)
+- Base class: `com.example.mise.aiit.MiseAIIT` — `@SpringBootTest(webEnvironment=MOCK)`, `@ActiveProfiles("ai-it")`, autowires production tool beans + the `openAiChatModel`. Provides `seedHouseholdAndActivePlan()` and `planChat()` (a `ChatClient` primed with `HouseholdOrchestrator.SYSTEM_PROMPT` and `PlanTools`). Wipes rows in `@BeforeEach` / `@AfterEach`.
+- Existing example: `src/test/java/com/example/mise/aiit/PlanToolsAIIT.java` (UC-003 / UC-004 — 4 tests). Mirror its style.
+- For a new view's tools (e.g. ShoppingTools, ReportsTools), add a `XxxToolsAIIT` next to `PlanToolsAIIT`. If the production system prompt is per-view, expose it as `XxxOrchestrator.SYSTEM_PROMPT` (public constant) so the test uses the exact production text.
+
+## Test design rules
+- One concern per test method. Each test = one ChatClient round-trip (or one swap-then-explain pair where the spec requires it).
+- Assert DB side-effects via injected repositories; assert reply *shape* (length, no preamble, contains keywords from the stored data) rather than exact wording.
+- Assertions about hallucination should fail ONLY in the hallucination combination: "claimed it happened" + "did not happen". A model that refuses, asks for clarification, or otherwise declines without claiming success is acceptable (and often correct).
+- Do NOT assert latency in test failures — log it informationally only. The Qwen-local model exceeds spec targets; that's a model choice, not a code defect.
+
+## Where to write
+`src/test/java/com/example/mise/aiit/<View>ToolsAIIT.java`. Extend `MiseAIIT`. New tests only — leave existing AIIT classes alone unless the UC's spec change requires it.
+
+## Verification
+After writing, run `./mvnw -Pai-it verify -Dit.test=<View>ToolsAIIT`. Report:
+- Exit code, total tests, pass/fail.
+- For failures: paste the assertion message verbatim, label root cause as `test-bug` (test wording too brittle), `prompt-gap` (system prompt or tool description needs tightening), or `tool-bug` (a tool returned wrong data).
+- Latency informational only.
+
+## Constraints
+- Profile is `-Pai-it`; do NOT run under `-Pit` (that's Playwright).
+- Do not start a dev server.
+- Stay inside the worktree. Commit nothing.
+- If a fix is needed in production code or a system prompt, list the specific change in your report — the orchestrator will route a Fix subagent into the main worktree.
+```
+
+After return:
+
+- **AIIT green** → task `done`.
+- **AIIT red, test-bug** → keep `in_progress`, give the same agent one re-write attempt with the assertion narrowed. Second red → `failed`.
+- **AIIT red, prompt-gap or tool-bug** → task `failed`. Add issue. Route a Functional-Fix into the **main worktree** scoped to the system prompt or tool description change. Re-run Phase 5a after the fix (a new background agent in a fresh worktree).
+- **3 failed iterations** → STOP, report to user with full iteration log.
+
+## Phase 5b — AI Smoke (Sonnet, main worktree, Playwright)
+
+**Skip** if no `#### AI` block in the UC's `## Verification` section. Runs **after** Phase 5a is green (or after Phase 4 if there's no AI block — in which case both 5a and 5b are skipped).
+
+This phase covers the small set of AI checks that genuinely require the full UI + dev-server + persistent H2:
+- **Conversation persistence across JVM restart.** The orchestrator reloads its rolling window from H2; the model can quote a pre-restart turn.
+- **The headline UI×AI scenario for this UC.** E.g. UC-006's "edit a YAML, restart, the assistant changes its verdict" — needs the actual dev-server restart, not a test JVM.
+
+Everything else (tool-call correctness, fabrication checks, reply tone/length) is in Phase 5a — do NOT duplicate it here.
+
+`Agent` with `subagent_type=general-purpose`, `model=sonnet`. Sonnet is required because grounding judgment about persistence + headline-scenario correctness is the work.
+
+Prompt skeleton:
+
+```
+You are verifying the cross-stack AI scenarios for UC-NNN that Phase 5a (the tool-IT layer) intentionally skipped. Use Playwright MCP for UI interaction and Read for cross-checking H2 data.
+
+## UC AI checklist (focus on these two categories ONLY)
+{paste any items from #### AI that relate to (a) JVM-restart persistence or (b) the UC's "headline" UI×AI scenario}
 
 ## Method
 - Drive the chat from Playwright; capture the assistant message text.
-- For each numeric claim, locate the source YAML/recipe and compare.
 - For the restart check: do the pre-restart half (send the message, capture state), then return with status `awaiting_restart`. The orchestrator will stop and restart the JVM and re-invoke you with `phase=post_restart` so you can verify history reloaded. Do not stop the JVM yourself.
+- For the headline scenario (if the UC has one — UC-006's YAML-reload, UC-008's cross-view navigation triggering a Reports column, UC-009's startup-trigger insight banner): walk it end-to-end exactly as the spec writes it.
 
 ## Report back
-- Per-check pass/fail with evidence (assistant text, source value).
-- Latency numbers measured.
-- Any fabrication caught.
-- If you stopped at `awaiting_restart`, list exactly what state you captured pre-restart so the post-restart pass can compare.
+- Per-check pass/fail with evidence (assistant text, observed UI state).
+- If you stopped at `awaiting_restart`, list what state you captured pre-restart.
 ```
 
-**Persistence-restart handling.** When Phase 3 returns `awaiting_restart`:
+**Persistence-restart handling.** When Phase 5b returns `awaiting_restart`:
 
 1. Kill the dev-server background shell.
 2. **Do not wipe `data/`** — the point of the check is that state survives.
 3. Restart `./mvnw -q` in the background; poll until ready.
-4. Re-delegate Phase 3 with `phase=post_restart` and the prior subagent's pre-restart capture pasted in.
+4. Re-delegate Phase 5b with `phase=post_restart` and the prior subagent's pre-restart capture pasted in.
 
 ## Fix delegation
 
-When Phase 1.5 (view-bug), Phase 2, or Phase 3 fails:
+When Phase 1.5 (view-bug), Phase 2, Phase 5a (prompt-gap / tool-bug), or Phase 5b fails:
 
 ```
 Agent: subagent_type=general-purpose, model=sonnet
@@ -539,11 +619,27 @@ When a UC's progress file reaches all `done`:
 ## UC-NNN summary
 
 **Status:** COMPLETED
-**Iterations:** Impl ×N, Verify ×N, Compare ×N, AI ×N
+**Iterations:** Impl ×N, IT ×N, Visual ×N, Compare ×N, AIIT ×N, AI-Smoke ×N
 **Files touched:** {dedup across iterations}
-**Test counts:** unit {n} pass, Playwright walkthrough {n} steps verified
+**Test counts:** unit {n} pass, IT {n} pass, AIIT {n} pass, AI smoke {n} steps verified
 **Open MINOR issues:** {list, may become follow-up tasks}
 **Progress file:** docs/progress/uc_NNN_progress.md
 ```
 
 When all input UCs are done, emit one combined summary table and stop.
+
+## When to reach for Browserless vs Playwright in Phase 1.5
+
+Default to Playwright (existing pattern, `MisePlaywrightIT` base) when the test cares about:
+- CSS / layout rendering, responsive breakpoints, dark-mode contrast
+- Real browser DOM (shadow DOM walking, focus rings, native form validation popups)
+- Anything Visual Verify will later screenshot
+
+Reach for Browserless (`SpringBrowserlessTest`, see `src/test/java/com/example/mise/browserless/PlanViewBrowserlessTest.java`) when the test cares only about:
+- Component-state assertions after a click (e.g. `MealEditRepository` rows after a row-undo button click)
+- Vaadin component-tree wiring (which view loaded, what `$(Button.class).id("...")` finds)
+- Repository side-effects of a UI interaction
+
+Browserless tests run ~5-10x faster per case (no Chromium boot, no servlet container, no network) and run under the default `./mvnw test` profile — they don't need `-Pit`. If a UC has many UI-interaction tests with no rendering concerns (UC-008 cross-view chat, UC-009 insights mute / show / dismiss flows), prefer Browserless for those and keep Playwright for the visual surface.
+
+The Phase 1.5 IT generator may choose either; both follow the same "no workaround tests" rule and the same locator-stability requirement from the implementer.
