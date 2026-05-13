@@ -11,6 +11,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -391,15 +392,25 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
             info.add(storeSpan);
         }
 
-        // "Saves €X at Y" hint (BR-06, ONE_STORE mode)
+        // "Saves €X at Y" amber strip (BR-06, ONE_STORE mode) — design system §"Save-elsewhere hint"
         if (currentStoreMode == StoreMode.ONE_STORE && item.cheapestAlternative() != null) {
             var alt = item.cheapestAlternative();
             if (item.recommendedPrice() != null) {
                 BigDecimal saving = item.recommendedPrice().subtract(alt.price());
                 if (saving.compareTo(BigDecimal.ZERO) > 0) {
-                    var hintSpan = new Span("saves €" + saving.toPlainString() + " at " + alt.storeName());
-                    hintSpan.addClassName("mise-shopping-item-hint");
-                    info.add(hintSpan);
+                    var savingsStrip = new Div();
+                    savingsStrip.addClassName("mise-shopping-item-savings-strip");
+                    savingsStrip.getElement().setAttribute("data-testid", "savings-strip");
+
+                    var tagIcon = VaadinIcon.TAG.create();
+                    tagIcon.addClassName("mise-shopping-item-savings-icon");
+
+                    var savingsText = new Span(
+                            "saves €" + String.format("%.2f", saving) + " at " + alt.storeName());
+                    savingsText.addClassName("mise-shopping-item-savings-text");
+
+                    savingsStrip.add(tagIcon, savingsText);
+                    info.add(savingsStrip);
                 }
             }
         }

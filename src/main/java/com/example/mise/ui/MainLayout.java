@@ -21,6 +21,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
 import com.vaadin.flow.component.notification.Notification;
@@ -29,6 +30,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.RouterLayout;
+
+import java.math.BigDecimal;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -158,16 +161,56 @@ public class MainLayout extends VerticalLayout
     // The VerticalLayout's last "expand" slot holds the route content.
 
     private Div buildHeader(HouseholdService householdService, PlanService planService) {
+        // ── Wordmark (left) ──────────────────────────────────────────────────
         var brand = new H1("Mise");
         brand.addClassName("mise-brand");
+        brand.getElement().setAttribute("data-testid", "app-header-wordmark");
+
+        // ── Week navigator (center-right): disabled prev + badge + disabled next ──
+        // Arrows are present for visual completeness per design system but disabled
+        // (week navigation is not in scope for any UC in this build).
+        var prevBtn = new Button(VaadinIcon.ANGLE_LEFT.create());
+        prevBtn.addClassName("mise-header-week-nav-btn");
+        prevBtn.setEnabled(false);
+        prevBtn.getElement().setAttribute("aria-label", "Previous week");
 
         String weekLabel = buildWeekLabel(householdService, planService);
         var weekBadge = new Span(weekLabel);
         weekBadge.addClassName("mise-week-badge");
+        weekBadge.getElement().setAttribute("data-testid", "app-header-week");
 
-        var header = new Div(brand, weekBadge);
+        var nextBtn = new Button(VaadinIcon.ANGLE_RIGHT.create());
+        nextBtn.addClassName("mise-header-week-nav-btn");
+        nextBtn.setEnabled(false);
+        nextBtn.getElement().setAttribute("aria-label", "Next week");
+
+        var weekNav = new Div(prevBtn, weekBadge, nextBtn);
+        weekNav.addClassName("mise-header-week-nav");
+
+        // ── Budget pill (right) ──────────────────────────────────────────────
+        var budgetBadge = new Span(buildBudgetLabel(householdService));
+        budgetBadge.addClassName("mise-header-budget-badge");
+        budgetBadge.getElement().setAttribute("data-testid", "app-header-budget");
+
+        // ── Assemble full-width header bar ───────────────────────────────────
+        var header = new Div(brand, weekNav, budgetBadge);
+        header.setId("mise-app-header");
+        header.getElement().setAttribute("data-testid", "app-header");
         header.addClassName("mise-header");
         return header;
+    }
+
+    private String buildBudgetLabel(HouseholdService householdService) {
+        try {
+            if (householdService.exists()) {
+                var hh = householdService.findHousehold().orElse(null);
+                if (hh != null && hh.getWeeklyBudget() != null) {
+                    BigDecimal budget = hh.getWeeklyBudget();
+                    return "€" + String.format("%.0f", budget) + " budget";
+                }
+            }
+        } catch (Exception ignored) {}
+        return "";
     }
 
     private String buildWeekLabel(HouseholdService householdService, PlanService planService) {

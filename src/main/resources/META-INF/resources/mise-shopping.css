@@ -90,7 +90,8 @@
 .mise-shopping-pantry-section {
   background: var(--vaadin-background-container);
   border-radius: var(--vaadin-radius-m, 8px);
-  overflow: hidden;
+  /* overflow:hidden removed — it collapsed the vaadin-details host to 0px,
+     hiding the summary toggle. Border-radius clipping is not needed here. */
 }
 
 .mise-shopping-pantry-chips {
@@ -214,11 +215,30 @@
   align-self: flex-start;
 }
 
-/* "saves €X at Y" hint (BR-06) */
-.mise-shopping-item-hint {
+/* "saves €X at Y" amber strip (BR-06) — design system §"Save-elsewhere hint" */
+.mise-shopping-item-savings-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  padding: 3px 8px;
+  background: var(--mise-edited-fill, rgba(250, 238, 218, 0.18));
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+.mise-shopping-item-savings-icon {
+  width: 11px !important;
+  height: 11px !important;
+  color: var(--mise-edited-text, #633806);
+  flex-shrink: 0;
+}
+
+.mise-shopping-item-savings-text {
   font-size: 10px;
-  color: var(--vaadin-secondary-text-color);
-  font-style: italic;
+  font-weight: 500;
+  color: var(--mise-edited-text, #633806);
+  white-space: nowrap;
 }
 
 /* Price column */

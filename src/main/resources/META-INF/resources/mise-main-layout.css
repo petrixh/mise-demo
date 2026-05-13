@@ -1,28 +1,82 @@
 /* ── MainLayout shell ───────────────────────────────────────────────────── */
 
+/*
+ * C-3 fix: full-width identity bar.
+ * Three-column flex: wordmark (left) | week navigator (auto-margin left+right to center) | budget pill (right).
+ * Spans full viewport width — no side-nav column.
+ */
 .mise-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 16px;
-  height: 48px;
+  gap: 8px;
+  padding: 0 20px;
+  height: 52px;
   border-bottom: 0.5px solid rgba(255,255,255,0.08);
   background: var(--vaadin-background);
   flex-shrink: 0;
+  /* Ensure full viewport width regardless of any ancestor constraints */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .mise-brand {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 18px;
+  font-weight: 600;
   margin: 0;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+/* ── Week navigator: prev arrow + badge + next arrow ────────────────────── */
+.mise-header-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* Push to center by auto margins on both sides */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mise-header-week-nav-btn {
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  cursor: default;
+  opacity: 0.35;
 }
 
 .mise-week-badge {
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vaadin-body-text-color);
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+/* ── Budget pill (right) ──────────────────────────────────────────────── */
+.mise-header-budget-badge {
+  font-size: 12px;
+  font-weight: 500;
   color: var(--vaadin-secondary-text-color);
-  margin-left: auto;
-  letter-spacing: 0.03em;
+  padding: 3px 10px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Hide budget badge when empty (no household yet / onboarding) */
+.mise-header-budget-badge:empty {
+  display: none;
 }
 
 .mise-tabs {
@@ -218,4 +272,41 @@
 
 .mise-row-undo-btn:hover {
   color: rgba(250, 238, 218, 1) !important;
+}
+
+/* ── C-3: mobile header collapse (< 640px) ──────────────────────────────── */
+/*
+ * On mobile: compact single row — wordmark + week badge inline.
+ * Week nav arrows hidden; budget badge hidden (saves space).
+ * Week badge resets its pill style to plain secondary text.
+ */
+@media (max-width: 639px) {
+  .mise-header {
+    height: 44px;
+    padding: 0 14px;
+    gap: 6px;
+  }
+
+  .mise-brand {
+    font-size: 16px;
+  }
+
+  /* On mobile the week nav arrow buttons are hidden — too cramped */
+  .mise-header-week-nav-btn {
+    display: none !important;
+  }
+
+  /* Week badge becomes plain secondary-text on mobile, no pill background */
+  .mise-week-badge {
+    font-size: 11px;
+    font-weight: 400;
+    background: transparent;
+    padding: 0;
+    color: var(--vaadin-secondary-text-color);
+  }
+
+  /* Budget pill dropped on mobile to save space */
+  .mise-header-budget-badge {
+    display: none;
+  }
 }
