@@ -70,7 +70,7 @@ In the demo there is **one household and one user** — no authentication, no sh
 ## 5. Constraints
 
 - **Vaadin AI orchestrator on Spring AI.** The AI integration uses the Vaadin Flow AI support documented at <https://vaadin.com/docs/next/flow/ai-support>. The orchestrator mediates between services and the UI; it does not own data.
-- **Configurable chat model.** The model is swappable via Spring configuration. The demo default is a **local, unlimited-use** OpenAI-compatible endpoint: `Qwen3.6-A3B-UD-Q5_K_XL` at `http://192.168.1.196:8080`. The system must run against any OpenAI-compatible endpoint by changing config alone.
+- **Configurable chat model.** The model is swappable via Spring configuration. The demo default is a **local, unlimited-use** OpenAI-compatible endpoint: `Qwen3.6-35B-A3B-UD-Q5_K_XL` at `http://192.168.1.196:8080`. The system must run against any OpenAI-compatible endpoint by changing config alone.
 - **Service-oriented architecture.** Domain capabilities (`RecipeCatalog`, `PriceCatalog`, `NutritionEstimator`, plan service, conversation service, etc.) sit behind interfaces. Stub implementations in the demo are backed by seed YAML / JSON files; production implementations can replace them without touching the orchestrator or UI.
 - **Bounded AI capabilities.** The AI can only do what the application exposes to it as tools/capabilities. Adding capabilities is a deliberate development act.
 - **Persistent state on H2.** Plans, conversation history, pantry, and preferences persist across restarts using H2 in file mode. Seed data is loaded on first run; in-app changes are written back to H2, not to the seed files.

@@ -22,7 +22,7 @@
   - `provider.DatabaseProvider` — exposes a DB connection to the orchestrator so it can run SQL against H2 directly (used by Grid/Chart controllers; we will also use it for ad-hoc reasoning over plan history in Reports).
   - `grid.GridAIController` + `chart.ChartAIController` — AI-driven Grid and Chart wrappers used by Reports.
   - `common.ChatMessage` — used to serialize and restore conversation history.
-- **Spring AI 1.x** (`spring-ai-openai-spring-boot-starter`) — provides a `ChatClient`/`ChatModel` configured against any OpenAI-compatible endpoint. Wraps the Qwen local model by default.
+- **Spring AI 2.0.0-M4** (`spring-ai-starter-model-openai`) — provides a `ChatClient`/`ChatModel` configured against any OpenAI-compatible endpoint. Wraps the Qwen local model by default. **Pinned to M4** because Vaadin AI components 25.2.0-alpha5 are compiled against that exact milestone; newer milestones (M5/M6) renamed `MessageChatMemoryAdvisor$Builder.conversationId(...)` and break `SpringAILLMProvider` at runtime. Spring AI 1.x is incompatible with Spring Boot 4 entirely (references a removed `RestClientAutoConfiguration` class). Bump in lockstep with Vaadin AI releases only.
 - **Feature flag:** `com.vaadin.experimental.aiComponents=true` in `src/main/resources/vaadin-featureflags.properties`.
 - **Push:** `@Push` on `Application` is required for streaming chat responses.
 
@@ -31,6 +31,7 @@
 - **H2 in file mode** at `./data/mise.mv.db` (configurable via `spring.datasource.url`).
 - **Spring Data JPA** — repositories and JPA entities for application state (household, plans, conversation messages, pantry, view preferences, insights).
 - **Schema management:** `spring.jpa.hibernate.ddl-auto=update` for the demo. (No Flyway/Liquibase — overkill for the demo's scope.)
+- **H2 web console** is accessible at `/h2-console` while the app is running and is linked from the side drawer. Spring Boot 4 removed the bundled `H2ConsoleAutoConfiguration`, so `H2ConsoleConfig` registers the `JakartaWebServlet` explicitly at `${spring.h2.console.path}/*` — the bare `spring.h2.console.*` properties on their own are inert.
 - Recipes and store catalogs are **read-only seed data** loaded from YAML at startup into in-memory caches behind their service interfaces; they are not stored in H2 (editing a YAML file and restarting must visibly change AI reasoning — see `concept_demo_notes.md`).
 
 ### Testing
@@ -76,8 +77,10 @@
 ### Principles
 
 - **Orchestrator mediates; it does not store.** All durable state lives in domain services and H2. The orchestrator carries only the in-flight conversation and the tool bindings.
-- **One conversation, many views.** A **single `AIOrchestrator` per household** drives one shared `MessageList`/`MessageInput` placed in `MainLayout`. The conversation is persisted to H2 via `ConversationService` and rehydrated on app restart through `AIOrchestrator.builder(...).withHistory(...)`. Each view registers view-specific tools/controllers (e.g. `GridAIController` for Reports) with the same orchestrator when entered, and unregisters on leave.
+- **One conversation, many views.** A single `AIOrchestrator` drives one shared `MessageList`/`MessageInput` placed in `MainLayout`. The conversation is persisted to H2 via `ConversationService` and rehydrated on app restart through `AIOrchestrator.builder(...).withHistory(...)`. Each view registers view-specific tools/controllers (e.g. `GridAIController` for Reports) with the same orchestrator when entered, and unregisters on leave.
+  - **Scope is per-UI** in the demo (the orchestrator binds to the UI's `MessageList`/`MessageInput` in `MainLayout`'s constructor). Conversation persistence via H2 means a second browser tab sees the same chat history — they just get separate live orchestrator instances. Multi-UI conflict is not a stage-1 concern for the single-user demo.
 - **AI output is structured data.** Tools return DTOs. The UI reacts to service-level state changes via Vaadin Signals or repository-event listeners, not by parsing chat text.
+- **Persist by list position, not by `messageId`.** Vaadin's `AIOrchestrator` builds the assistant `ChatMessage` with `messageId = null` (verified in the orchestrator bytecode at `streamResponseToMessage`). `ConversationService` syncs by appending anything beyond `repository.count()` rather than deduping on messageId, so the assistant turn isn't silently dropped.
 - **Capabilities are bounded.** Tools are declared explicitly with `@org.springframework.ai.tool.annotation.Tool`. The AI cannot reach beyond them.
 - **Pluggable adapters.** `RecipeCatalog`, `PriceCatalog`, `NutritionEstimator` have file-backed stub implementations. Production replacements (real APIs) drop in behind the same interface without changes to services, orchestrator, or UI.
 - **Mobile-first.** `MainLayout` uses `AppLayout` with a bottom navbar on narrow widths and a side drawer at desktop widths. The chat panel docks into a `Popover` on mobile and into a side drawer on desktop. Grid and Chart components opt into responsive variants. Behavior is identical at every form factor.
@@ -90,9 +93,10 @@
 com.example.mise/
   Application.java                       — Spring Boot entry + @Push + @StyleSheet(Aura)
   config/
-    AIConfig.java                        — ChatClient + SpringAILLMProvider bean wiring
-    ModelProperties.java                 — @ConfigurationProperties("mise.model")
-    SeedDataLoader.java                  — CommandLineRunner: load YAML seeds on first run
+    AIConfig.java                        — SpringAILLMProvider bean wiring (prototype-scoped)
+    H2ConsoleConfig.java                 — explicit JakartaWebServlet registration (Spring Boot 4)
+    ModelProperties.java                 — @ConfigurationProperties("mise.model")  [planned]
+    SeedDataLoader.java                  — CommandLineRunner: load YAML seeds on first run  [planned]
 
   ui/
     MainLayout.java                      — AppLayout with nav + shared chat panel
@@ -115,8 +119,8 @@ com.example.mise/
       ChatLayouts.java                   — layout factory (mirrors the reference example)
 
   ai/
-    HouseholdOrchestrator.java           — @SessionScope bean wrapping AIOrchestrator
-    OrchestratorFactory.java             — builds orchestrator from history + current view tools
+    HouseholdOrchestrator.java           — per-UI wrapper around AIOrchestrator
+    OrchestratorFactory.java             — builds orchestrator from history + current view tools  [planned]
     tools/
       PlanTools.java                     — @Tool methods: swapMeal, pinMeal, regenerateWeek, ...
       ShoppingTools.java                 — @Tool methods: markPantry, switchMode, evaluateDetour, ...
@@ -201,7 +205,7 @@ spring.jpa.hibernate.ddl-auto=update
 # Spring AI — OpenAI-compatible endpoint (default: local Qwen)
 spring.ai.openai.base-url=${MISE_MODEL_BASE_URL:http://192.168.1.196:8080}
 spring.ai.openai.api-key=${MISE_MODEL_API_KEY:not-needed}
-spring.ai.openai.chat.options.model=${MISE_MODEL_NAME:Qwen3.6-A3B-UD-Q5_K_XL}
+spring.ai.openai.chat.options.model=${MISE_MODEL_NAME:Qwen3.6-35B-A3B-UD-Q5_K_XL}
 spring.ai.openai.chat.options.temperature=0.2
 
 # Mise demo
@@ -227,29 +231,33 @@ class AIConfig {
     }
 }
 
-@SpringComponent
-@SessionScope
-class HouseholdOrchestrator {
+// Per-UI: built inside MainLayout's constructor, given the MessageList/MessageInput
+// that Vaadin's AIOrchestrator claims. Not a Spring bean — short-lived companion
+// to the UI. History persists in H2, so multiple UIs see the same conversation.
+public class HouseholdOrchestrator {
     private final AIOrchestrator orchestrator;
+    private final ConversationService conversations;
 
-    HouseholdOrchestrator(LLMProvider llmProvider,
-                          ConversationService conversations,
-                          List<Object> toolBeans, // PlanTools, ShoppingTools, ...
-                          MessageList messageList,
-                          MessageInput messageInput) {
-        var history = conversations.loadHistory(currentHouseholdId());
-        var builder = AIOrchestrator.builder(llmProvider, SYSTEM_PROMPT)
+    public HouseholdOrchestrator(LLMProvider provider,
+                                 ConversationService conversations,
+                                 MessageList messageList,
+                                 MessageInput messageInput) {
+        this.conversations = conversations;
+        var history = conversations.loadHistory();
+        var builder = AIOrchestrator.builder(provider, SYSTEM_PROMPT)
             .withMessageList(messageList)
-            .withInput(messageInput);
-        toolBeans.forEach(builder::withTools);
+            .withInput(messageInput)
+            .withResponseCompleteListener(this::onResponseComplete);
         if (!history.isEmpty()) builder.withHistory(history, Map.of());
         this.orchestrator = builder.build();
-        // Persist every assistant/user turn:
-        orchestrator.addMessageListener(msg ->
-            conversations.append(currentHouseholdId(), msg));
     }
 
-    AIOrchestrator orchestrator() { return orchestrator; }
+    private void onResponseComplete(ResponseCompleteListener.ResponseCompleteEvent e) {
+        // Index-based sync (assistant ChatMessage.messageId is null — see above).
+        conversations.syncFromOrchestrator(orchestrator.getHistory());
+    }
+
+    public AIOrchestrator orchestrator() { return orchestrator; }
 }
 ```
 
