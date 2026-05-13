@@ -265,14 +265,7 @@
     box-sizing: border-box;
   }
 
-  /*
-   * M-8 fix: compact single-row meal item at mobile.
-   *
-   * Grid layout: [day-chip 32px] [info stretch] [actions-pin 32px]
-   * The tags and most action buttons are hidden to reclaim the ~270px
-   * currently consumed by flex-shrink:0 siblings (see audit M-8).
-   * Only the pin button is kept as the single right-side affordance.
-   */
+  /* M-8 fix: compact single-row meal item at mobile (grid: chip + info + pin) */
   .mise-meal-row {
     display: grid;
     grid-template-columns: 32px 1fr 32px;
