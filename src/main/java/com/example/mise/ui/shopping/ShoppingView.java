@@ -176,9 +176,8 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         }
         strip.add(storeBadge);
 
-        // Total cost
+        // Total cost (header strip — mobile only; testid lives on the panel span which is always visible)
         var totalCostSpan = new Span();
-        totalCostSpan.getElement().setAttribute("data-testid", "shopping-total-cost");
         totalCostSpan.addClassName("mise-shopping-total-cost");
         BigDecimal total = list.totalCost() != null ? list.totalCost() : BigDecimal.ZERO;
         totalCostSpan.setText("€" + total.toPlainString());
@@ -282,6 +281,7 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         totalLabel.addClassName("mise-shopping-rec-total-label");
         var totalValue = new Span();
         totalValue.addClassName("mise-shopping-rec-total-value");
+        totalValue.getElement().setAttribute("data-testid", "shopping-total-cost");
         BigDecimal total = list.totalCost() != null ? list.totalCost() : BigDecimal.ZERO;
         totalValue.setText("€" + String.format("%.2f", total));
         totalRow.add(totalLabel, totalValue);

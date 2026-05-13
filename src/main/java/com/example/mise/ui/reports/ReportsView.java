@@ -306,6 +306,10 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
                 DataSeries series = new DataSeries("Cost");
                 PlotOptionsPie plotOpts = new PlotOptionsPie();
                 plotOpts.setInnerSize("50%");
+                // m-2: set data label color to a light value so callouts are readable on dark theme
+                DataLabels dataLabels = new DataLabels();
+                dataLabels.setColor(new com.vaadin.flow.component.charts.model.style.SolidColor("#E4E4E7"));
+                plotOpts.setDataLabels(dataLabels);
                 conf.setPlotOptions(plotOpts);
                 for (var entry : breakdown.entries()) {
                     DataSeriesItem item = new DataSeriesItem(
@@ -368,7 +372,7 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         grid.addColumn(LeaderboardEntry::recipeName).setHeader("Meal").setFlexGrow(3);
         grid.addColumn(LeaderboardEntry::frequency).setHeader("Times").setFlexGrow(1);
         grid.addColumn(e -> "€" + e.averageCost().toPlainString()).setHeader("Avg cost").setFlexGrow(1);
-        grid.addColumn(e -> Math.round(e.averageKcal()) + " kcal").setHeader("Avg kcal").setFlexGrow(1);
+        grid.addColumn(e -> Math.round(e.averageKcal()) + " kcal").setHeader("Kcal avg").setFlexGrow(2);
 
         if (extraColumns.contains("kcalPerEuro")) {
             grid.addColumn(e -> {
