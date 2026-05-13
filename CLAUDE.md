@@ -56,6 +56,13 @@ These are non-obvious behaviors discovered while wiring the prep branches; relev
 - **Vaadin AI components are pinned to Spring AI 2.0.0-M4.** Newer milestones (M5/M6) renamed `MessageChatMemoryAdvisor$Builder.conversationId(...)` and break `SpringAILLMProvider` at runtime with `NoSuchMethodError`. Spring AI 1.x is incompatible with Spring Boot 4 entirely. Bump only when Vaadin republishes.
 - **The assistant `ChatMessage.messageId` is null.** Vaadin's `AIOrchestrator.streamResponseToMessage` builds the assistant turn with `messageId = null`. Anything that dedupes on messageId will silently drop the assistant message — `ConversationService` syncs by list index against `repository.count()` instead.
 
+## Conventions
+
+### CSS
+
+- **No inline CSS for styling.** Don't reach for `element.getStyle().set("foo", "bar")` to apply static styling. Add a class with `element.addClassName("mise-foo")` and put the rule in the matching view CSS file. Inline styles are only acceptable when the value is **computed at runtime per instance** — e.g. a progress bar's width from a percentage, a category color picked from data. For those, drop a one-line comment naming the dynamic source so a future reader doesn't refactor it into a static class.
+- **One CSS file per view, linked from `styles.css`.** The master file at `src/main/resources/META-INF/resources/styles.css` grew past 400 lines as a single monolith and became hard to scan; new view styles live next to it as `mise-<view>.css` and are pulled in via plain CSS `@import "mise-<view>.css";` at the top of `styles.css` — the same pattern already used for `mise-dark.css`. The master file keeps: app-level custom properties (`--mise-category-*`, surface tokens), genuinely cross-view rules, and the `@import` roster. Per-view selectors (prefixed `mise-<view>-...`) live in their own file. When implementing a new view, create `mise-<view>.css`, add the `@import`, and put every selector for that view there.
+
 ## Guardrails
 
 - Do not modify `pom.xml` without asking. (Necessary for stack changes; ask first.)
