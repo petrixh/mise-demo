@@ -1,0 +1,36 @@
+id: local-market
+name: "Local Market"
+detourMinutesFromRoute: 15
+defaultStore: false
+catalog:
+  - ingredientName: salmon fillet
+    price: 7.99
+    unit: 100g
+    packSize: 300
+    onSale: false
+  - ingredientName: dill
+    price: 0.99
+    unit: bunch
+    packSize: 1
+    onSale: false
+  - ingredientName: basil
+    price: 0.99
+    unit: bunch
+    packSize: 1
+    onSale: true
+    saleUntil: "2026-05-31"
+  - ingredientName: parsnip
+    price: 0.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: apple
+    price: 1.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: cherry tomatoes
+    price: 1.99
+    unit: 250g
+    packSize: 1
+    onSale: false

@@ -1,0 +1,54 @@
+id: turkey-roast
+name: "Roast Turkey Breast"
+cuisine: European
+categoryTags: [poultry, hosting, weekend, gluten-free]
+prepMinutes: 90
+defaultServings: 6
+estimatedCost: 22.00
+ingredients:
+  - name: turkey breast
+    quantity: 1200
+    unit: g
+    aisle: meat
+    optional: false
+  - name: butter
+    quantity: 60
+    unit: g
+    aisle: dairy
+    optional: false
+  - name: garlic
+    quantity: 6
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: thyme
+    quantity: 10
+    unit: g
+    aisle: dry-goods
+    optional: true
+  - name: rosemary
+    quantity: 10
+    unit: g
+    aisle: produce
+    optional: true
+  - name: onion
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: carrot
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: vegetable stock
+    quantity: 300
+    unit: ml
+    aisle: dry-goods
+    optional: false
+macros:
+  kcal: 420
+  protein: 58
+  carb: 8
+  fat: 18
+notes: "Great for Saturday hosting. Rest 20 min before carving."

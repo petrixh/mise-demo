@@ -16,6 +16,10 @@ import java.util.Map;
  * <p>History is loaded from {@link ConversationService} on construction and
  * persisted back on every {@code responseComplete} event, so the conversation
  * survives JVM restarts.
+ *
+ * <p>Tools are registered at build time via {@link AIOrchestrator.Builder#withTools}.
+ * The tools array is passed in from {@link com.example.mise.ui.MainLayout} which
+ * receives them as Spring beans (PlanTools, future ShoppingTools, etc.).
  */
 public class HouseholdOrchestrator {
 
@@ -23,15 +27,22 @@ public class HouseholdOrchestrator {
             You are Mise, a warm and pragmatic assistant for a home cook's weekly meal planning.
             Be brief. Do not narrate what you are about to do — do it and report concisely.
             Never invent prices, calorie counts, or quantities; if you don't have the data, say so.
+            When answering questions about the meal plan, use the available tools to look up
+            real data rather than guessing.
             """;
 
     private final AIOrchestrator orchestrator;
     private final ConversationService conversationService;
 
+    /**
+     * Builds the orchestrator with optional tools (e.g. PlanTools).
+     * Tools may be null or empty for contexts that don't require them.
+     */
     public HouseholdOrchestrator(LLMProvider provider,
                                  ConversationService conversationService,
                                  MessageList messageList,
-                                 MessageInput messageInput) {
+                                 MessageInput messageInput,
+                                 Object... tools) {
         this.conversationService = conversationService;
 
         var history = conversationService.loadHistory();
@@ -41,6 +52,10 @@ public class HouseholdOrchestrator {
                 .withInput(messageInput)
                 .withAssistantName("Mise")
                 .withResponseCompleteListener(this::onResponseComplete);
+
+        if (tools != null && tools.length > 0) {
+            builder.withTools(tools);
+        }
 
         if (!history.isEmpty()) {
             builder.withHistory(history, Map.of());

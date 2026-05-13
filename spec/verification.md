@@ -13,6 +13,15 @@ Use the Playwright MCP server to visually verify each use case after implementat
 
 Unless the use case specifies a particular resolution or size, use **1920×1080** as the default browser resolution for desktop checks. Mobile-first use cases (UC-005 Shopping, and the responsive aspects of UC-002 / UC-007) also require a **390×844** (iPhone 14 baseline) check.
 
+### Design system & mockups
+
+Visual checks are graded against two artefacts:
+
+- [`../ai-meal-planner/mise/design-system.md`](../ai-meal-planner/mise/design-system.md) — the **semantic** language: which color means which category, what the "edited by AI" highlight looks like, the recurring component patterns (KPI card, meal row, save-elsewhere hint, recommendation card, chat dock). Use it to grade *intent*, not hex values.
+- [`../ai-meal-planner/mise/*.png`](../ai-meal-planner/mise/) — the **mockups**: Plan / Shopping / Reports at desktop and mobile. Use them for **look-and-feel parity** — layout, component placement, density, hierarchy — *not* pixel-matching. Data in the running app is dynamic and will not match the mockup values, so judge structure not content.
+
+Not every use case has a corresponding mockup (UC-001 onboarding is chat-only; UC-006 detour is reasoning in the existing chat; UC-009 insights renders as a banner). When no mockup exists, fall back to design-system rules and the use case's UI/Routes section.
+
 ### Steps
 
 1. **Ensure the application is running** (`./mvnw`).
@@ -87,6 +96,14 @@ Because most of this app's behavior is driven by an LLM, plain UI verification i
 - [ ] Loading states and transitions are smooth
 - [ ] Responsive at mobile (390) and desktop (1920) widths
 
+#### Visual comparison (where a mockup exists)
+
+- [ ] Component placement matches the mockup (header, side panels, chat dock anchored bottom, tabs at top)
+- [ ] Color usage honors the design system (category colors stable across views, edited highlight uses the attention color, status colors not reused decoratively)
+- [ ] Typography hierarchy matches (KPI headline / body / meta / tag scale; uppercase labels with tracking for structural headers)
+- [ ] Spacing and density feel close (card padding, list-row padding, KPI gap, hairline borders)
+- [ ] Recurring patterns are reused, not reinvented (meal row, save-elsewhere strip, recommendation card, AI insight callout, chat dock)
+
 #### AI (where applicable)
 
 - [ ] AI responses are grounded in real data (no fabricated prices / quantities / macros)
@@ -118,6 +135,17 @@ Because most of this app's behavior is driven by an LLM, plain UI verification i
 - [ ] Chat occupies full height; input is autofocused
 - [ ] Looks coherent at 390 and 1920
 
+#### Visual comparison
+
+UC-001 (the `/welcome` view) has **no dedicated mockup**. Grade against the design system only:
+
+- [ ] Chat dock uses the input-pill shape from the design system (rounded ~`20px`, plus / mic / send affordances tolerated absent)
+- [ ] Typography hierarchy follows the chat-message rules (body 13px, looser line-height)
+- [ ] Surface levels reasonable: page background, chat container on a one-step-darker surface, message bubbles on the primary surface
+- [ ] No ad-hoc colors — Aura theme tokens drive every fill and border
+
+After onboarding completes, the auto-navigated `/plan` view can be compared against [`Plan-desktop.png`](../ai-meal-planner/mise/Plan-desktop.png) and [`Plan-mobile.png`](../ai-meal-planner/mise/Plan-mobile.png), but only as a stub baseline — UC-002 owns the real Plan look-and-feel.
+
 #### AI
 
 - [ ] Asked allergies don't appear in any seeded meal
@@ -146,6 +174,21 @@ Because most of this app's behavior is driven by an LLM, plain UI verification i
 - [ ] Three-column at ≥ 1024px, two-column at 640–1023, single-column at < 640
 - [ ] Mobile shows chat FAB → Popover
 - [ ] "Edited" pill matches Aura badge style
+
+#### Visual comparison
+
+Compared against [`Plan-desktop.png`](../ai-meal-planner/mise/Plan-desktop.png) and [`Plan-mobile.png`](../ai-meal-planner/mise/Plan-mobile.png), plus the design system:
+
+- [ ] **Dark theme** as the default (mockups are dark mode — Aura's `theme="dark"` or equivalent applied on the app shell)
+- [ ] Tabs at top of the canvas (Plan / Shopping / Reports), active tab has a 2px bottom border in primary text color
+- [ ] KPI strip with uppercase-tracking labels and large headline numbers; deltas (when present) use the success/attention status colors
+- [ ] Meal grid uses the **meal row** pattern from the design system: day chip (uppercase, 11px) + meal name + "prep · cost · kcal" meta line + right-aligned tag/status
+- [ ] "Cost by category" bars on the right (desktop) / below the grid (mobile) use the **category colors** (Protein purple, Produce green, Pantry orange, Dairy pink, Other gray)
+- [ ] AI-edited row carries the **attention/amber** tint plus an "edited" pill; not arbitrary highlight
+- [ ] Tag pills (`veg`, `fish`) use the Produce-light / Info-light tag palette per design-system §"Tags"
+- [ ] Chat dock anchored at the bottom of the view at every form factor; identical between desktop and mobile per design-system §"Chat dock"
+- [ ] Responsive reshape: KPI strip becomes 2×2 on mobile, side panel stacks below grid, tabs stay at top
+- [ ] No ad-hoc inline hex — Aura tokens + `--mise-category-*` properties drive all color
 
 #### AI
 

@@ -1,0 +1,270 @@
+id: prima
+name: "Prima Supermarket"
+detourMinutesFromRoute: 0
+defaultStore: true
+catalog:
+  - ingredientName: salmon fillet
+    price: 13.98
+    unit: 100g
+    packSize: 400
+    onSale: false
+  - ingredientName: cod fillet
+    price: 5.99
+    unit: 100g
+    packSize: 300
+    onSale: false
+  - ingredientName: canned tuna
+    price: 1.49
+    unit: 185g
+    packSize: 1
+    onSale: false
+  - ingredientName: chicken breast
+    price: 4.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: chicken thighs
+    price: 3.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: ground beef
+    price: 5.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: ground pork
+    price: 4.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: beef stew meat
+    price: 8.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: pork chops
+    price: 6.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: turkey breast
+    price: 9.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: pasta
+    price: 1.29
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: spaghetti
+    price: 1.29
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: rice
+    price: 1.49
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: arborio rice
+    price: 2.49
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: noodles
+    price: 1.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: canned tomatoes
+    price: 0.99
+    unit: 400g
+    packSize: 1
+    onSale: false
+  - ingredientName: vegetable stock
+    price: 1.99
+    unit: liter
+    packSize: 1
+    onSale: false
+  - ingredientName: coconut milk
+    price: 1.99
+    unit: can
+    packSize: 1
+    onSale: false
+  - ingredientName: red lentils
+    price: 2.49
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: breadcrumbs
+    price: 1.29
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: cream
+    price: 1.79
+    unit: 200ml
+    packSize: 1
+    onSale: false
+  - ingredientName: milk
+    price: 1.09
+    unit: liter
+    packSize: 1
+    onSale: false
+  - ingredientName: butter
+    price: 2.49
+    unit: 250g
+    packSize: 1
+    onSale: false
+  - ingredientName: egg
+    price: 2.99
+    unit: dozen
+    packSize: 1
+    onSale: false
+  - ingredientName: parmesan
+    price: 3.99
+    unit: 100g
+    packSize: 1
+    onSale: false
+  - ingredientName: garlic
+    price: 0.89
+    unit: head
+    packSize: 1
+    onSale: false
+  - ingredientName: onion
+    price: 1.49
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: carrot
+    price: 1.29
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: potato
+    price: 1.49
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: lemon
+    price: 0.69
+    unit: piece
+    packSize: 1
+    onSale: false
+  - ingredientName: dill
+    price: 1.29
+    unit: bunch
+    packSize: 1
+    onSale: false
+  - ingredientName: basil
+    price: 1.49
+    unit: bunch
+    packSize: 1
+    onSale: false
+  - ingredientName: rosemary
+    price: 0.99
+    unit: bunch
+    packSize: 1
+    onSale: false
+  - ingredientName: thyme
+    price: 0.99
+    unit: bunch
+    packSize: 1
+    onSale: false
+  - ingredientName: ginger
+    price: 1.49
+    unit: 100g
+    packSize: 1
+    onSale: false
+  - ingredientName: olive oil
+    price: 4.99
+    unit: 500ml
+    packSize: 1
+    onSale: false
+  - ingredientName: sesame oil
+    price: 3.49
+    unit: 250ml
+    packSize: 1
+    onSale: false
+  - ingredientName: soy sauce
+    price: 2.49
+    unit: 250ml
+    packSize: 1
+    onSale: false
+  - ingredientName: curry powder
+    price: 1.99
+    unit: 50g
+    packSize: 1
+    onSale: false
+  - ingredientName: cumin
+    price: 1.99
+    unit: 50g
+    packSize: 1
+    onSale: false
+  - ingredientName: paprika powder
+    price: 1.49
+    unit: 50g
+    packSize: 1
+    onSale: false
+  - ingredientName: zucchini
+    price: 1.29
+    unit: piece
+    packSize: 1
+    onSale: false
+  - ingredientName: red bell pepper
+    price: 1.49
+    unit: piece
+    packSize: 1
+    onSale: false
+  - ingredientName: cherry tomatoes
+    price: 2.49
+    unit: 250g
+    packSize: 1
+    onSale: false
+  - ingredientName: broccoli
+    price: 1.99
+    unit: head
+    packSize: 1
+    onSale: false
+  - ingredientName: frozen peas
+    price: 2.29
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: parsnip
+    price: 1.49
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: romaine lettuce
+    price: 1.99
+    unit: head
+    packSize: 1
+    onSale: false
+  - ingredientName: croutons
+    price: 1.49
+    unit: 100g
+    packSize: 1
+    onSale: false
+  - ingredientName: apple
+    price: 2.49
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: white wine
+    price: 7.99
+    unit: 750ml
+    packSize: 1
+    onSale: false
+  - ingredientName: flour
+    price: 1.09
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: sugar
+    price: 1.29
+    unit: kg
+    packSize: 1
+    onSale: false

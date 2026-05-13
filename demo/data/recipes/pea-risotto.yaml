@@ -1,0 +1,54 @@
+id: pea-risotto
+name: "Spring Pea Risotto"
+cuisine: Italian
+categoryTags: [vegetarian, rice, weekend, comfort]
+prepMinutes: 45
+defaultServings: 4
+estimatedCost: 9.50
+ingredients:
+  - name: arborio rice
+    quantity: 320
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: frozen peas
+    quantity: 250
+    unit: g
+    aisle: frozen
+    optional: false
+  - name: onion
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: garlic
+    quantity: 2
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: vegetable stock
+    quantity: 1200
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: butter
+    quantity: 50
+    unit: g
+    aisle: dairy
+    optional: false
+  - name: parmesan
+    quantity: 80
+    unit: g
+    aisle: dairy
+    optional: false
+  - name: white wine
+    quantity: 100
+    unit: ml
+    aisle: beverages
+    optional: true
+macros:
+  kcal: 490
+  protein: 15
+  carb: 72
+  fat: 14
+notes: "Stir continuously while adding stock in ladles."

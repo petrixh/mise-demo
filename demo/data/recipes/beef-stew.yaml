@@ -1,0 +1,59 @@
+id: beef-stew
+name: "Hearty Beef Stew"
+cuisine: European
+categoryTags: [meat, comfort, weekend, slow-cook]
+prepMinutes: 90
+defaultServings: 4
+estimatedCost: 18.00
+ingredients:
+  - name: beef stew meat
+    quantity: 600
+    unit: g
+    aisle: meat
+    optional: false
+  - name: carrot
+    quantity: 3
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: potato
+    quantity: 4
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: onion
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: garlic
+    quantity: 4
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: canned tomatoes
+    quantity: 400
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: vegetable stock
+    quantity: 500
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: olive oil
+    quantity: 30
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: thyme
+    quantity: 5
+    unit: g
+    aisle: dry-goods
+    optional: true
+macros:
+  kcal: 480
+  protein: 42
+  carb: 35
+  fat: 16
+notes: "Better the next day. Freeze leftovers."

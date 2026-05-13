@@ -1,0 +1,185 @@
+package com.example.mise.domain.plan;
+
+import com.example.mise.capabilities.recipes.Recipe;
+import com.example.mise.capabilities.recipes.RecipeCatalog;
+import com.example.mise.domain.household.Household;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Creates and manages weekly dinner plans.
+ * Plan generation picks 7 distinct recipes per week honoring allergies (hard exclusions)
+ * and soft-avoiding hated foods.
+ */
+@Service
+public class PlanService {
+
+    private static final Logger log = LoggerFactory.getLogger(PlanService.class);
+
+    private final PlanRepository planRepository;
+    private final MealRepository mealRepository;
+
+    public PlanService(PlanRepository planRepository, MealRepository mealRepository) {
+        this.planRepository = planRepository;
+        this.mealRepository = mealRepository;
+    }
+
+    /** Returns the active plan for a household, if any. */
+    @Transactional(readOnly = true)
+    public Optional<Plan> findActivePlan(Long householdId) {
+        return planRepository.findByHouseholdIdAndStatus(householdId, Plan.Status.ACTIVE);
+    }
+
+    /** Returns all plans for a household, most recent first. */
+    @Transactional(readOnly = true)
+    public List<Plan> findAllPlans(Long householdId) {
+        return planRepository.findByHouseholdIdOrderByWeekStartDateDesc(householdId);
+    }
+
+    /** Returns meals for a given plan. */
+    @Transactional(readOnly = true)
+    public List<Meal> findMeals(Long planId) {
+        return mealRepository.findByPlanIdOrderByDateAsc(planId);
+    }
+
+    /**
+     * Generates the current active week's plan for the household.
+     * weekStartDate is the Monday of the current week.
+     */
+    @Transactional
+    public Plan generateActivePlan(Household household, RecipeCatalog recipeCatalog) {
+        LocalDate monday = currentWeekMonday();
+        return generatePlan(household, recipeCatalog, monday, Plan.Status.ACTIVE, Meal.Status.PLANNED);
+    }
+
+    /**
+     * Seeds {@code seedWeeks} historical plans going back from the current week.
+     * Each historical week uses COOKED status on meals.
+     */
+    @Transactional
+    public List<Plan> seedHistory(Household household, int seedWeeks, RecipeCatalog recipeCatalog) {
+        LocalDate monday = currentWeekMonday();
+        List<Plan> seeded = new ArrayList<>();
+        for (int i = 1; i <= seedWeeks; i++) {
+            LocalDate weekStart = monday.minusWeeks(i);
+            var plan = generatePlan(household, recipeCatalog, weekStart, Plan.Status.HISTORICAL, Meal.Status.COOKED);
+            seeded.add(plan);
+        }
+        return seeded;
+    }
+
+    /** Returns Monday of the current week. */
+    public static LocalDate currentWeekMonday() {
+        LocalDate today = LocalDate.now();
+        return today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    }
+
+    private Plan generatePlan(Household household, RecipeCatalog recipeCatalog,
+                               LocalDate weekStart, Plan.Status planStatus, Meal.Status mealStatus) {
+        var plan = new Plan();
+        plan.setHouseholdId(household.getId());
+        plan.setWeekStartDate(weekStart);
+        plan.setStatus(planStatus);
+        var savedPlan = planRepository.save(plan);
+
+        // Pick 7 recipes for the week
+        List<Recipe> eligible = eligibleRecipes(recipeCatalog, household);
+        List<Recipe> chosen = pickDistinct(eligible, 7);
+
+        for (int day = 0; day < 7; day++) {
+            var meal = new Meal();
+            meal.setPlanId(savedPlan.getId());
+            meal.setDate(weekStart.plusDays(day));
+            meal.setSlot(Meal.Slot.DINNER);
+            meal.setServings(household.getSize());
+            meal.setStatus(mealStatus);
+            meal.setLastEditedBy(Meal.Editor.USER);
+
+            if (day < chosen.size()) {
+                meal.setRecipeRef(chosen.get(day).getId());
+            } else {
+                // Fallback: reuse first recipe
+                meal.setRecipeRef(chosen.isEmpty() ? "unknown" : chosen.get(0).getId());
+            }
+            mealRepository.save(meal);
+        }
+
+        log.info("Generated {} plan for week {} with {} meals",
+                planStatus, weekStart, Math.min(chosen.size(), 7));
+        return savedPlan;
+    }
+
+    /**
+     * Returns all recipes that pass the hard allergy constraint.
+     * Soft-avoids hated foods but includes them if we'd otherwise fall below 7.
+     */
+    private List<Recipe> eligibleRecipes(RecipeCatalog catalog, Household household) {
+        var all = catalog.findAll();
+        var allergies = household.getAllergies();
+        var hated = household.getHatedFoods();
+
+        // Hard filter: remove allergen-containing recipes
+        var noAllergens = all.stream()
+                .filter(r -> allergies == null || allergies.stream().noneMatch(r::containsAllergen))
+                .toList();
+
+        // Soft filter: prefer non-hated
+        var preferred = noAllergens.stream()
+                .filter(r -> hated == null || hated.stream().noneMatch(t -> r.getName().toLowerCase().contains(t.toLowerCase())))
+                .toList();
+
+        // Use preferred if we have at least 7; otherwise fall back to noAllergens
+        return preferred.size() >= 7 ? new ArrayList<>(preferred) : new ArrayList<>(noAllergens);
+    }
+
+    /**
+     * Toggles the pinned flag on a meal, updating audit fields.
+     */
+    @Transactional
+    public void pinMeal(Long mealId, boolean pinned) {
+        var meal = mealRepository.findById(mealId)
+                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
+        meal.setPinned(pinned);
+        meal.setLastEditedAt(java.time.Instant.now());
+        meal.setLastEditedBy(Meal.Editor.USER);
+        mealRepository.save(meal);
+    }
+
+    /**
+     * Updates the status of a meal (PLANNED, EDITED, COOKED, SKIPPED).
+     */
+    @Transactional
+    public void markStatus(Long mealId, Meal.Status status) {
+        var meal = mealRepository.findById(mealId)
+                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
+        meal.setStatus(status);
+        meal.setLastEditedAt(java.time.Instant.now());
+        meal.setLastEditedBy(Meal.Editor.USER);
+        mealRepository.save(meal);
+    }
+
+    /** Find a meal by plan and date. */
+    @Transactional(readOnly = true)
+    public Optional<Meal> findMealByDate(Long planId, LocalDate date) {
+        return mealRepository.findByPlanIdOrderByDateAsc(planId).stream()
+                .filter(m -> m.getDate().equals(date))
+                .findFirst();
+    }
+
+    private List<Recipe> pickDistinct(List<Recipe> pool, int count) {
+        if (pool.isEmpty()) return List.of();
+        var shuffled = new ArrayList<>(pool);
+        Collections.shuffle(shuffled);
+        return shuffled.subList(0, Math.min(count, shuffled.size()));
+    }
+}

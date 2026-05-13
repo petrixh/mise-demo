@@ -46,6 +46,18 @@ public class ConversationService {
      */
     @Transactional
     public void syncFromOrchestrator(List<ChatMessage> orchestratorHistory) {
+        syncFromOrchestrator(orchestratorHistory, null);
+    }
+
+    /**
+     * Same as {@link #syncFromOrchestrator(List)} but stamps newly persisted rows
+     * with the given {@link ConversationMessage.ViewContext}.
+     *
+     * @param viewContext may be {@code null} (rows will have no context tag)
+     */
+    @Transactional
+    public void syncFromOrchestrator(List<ChatMessage> orchestratorHistory,
+                                     ConversationMessage.ViewContext viewContext) {
         long persisted = repository.count();
         for (int i = (int) persisted; i < orchestratorHistory.size(); i++) {
             var msg = orchestratorHistory.get(i);
@@ -53,6 +65,7 @@ public class ConversationService {
             row.setMessageId(msg.messageId()); // may be null for assistant turns
             row.setRole(toEntityRole(msg.role()));
             row.setContent(msg.content() == null ? "" : msg.content());
+            row.setViewContext(viewContext);
             repository.save(row);
         }
     }

@@ -1,0 +1,54 @@
+id: chicken-curry
+name: "Mild Chicken Curry"
+cuisine: Indian
+categoryTags: [chicken, curry, spicy, weeknight]
+prepMinutes: 45
+defaultServings: 4
+estimatedCost: 11.50
+ingredients:
+  - name: chicken breast
+    quantity: 700
+    unit: g
+    aisle: meat
+    optional: false
+  - name: onion
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: garlic
+    quantity: 4
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: ginger
+    quantity: 20
+    unit: g
+    aisle: produce
+    optional: false
+  - name: canned tomatoes
+    quantity: 400
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: coconut milk
+    quantity: 400
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: curry powder
+    quantity: 15
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: rice
+    quantity: 300
+    unit: g
+    aisle: dry-goods
+    optional: false
+macros:
+  kcal: 540
+  protein: 48
+  carb: 52
+  fat: 16
+notes: "Adjust chili for heat level."

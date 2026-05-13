@@ -14,6 +14,8 @@ Status lifecycle: **Draft** → **Approved** → **Implemented**
 | `datamodel/datamodel.md` | Entity definitions and relationships | When adding data-driven features |
 | `use-cases/use-case-template.md` | Template for individual feature specs | Copy per feature as `use-case-NNN-short-name.md` |
 | `verification.md` | Visual verification checklists (Playwright MCP) | During and after implementation |
+| `../ai-meal-planner/mise/design-system.md` | Mise design language — colors, typography, spacing, recurring patterns | When implementing or styling any view |
+| `../ai-meal-planner/mise/*.png` | High-fidelity mockups for Plan / Shopping / Reports (desktop + mobile) | Visual comparison during verification — look-and-feel reference, not pixel-perfect target |
 
 ## Workflow
 

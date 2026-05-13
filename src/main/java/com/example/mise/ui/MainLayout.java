@@ -1,28 +1,57 @@
 package com.example.mise.ui;
 
 import com.example.mise.ai.HouseholdOrchestrator;
+import com.example.mise.ai.tools.PlanTools;
 import com.example.mise.domain.conversation.ConversationService;
+import com.example.mise.domain.household.HouseholdService;
+import com.example.mise.domain.plan.PlanService;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.HasComponents;
 import com.vaadin.flow.component.applayout.AppLayout;
-import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
-import com.vaadin.flow.component.html.Anchor;
-import com.vaadin.flow.component.html.AnchorTarget;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
-import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.sidenav.SideNav;
-import com.vaadin.flow.component.sidenav.SideNavItem;
-import com.vaadin.flow.theme.lumo.LumoUtility;
+import com.vaadin.flow.router.AfterNavigationEvent;
+import com.vaadin.flow.router.AfterNavigationObserver;
+import com.vaadin.flow.router.RouterLayout;
 
-public class MainLayout extends AppLayout {
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
+
+/**
+ * UC-002 MainLayout: header + tabs (Plan/Shopping/Reports) + view outlet + chat dock.
+ * The shared {@link HouseholdOrchestrator} lives here and persists across view changes.
+ */
+public class MainLayout extends VerticalLayout
+        implements RouterLayout, AfterNavigationObserver {
+
+    private static final DateTimeFormatter WEEK_FMT = DateTimeFormatter.ofPattern("MMM d");
 
     private final HouseholdOrchestrator household;
+    private final MessageList messageList;
+    private final Span lastAiMessageText;
 
-    public MainLayout(LLMProvider llmProvider, ConversationService conversationService) {
-        var messageList = new MessageList();
+    // Tab elements kept as fields for active-state management
+    private final Div planTab;
+    private final Div shoppingTab;
+    private final Div reportsTab;
+
+    public MainLayout(LLMProvider llmProvider,
+                      ConversationService conversationService,
+                      HouseholdService householdService,
+                      PlanService planService,
+                      PlanTools planTools) {
+        // ── Chat components shared across all views ───────────────────────
+        messageList = new MessageList();
         messageList.setMarkdown(true);
         messageList.setSizeFull();
 
@@ -30,59 +59,137 @@ public class MainLayout extends AppLayout {
         messageInput.setWidthFull();
 
         this.household = new HouseholdOrchestrator(
-                llmProvider, conversationService, messageList, messageInput);
+                llmProvider, conversationService, messageList, messageInput, planTools);
 
-        addToNavbar(buildHeader());
-        addToDrawer(buildDrawer());
-        addToDrawer(buildChatPanel(messageList, messageInput));
+        // ── Shell layout ─────────────────────────────────────────────────
+        setSizeFull();
+        setPadding(false);
+        setSpacing(false);
+        addClassName("mise-shell");
+
+        // Header
+        add(buildHeader(householdService, planService));
+
+        // Tabs
+        planTab = makeTab("Plan", "plan");
+        shoppingTab = makeTab("Shopping", null);
+        reportsTab = makeTab("Reports", null);
+
+        var tabsBar = new Div(planTab, shoppingTab, reportsTab);
+        tabsBar.addClassName("mise-tabs");
+        add(tabsBar);
+
+        // View outlet — Vaadin RouterLayout injects the child route's component here
+        // We use a Div as a container; content is managed by RouterLayout
+        var outlet = new Div();
+        outlet.addClassName("mise-view-outlet");
+        outlet.setSizeFull();
+        add(outlet);
+        expand(outlet);
+
+        // Chat dock
+        lastAiMessageText = new Span();
+        add(buildChatDock(messageInput));
     }
 
-    private HorizontalLayout buildHeader() {
-        var title = new H1("Mise");
-        title.addClassNames(LumoUtility.FontSize.LARGE, LumoUtility.Margin.NONE);
-        var bar = new HorizontalLayout(new DrawerToggle(), title);
-        bar.setWidthFull();
-        bar.expand(title);
-        bar.setPadding(true);
-        bar.setSpacing(true);
-        return bar;
+    // ── RouterLayout contract: the framework will call getContent() to find where to put the child ──
+    // We need to override the content host. Vaadin looks for HasComponents to inject into.
+    // By implementing RouterLayout, the outlet content goes into the VerticalLayout automatically
+    // (VerticalLayout implements HasComponents). We just need the visual structure right.
+    // The VerticalLayout's last "expand" slot holds the route content.
+
+    private Div buildHeader(HouseholdService householdService, PlanService planService) {
+        var brand = new H1("Mise");
+        brand.addClassName("mise-brand");
+
+        String weekLabel = buildWeekLabel(householdService, planService);
+        var weekBadge = new Span(weekLabel);
+        weekBadge.addClassName("mise-week-badge");
+
+        var header = new Div(brand, weekBadge);
+        header.addClassName("mise-header");
+        return header;
     }
 
-    private SideNav buildDrawer() {
-        var nav = new SideNav();
-        nav.addItem(new SideNavItem("Home", HomeView.class, VaadinIcon.HOME.create()));
-
-        // H2 console is a separate servlet, not a Vaadin @Route — render as a
-        // plain anchor styled to fit the side-nav rather than a SideNavItem.
-        var consoleLink = new Anchor("/h2-console", "");
-        consoleLink.setTarget(AnchorTarget.BLANK);
-        consoleLink.add(VaadinIcon.DATABASE.create());
-        var label = new com.vaadin.flow.component.html.Span("H2 Console");
-        label.getStyle().set("margin-left", "var(--lumo-space-s)");
-        consoleLink.add(label);
-        consoleLink.getStyle()
-                .set("display", "flex")
-                .set("align-items", "center")
-                .set("padding", "var(--lumo-space-xs) var(--lumo-space-m)")
-                .set("color", "var(--lumo-body-text-color)")
-                .set("text-decoration", "none");
-        nav.getElement().appendChild(consoleLink.getElement());
-        return nav;
+    private String buildWeekLabel(HouseholdService householdService, PlanService planService) {
+        try {
+            if (householdService.exists()) {
+                var hh = householdService.findHousehold().orElse(null);
+                if (hh != null) {
+                    var plan = planService.findActivePlan(hh.getId()).orElse(null);
+                    if (plan != null) {
+                        LocalDate start = plan.getWeekStartDate();
+                        return "Week of " + start.format(WEEK_FMT);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        LocalDate monday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        return "Week of " + monday.format(WEEK_FMT);
     }
 
-    private VerticalLayout buildChatPanel(MessageList messageList, MessageInput messageInput) {
-        var heading = new com.vaadin.flow.component.html.H2("Chat");
-        heading.addClassNames(LumoUtility.FontSize.MEDIUM, LumoUtility.Margin.NONE);
+    private Div makeTab(String label, String route) {
+        var tab = new Div(new Span(label));
+        tab.addClassName("mise-tab");
+        if (route != null) {
+            tab.addClickListener(e -> UI.getCurrent().navigate(route));
+        } else {
+            // Disabled placeholder tabs show a "coming soon" notification
+            tab.addClickListener(e -> {
+                String msg = "Shopping".equals(label)
+                        ? "Shopping coming in UC-005"
+                        : "Reports coming in UC-007";
+                var n = Notification.show(msg, 2500, Notification.Position.BOTTOM_CENTER);
+                n.addThemeVariants(NotificationVariant.LUMO_PRIMARY);
+            });
+        }
+        return tab;
+    }
 
-        var panel = new VerticalLayout(heading, messageList, messageInput);
-        panel.setSizeFull();
-        panel.setPadding(true);
-        panel.setSpacing(true);
-        panel.expand(messageList);
-        return panel;
+    private Div buildChatDock(MessageInput messageInput) {
+        var sparkle = new Span("✦");
+        sparkle.addClassName("sparkle");
+        lastAiMessageText.setText("Ask Mise anything about your week…");
+
+        var lastMsgRow = new Div(sparkle, lastAiMessageText);
+        lastMsgRow.addClassName("mise-last-ai-message");
+
+        messageInput.setWidthFull();
+
+        var dock = new Div(lastMsgRow, messageInput);
+        dock.addClassName("mise-chat-dock");
+        return dock;
+    }
+
+    /** Sync active tab indicator after navigation. */
+    @Override
+    public void afterNavigation(AfterNavigationEvent event) {
+        String location = event.getLocation().getPath();
+        planTab.getElement().removeAttribute("active");
+        shoppingTab.getElement().removeAttribute("active");
+        reportsTab.getElement().removeAttribute("active");
+
+        if (location.startsWith("plan") || location.isEmpty()) {
+            planTab.getElement().setAttribute("active", true);
+        } else if (location.startsWith("shopping")) {
+            shoppingTab.getElement().setAttribute("active", true);
+        } else if (location.startsWith("reports")) {
+            reportsTab.getElement().setAttribute("active", true);
+        }
+    }
+
+    /** Updates the most-recent AI message line in the chat dock. */
+    public void updateLastAiMessage(String text) {
+        if (text != null && !text.isBlank()) {
+            lastAiMessageText.setText(text.length() > 120 ? text.substring(0, 117) + "…" : text);
+        }
     }
 
     public HouseholdOrchestrator household() {
         return household;
+    }
+
+    public MessageList messageList() {
+        return messageList;
     }
 }

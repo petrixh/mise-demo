@@ -1,0 +1,26 @@
+/* Mise dark theme — Aura configuration */
+
+html {
+  color-scheme: dark;
+  --aura-app-layout-inset: 0px;
+  --aura-background-color-dark: #18181b;
+  --aura-background-color-light: #f4f4f5;
+  --aura-base-font-size: 13;
+  --aura-base-radius: 3;
+  --aura-surface-level: -0.5;
+}
+
+/* Button styling — neutral secondary/default buttons */
+:is(vaadin-button, vaadin-menu-bar-button, vaadin-upload-button):not([theme~="primary"], [theme~="tertiary"]) {
+  --aura-accent-color-light: var(--aura-neutral);
+  --aura-accent-color-dark: var(--aura-neutral);
+  --vaadin-button-background: var(--vaadin-background-container);
+  --vaadin-button-border-color: transparent;
+  --vaadin-button-shadow: none;
+}
+
+/* Card/widget elevation — ensure panels stand out on flat surface */
+vaadin-card,
+vaadin-dashboard-widget {
+  --aura-surface-level: 4;
+}

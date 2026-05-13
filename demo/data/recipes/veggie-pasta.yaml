@@ -1,0 +1,54 @@
+id: veggie-pasta
+name: "Roasted Vegetable Pasta"
+cuisine: Italian
+categoryTags: [vegetarian, pasta, quick, weeknight]
+prepMinutes: 30
+defaultServings: 4
+estimatedCost: 9.00
+ingredients:
+  - name: pasta
+    quantity: 400
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: zucchini
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: red bell pepper
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: cherry tomatoes
+    quantity: 250
+    unit: g
+    aisle: produce
+    optional: false
+  - name: garlic
+    quantity: 4
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: olive oil
+    quantity: 50
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: parmesan
+    quantity: 60
+    unit: g
+    aisle: dairy
+    optional: true
+  - name: basil
+    quantity: 15
+    unit: g
+    aisle: produce
+    optional: true
+macros:
+  kcal: 420
+  protein: 14
+  carb: 72
+  fat: 11
+notes: "Toss with pasta water to create a sauce."

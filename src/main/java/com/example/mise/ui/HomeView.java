@@ -8,8 +8,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
-@Route(value = "", layout = MainLayout.class)
-@PageTitle("Mise")
+@Route(value = "debug", layout = MainLayout.class)
+@PageTitle("Mise — Debug")
 public class HomeView extends VerticalLayout {
 
     public HomeView(ConversationMessageRepository conversations) {

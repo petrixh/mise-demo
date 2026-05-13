@@ -1,0 +1,64 @@
+id: meatballs
+name: "Finnish Meatballs with Gravy"
+cuisine: Finnish
+categoryTags: [meat, comfort, weekend, classic]
+prepMinutes: 50
+defaultServings: 4
+estimatedCost: 13.50
+ingredients:
+  - name: ground beef
+    quantity: 500
+    unit: g
+    aisle: meat
+    optional: false
+  - name: ground pork
+    quantity: 200
+    unit: g
+    aisle: meat
+    optional: false
+  - name: egg
+    quantity: 2
+    unit: piece
+    aisle: dairy
+    optional: false
+  - name: breadcrumbs
+    quantity: 80
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: onion
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: milk
+    quantity: 100
+    unit: ml
+    aisle: dairy
+    optional: false
+  - name: butter
+    quantity: 30
+    unit: g
+    aisle: dairy
+    optional: false
+  - name: cream
+    quantity: 200
+    unit: ml
+    aisle: dairy
+    optional: false
+  - name: vegetable stock
+    quantity: 200
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: potato
+    quantity: 4
+    unit: piece
+    aisle: produce
+    optional: false
+macros:
+  kcal: 590
+  protein: 46
+  carb: 42
+  fat: 28
+notes: "Serve with lingonberry jam and mashed potatoes."

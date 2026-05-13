@@ -1,0 +1,54 @@
+id: chicken-stir-fry
+name: "Chicken Stir Fry with Noodles"
+cuisine: Asian
+categoryTags: [chicken, noodles, quick, weeknight]
+prepMinutes: 25
+defaultServings: 4
+estimatedCost: 10.50
+ingredients:
+  - name: chicken breast
+    quantity: 600
+    unit: g
+    aisle: meat
+    optional: false
+  - name: noodles
+    quantity: 300
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: broccoli
+    quantity: 300
+    unit: g
+    aisle: produce
+    optional: false
+  - name: carrot
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: soy sauce
+    quantity: 50
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: ginger
+    quantity: 15
+    unit: g
+    aisle: produce
+    optional: false
+  - name: garlic
+    quantity: 3
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: sesame oil
+    quantity: 15
+    unit: ml
+    aisle: dry-goods
+    optional: false
+macros:
+  kcal: 480
+  protein: 44
+  carb: 52
+  fat: 10
+notes: "High heat, quick cook. Prep all ingredients before you start."
