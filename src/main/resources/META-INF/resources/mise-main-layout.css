@@ -86,6 +86,18 @@
   overflow-y: auto;
   padding-bottom: 90px !important;
   box-sizing: border-box;
+  transition: padding-bottom 0.2s ease;
+}
+
+/*
+ * When the chat dock receives focus, its chat-history region expands to
+ * max-height: 240px (see below). Match the view's bottom padding so the
+ * scrollable region pushes upward instead of being overlapped — the user
+ * can still see the meal grid above the now-tall dock and the chat
+ * history scrolls in its own region.
+ */
+.mise-shell:has(.mise-chat-dock:focus-within) > vaadin-vertical-layout {
+  padding-bottom: 340px !important;
 }
 
 /* ── Chat dock (bottom, full width) ─────────────────────────────────────── */
