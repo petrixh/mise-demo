@@ -67,3 +67,31 @@
 | Route | Access | Notes |
 |-------|--------|-------|
 | `/plan` | public | Same view as UC-002; mutation paths are tool calls invoked by the orchestrator. |
+
+---
+
+## Verification
+
+#### Functional
+
+- [ ] Single swap produces exactly one `MealEdit`, the right row flips, KPIs & shopping list update
+- [ ] Constraint negotiation result respects all named constraints atomically (BR-04)
+- [ ] Pin prevents edits to that meal (BR-03)
+- [ ] Infeasible request returns a "best I could do" explanation (BR-07)
+- [ ] Allergic ingredients never appear in any AI-proposed meal, even under explicit prompting (BR-02)
+
+#### Visual
+
+- [ ] All changed rows show "edited" pill for the configured window
+- [ ] Pin icon visible on every row; toggles state correctly
+
+#### AI
+
+- [ ] `MealEdit.reason` populated with a non-empty, plausible justification
+- [ ] No fabricated kcal / cost values in chat replies (cross-check against the recipe & price catalog)
+- [ ] Single-swap latency ≤ 2s; negotiation ≤ 5s with progressive feedback
+
+#### Result
+
+- **Status:**
+- **Notes:**

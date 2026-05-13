@@ -20,11 +20,15 @@ Mise — a weekly meal planner that demonstrates a deeply AI-integrated Vaadin a
 ```bash
 ./mvnw                            # Run in dev mode (default goal: spring-boot:run)
 ./mvnw clean package              # Production build (JAR in target/)
-./mvnw test                       # Run all tests
+./mvnw test                       # Run unit + browserless-component tests
 ./mvnw test -Dtest=ClassName      # Run a single test class
+./mvnw -Pit verify                # Run *IT.java Playwright browser tests (opt-in)
+./mvnw -Pit verify -Dit.test=X    # Run a single IT class
 ```
 
 The app runs on port 8080 (configurable via `PORT` env var). Default chat model points at the local Qwen at `http://192.168.1.196:8080`; override with `MISE_MODEL_BASE_URL`, `MISE_MODEL_API_KEY`, `MISE_MODEL_NAME`.
+
+Integration tests run a real Chromium via [Microsoft Playwright](https://playwright.dev/java/) with [DramaFinder](https://github.com/parttio/dramafinder) wrappers for Vaadin locators. They live under `src/test/java/com/example/mise/it/`, default to headless (works in the dev container), and isolate themselves from the dev DB via an in-memory H2 in `src/test/resources/application-it.properties`. First run rebuilds the Vaadin frontend bundle (3–5 min); subsequent runs are ~25s. See the **Running integration tests** section in [`README.md`](README.md) for headed-mode usage.
 
 ## Specifications
 
@@ -34,7 +38,15 @@ Project specs live in `spec/`. Read [`spec/README.md`](spec/README.md) first. Ke
 - [`architecture.md`](spec/architecture.md) — tech stack, package layout, AI wiring
 - [`datamodel/datamodel.md`](spec/datamodel/datamodel.md) — persistent entities, seed-data DTOs, UC ↔ entity matrix
 - [`use-cases/`](spec/use-cases/) — UC-001 through UC-009 (Draft)
-- [`verification.md`](spec/verification.md) — per-use-case verification checklists + AI-specific checks
+- [`verification.md`](spec/verification.md) — verification methodology (visual / AI / automated baselines); per-UC checklists live in each [`use-cases/use-case-NNN-*.md`](spec/use-cases/) under its own `## Verification` section
+
+## Skills available in this repo
+
+The project ships custom skills under [`.claude/skills/`](.claude/skills/) — invoke them with `/<skill>` or by trigger phrase. Notable ones:
+
+- **`implement-uc`** — orchestrates use-case implementation via subagents (impl, visual verify, AI verify) with file-based progress tracking.
+- **`spec-*`** — `spec-status`, `spec-validate`, `spec-architect`, `spec-interview`, `spec-generate` for working with the spec tree.
+- **`vaadin-playwright-test`** — generates `*IT.java` tests for a Vaadin view using DramaFinder element wrappers. Triggers on "write an IT test for X", "DramaFinder", "Playwright test". Vendored from [parttio/dramafinder](https://github.com/parttio/dramafinder) under Apache 2.
 
 ## Sharp edges to know about
 

@@ -63,3 +63,29 @@
 |-------|--------|-------|
 | `/shopping` | public | Same as UC-005. |
 | `/plan` | public | Reflects alternative-swap outcomes. |
+
+---
+
+## Verification
+
+#### Functional
+
+- [ ] *"Should I bother with Lidl?"* produces a verdict naming specific items and savings (default data: "not worth it")
+- [ ] Editing `stores/lidl.yaml` salmon price → restart → re-ask: verdict flips to "worth it" and cites the new price (BR-06 — the demo headline)
+- [ ] *"Savings without the detour"* triggers a UC-003 plan swap with a documented `MealEdit`
+- [ ] Detour verdicts never auto-change the recommended store (BR-03)
+- [ ] Missing price → explicit "I don't have a price for X" (BR-01)
+
+#### Visual
+
+- [ ] *Cheapest mix* mode may flash a "consider Lidl?" hint; verdict text lives in chat
+
+#### AI
+
+- [ ] Verdict reasoning references real prices and `detourMinutesFromRoute` values
+- [ ] No invented prices or distances
+
+#### Result
+
+- **Status:**
+- **Notes:**

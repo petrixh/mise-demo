@@ -68,3 +68,31 @@
 | Route | Access | Notes |
 |-------|--------|-------|
 | `/reports` | public | `@Route("reports")`. |
+
+---
+
+## Verification
+
+#### Functional
+
+- [ ] Post-onboarding `/reports` shows ≥ 4 weeks of data in three default widgets
+- [ ] *"Add kcal-per-euro column"* adds a column with values = `meal.kcal / meal.estimatedCost`; persisted via `ViewPreference`; survives reload (BR-04)
+- [ ] *"Show as horizontal bar"* transforms donut → bar; persisted; survives reload
+- [ ] *"Reset the leaderboard"* removes the customization
+- [ ] Request for non-derivable column (e.g. carbon footprint) → explicit refusal (BR-03)
+- [ ] Reports controllers attach on enter and detach on leave (BR-07)
+
+#### Visual
+
+- [ ] Vaadin `Dashboard` with three widgets; chat icon on each widget
+- [ ] Transform highlight fades over a few seconds
+
+#### AI
+
+- [ ] "Why was last week cheaper?" names ≥ 1 concrete meal/category from that week
+- [ ] No fabricated historical prices
+
+#### Result
+
+- **Status:**
+- **Notes:**

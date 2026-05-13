@@ -56,3 +56,45 @@
 |-------|--------|-------|
 | `/` | public (single-user demo) | Redirects to `/plan`. |
 | `/plan` | public | `@Route("plan")`. Default landing view after onboarding. |
+
+---
+
+## Verification
+
+#### Functional
+
+- [ ] `/plan` renders KPI strip, 7-row meal grid, and chat within 2s (excluding LLM)
+- [ ] Weekly cost equals sum of priced meal items at current `PriceCatalog`
+- [ ] Pin survives reload (`Meal.pinned`)
+- [ ] BR-01..BR-06 enforced (single `ACTIVE` plan, empty-slot placeholders, stats recompute, edited pill window, no inline edits except pin/cooked/skipped, chat shared with other views)
+
+#### Visual
+
+- [ ] Three-column at ≥ 1024px, two-column at 640–1023, single-column at < 640
+- [ ] Mobile shows chat FAB → Popover
+- [ ] "Edited" pill matches Aura badge style
+
+#### Visual comparison
+
+Compared against [`Plan-desktop.png`](../ai-meal-planner/mise/Plan-desktop.png) and [`Plan-mobile.png`](../ai-meal-planner/mise/Plan-mobile.png), plus the design system:
+
+- [ ] **Dark theme** as the default (mockups are dark mode — Aura's `theme="dark"` or equivalent applied on the app shell)
+- [ ] Tabs at top of the canvas (Plan / Shopping / Reports), active tab has a 2px bottom border in primary text color
+- [ ] KPI strip with uppercase-tracking labels and large headline numbers; deltas (when present) use the success/attention status colors
+- [ ] Meal grid uses the **meal row** pattern from the design system: day chip (uppercase, 11px) + meal name + "prep · cost · kcal" meta line + right-aligned tag/status
+- [ ] "Cost by category" bars on the right (desktop) / below the grid (mobile) use the **category colors** (Protein purple, Produce green, Pantry orange, Dairy pink, Other gray)
+- [ ] AI-edited row carries the **attention/amber** tint plus an "edited" pill; not arbitrary highlight
+- [ ] Tag pills (`veg`, `fish`) use the Produce-light / Info-light tag palette per design-system §"Tags"
+- [ ] Chat dock anchored at the bottom of the view at every form factor; identical between desktop and mobile per design-system §"Chat dock"
+- [ ] Responsive reshape: KPI strip becomes 2×2 on mobile, side panel stacks below grid, tabs stay at top
+- [ ] No ad-hoc inline hex — Aura tokens + `--mise-category-*` properties drive all color
+
+#### AI
+
+- [ ] *"What's on Friday?"* returns the actual Friday meal and one-line description
+- [ ] Editing a `stores/*.yaml` price + restart changes the cost KPI
+
+#### Result
+
+- **Status:**
+- **Notes:**

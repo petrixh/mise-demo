@@ -62,3 +62,31 @@
 | Route | Access | Notes |
 |-------|--------|-------|
 | `/shopping` | public | `@Route("shopping")`. |
+
+---
+
+## Verification
+
+#### Functional
+
+- [ ] Two recipes sharing an ingredient consolidate to one row in correct unit (BR-02)
+- [ ] Staple pantry items hidden (BR-03); non-staple needs explicit *"already have"* (BR-04)
+- [ ] Store mode toggle persists to `ViewPreference` and survives reload (BR-05)
+- [ ] Plan edit reflows shopping list within 2s (BR-08)
+- [ ] Check-off state is session-local; resets on plan change (BR-07)
+
+#### Visual
+
+- [ ] Mobile is primary form factor — large tap targets, sticky aisle headers
+- [ ] "You already have" section collapsed by default but expandable
+- [ ] One-store mode shows per-item "saves €X at Y" notes where applicable (BR-06)
+
+#### AI
+
+- [ ] *"What do I already have?"* lists actual `PantryItem` rows
+- [ ] *"Why is the list so long?"* references actual meal counts / ingredients
+
+#### Result
+
+- **Status:**
+- **Notes:**

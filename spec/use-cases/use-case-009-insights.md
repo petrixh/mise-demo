@@ -57,3 +57,30 @@
 | Route | Access | Notes |
 |-------|--------|-------|
 | any | public | Banner is part of `MainLayout`. |
+
+---
+
+## Verification
+
+#### Functional
+
+- [ ] Banner appears at startup after trigger window elapses (BR-04)
+- [ ] Dismiss sets `Insight.dismissed = true`; no replacement appears immediately (BR-02)
+- [ ] *"Mute insights"* sets `Household.insightsMuted = true`; no new banners (BR-05)
+- [ ] Acting on an insight (*"lock that in"*) triggers a UC-003 plan edit with a `MealEdit`
+- [ ] `Insight.evidenceRefs` reference real `Plan` / `Meal` IDs (BR-03)
+
+#### Visual
+
+- [ ] Banner is sticky-top on mobile, inline at top on desktop
+- [ ] No insights on `/welcome`
+
+#### AI
+
+- [ ] Insight text is concrete (cites real meals or weeks), not generic
+- [ ] Phrased as a question (preferred per BR-06)
+
+#### Result
+
+- **Status:**
+- **Notes:**

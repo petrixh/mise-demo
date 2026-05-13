@@ -56,3 +56,41 @@
 | Route | Access | Notes |
 |-------|--------|-------|
 | `/welcome` | public (single-user demo) | `@Route("welcome")`. Redirects to `/plan` if `Household` row exists. |
+
+---
+
+## Verification
+
+#### Functional
+
+- [ ] Fresh boot with empty H2 routes to `/welcome` and shows chat only (no nav)
+- [ ] Plausible household description in chat produces a populated `/plan` within 10s
+- [ ] BR-01 (existing household → skip onboarding), BR-02 (persona seed overridden by chat), BR-03 (missing fields → follow-up), BR-04 (≤ 3 turns), BR-05 (allergies hard / hates soft), BR-06 (≥ 4 seeded history weeks), BR-07 (`viewContext = ONBOARDING`) enforced
+- [ ] Restart preserves all onboarding state
+
+#### Visual
+
+- [ ] `/welcome` has no nav drawer, no bottom bar, no insight banner
+- [ ] Chat occupies full height; input is autofocused
+- [ ] Looks coherent at 390 and 1920
+
+#### Visual comparison
+
+UC-001 (the `/welcome` view) has **no dedicated mockup**. Grade against the design system only:
+
+- [ ] Chat dock uses the input-pill shape from the design system (rounded ~`20px`, plus / mic / send affordances tolerated absent)
+- [ ] Typography hierarchy follows the chat-message rules (body 13px, looser line-height)
+- [ ] Surface levels reasonable: page background, chat container on a one-step-darker surface, message bubbles on the primary surface
+- [ ] No ad-hoc colors — Aura theme tokens drive every fill and border
+
+After onboarding completes, the auto-navigated `/plan` view can be compared against [`Plan-desktop.png`](../ai-meal-planner/mise/Plan-desktop.png) and [`Plan-mobile.png`](../ai-meal-planner/mise/Plan-mobile.png), but only as a stub baseline — UC-002 owns the real Plan look-and-feel.
+
+#### AI
+
+- [ ] Asked allergies don't appear in any seeded meal
+- [ ] Persona JSON cited values match what was inserted into `Household`
+
+#### Result
+
+- **Status:**
+- **Notes:**

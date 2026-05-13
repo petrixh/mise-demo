@@ -57,3 +57,30 @@
 | Route | Access | Notes |
 |-------|--------|-------|
 | `/plan` | public | UI surfaces for undo + why live here. The "why" capability is reachable from any view via chat. |
+
+---
+
+## Verification
+
+#### Functional
+
+- [ ] Click "undo" reverts the most recent `MealEdit` and writes a new `MealEdit` documenting the revert (BR-03)
+- [ ] *"Put X back"* in chat produces the same revert
+- [ ] "Why?" answer names ≥ 1 concrete factor from `MealEdit.reason` / household state (BR-04)
+- [ ] Missing `MealEdit.reason` → assistant says it doesn't have the reasoning (BR-04, no fabrication)
+- [ ] Asking why about a non-most-recent change triggers a clarifying question (BR-05)
+
+#### Visual
+
+- [ ] "Undo" affordance under the assistant message and on the row's "edited" pill
+- [ ] "Why?" affordance on the row's "edited" pill; pre-fills chat input and submits
+
+#### AI
+
+- [ ] Explanation length within bounds (≤ 3 sentences single, ≤ 5 negotiation)
+- [ ] No apologies or preamble
+
+#### Result
+
+- **Status:**
+- **Notes:**

@@ -55,3 +55,30 @@
 | Route | Access | Notes |
 |-------|--------|-------|
 | any | public | The chat is on every authenticated route in the app. |
+
+---
+
+## Verification
+
+#### Functional
+
+- [ ] *"Go to reports and add kcal-per-euro column"* from `/plan` navigates and applies the change in one chat turn (BR-05)
+- [ ] Manual view switching preserves chat content & scroll position
+- [ ] Restart preserves chat thread (last N reloaded into orchestrator) (BR-01, BR-06)
+- [ ] `ConversationMessage.viewContext` correct per row (BR-03)
+- [ ] Tools from view A are not exposed while on view B (BR-02)
+
+#### Visual
+
+- [ ] Chat panel rendered by `MainLayout`, identical position across views
+- [ ] Mobile FAB → Popover present on every view
+
+#### AI
+
+- [ ] Assistant-initiated navigation visible in chat
+- [ ] Orchestrator can answer "what did I ask earlier?" within the rolling window
+
+#### Result
+
+- **Status:**
+- **Notes:**

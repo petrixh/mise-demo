@@ -23,6 +23,32 @@ The product concept and rough mockups live under [`ai-meal-planner/mise/`](ai-me
 
 Port defaults to **8080** (override with `PORT`). Open <http://localhost:8080> in a browser; the chat panel and the H2 console link live in the side drawer.
 
+### Integration (browser) tests
+
+End-to-end tests live next to the unit tests in `src/test/java/.../it/` and are named `*IT.java`. They run a real Chromium under [Microsoft Playwright](https://playwright.dev/java/) against a real Spring Boot server, using [DramaFinder](https://github.com/parttio/dramafinder) wrappers for Vaadin component locators. They are **opt-in via the `it` Maven profile** so plain `./mvnw test` stays fast.
+
+```bash
+# one-time per machine: download the Chromium browser
+./mvnw exec:java -Dexec.mainClass=com.microsoft.playwright.CLI \
+    -Dexec.args="install chromium" -Dexec.classpathScope=test
+
+# run all IT tests (headless — works in CI, dev containers, anywhere)
+./mvnw -Pit verify
+
+# run a single IT test
+./mvnw -Pit verify -Dit.test=HomeViewIT
+```
+
+> First run rebuilds the Vaadin frontend bundle (3–5 minutes). Subsequent runs are ~25 seconds.
+
+#### Headed (visible browser) mode
+
+The `debug-ui` profile flips Playwright out of headless mode so you can watch the browser drive itself. **A graphical display is required** — this won't work inside the dev container by default. Run it from a host with a desktop, or wire up Xvfb / a VNC display first.
+
+```bash
+./mvnw -Pit -Pdebug-ui verify -Dit.test=HomeViewIT
+```
+
 ### Pointing at a different chat model
 
 The default model and endpoint are baked into `application.properties` but can be overridden without recompiling:

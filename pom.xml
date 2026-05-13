@@ -65,6 +65,13 @@
             <artifactId>browserless-test-junit6</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- DramaFinder: Playwright element wrappers for Vaadin. Activated via -Pit. -->
+        <dependency>
+            <groupId>org.vaadin.addons</groupId>
+            <artifactId>dramafinder</artifactId>
+            <version>1.1.0</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Persistence: Spring Data JPA + H2 (file mode, see application.properties) -->
         <dependency>
@@ -134,4 +141,42 @@
             </snapshots>
         </pluginRepository>
     </pluginRepositories>
+
+    <profiles>
+        <!-- ./mvnw -Pit verify  -> runs *IT.java end-to-end (headless Playwright). -->
+        <profile>
+            <id>it</id>
+            <properties>
+                <headless>true</headless>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <headless>${headless}</headless>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- ./mvnw -Pit -Pdebug-ui verify  -> opens a visible Chromium window. -->
+        <profile>
+            <id>debug-ui</id>
+            <properties>
+                <headless>false</headless>
+            </properties>
+        </profile>
+    </profiles>
 </project>

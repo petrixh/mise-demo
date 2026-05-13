@@ -38,6 +38,7 @@
 
 - **JUnit 5** (via `spring-boot-starter-test`)
 - **Vaadin Browserless Test framework** (`browserless-test-junit6`) for view tests
+- **DramaFinder + Microsoft Playwright** (test scope, opt-in via the `-Pit` Maven profile) for end-to-end browser tests. ITs live in `src/test/java/com/example/mise/it/*IT.java`, extend `MisePlaywrightIT` (Spring Boot + DramaFinder `AbstractBasePlaywrightIT`), run headless by default, and isolate themselves from the dev DB via an in-memory H2 in `src/test/resources/application-it.properties`. Accidental LLM calls during tests fail fast (endpoint pointed at `http://127.0.0.1:1`).
 - **Playwright MCP** for visual verification (see `verification.md`)
 
 ---
@@ -274,8 +275,10 @@ Reports widgets attach `GridAIController` / `ChartAIController` to the shared or
 ```bash
 ./mvnw                            # dev mode (default goal: spring-boot:run)
 ./mvnw clean package              # production build (JAR in target/)
-./mvnw test                       # all tests
+./mvnw test                       # unit + browserless-component tests
 ./mvnw test -Dtest=ClassName      # single test class
+./mvnw -Pit verify                # *IT.java browser tests (headless, opt-in)
+./mvnw -Pit verify -Dit.test=X    # single IT class
 ```
 
 Port defaults to **8080** (override with `PORT` env var). Application CSS lives at `src/main/resources/META-INF/resources/styles.css`.
