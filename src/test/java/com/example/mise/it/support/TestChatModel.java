@@ -3,6 +3,9 @@ package com.example.mise.it.support;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
@@ -28,13 +31,34 @@ public class TestChatModel implements ChatModel {
     private final Deque<String> queuedReplies = new ConcurrentLinkedDeque<>();
     private final Deque<Prompt> receivedPrompts = new ConcurrentLinkedDeque<>();
 
+    /**
+     * When non-null, {@link #stream(Prompt)} blocks on this latch before emitting.
+     * Used by BR-10 tests to observe the in-flight `.ai-working` state — the test
+     * pushes a reply, submits, asserts the class is present, then counts the latch
+     * down to let the response complete and asserts the class clears.
+     */
+    private final AtomicReference<CountDownLatch> pauseLatch = new AtomicReference<>();
+
     public void queueReply(String text) {
         queuedReplies.add(text);
+    }
+
+    /**
+     * Pause the NEXT streaming response until the returned latch is counted down.
+     * Use within a single test only; the latch is one-shot (consumed by the next
+     * stream() invocation and cleared so subsequent responses are not blocked).
+     */
+    public CountDownLatch pauseNextResponse() {
+        CountDownLatch latch = new CountDownLatch(1);
+        pauseLatch.set(latch);
+        return latch;
     }
 
     public void reset() {
         queuedReplies.clear();
         receivedPrompts.clear();
+        CountDownLatch leftover = pauseLatch.getAndSet(null);
+        if (leftover != null) leftover.countDown();
     }
 
     public List<Prompt> receivedPrompts() {
@@ -48,7 +72,22 @@ public class TestChatModel implements ChatModel {
 
     @Override
     public Flux<ChatResponse> stream(Prompt prompt) {
-        return Flux.just(buildResponse(prompt));
+        // Defer the build so the latch.await() runs on the subscriber thread,
+        // not on the test thread that called stream().
+        return Flux.defer(() -> {
+            CountDownLatch latch = pauseLatch.getAndSet(null);
+            if (latch != null) {
+                try {
+                    if (!latch.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("TestChatModel pause latch not released within 10s");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("TestChatModel pause latch interrupted", e);
+                }
+            }
+            return Flux.just(buildResponse(prompt));
+        });
     }
 
     private ChatResponse buildResponse(Prompt prompt) {
