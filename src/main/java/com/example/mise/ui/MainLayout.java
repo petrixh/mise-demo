@@ -249,11 +249,11 @@ public class MainLayout extends VerticalLayout
     }
 
     private Div buildChatDock(MessageInput messageInput, Div undoStrip) {
-        var sparkle = new Span("✦");
-        sparkle.addClassName("sparkle");
+        var sparkleIcon = VaadinIcon.MAGIC.create();
+        sparkleIcon.addClassName("sparkle");
         lastAiMessageText.setText("Ask Mise anything about your week…");
 
-        var lastMsgRow = new Div(sparkle, lastAiMessageText);
+        var lastMsgRow = new Div(sparkleIcon, lastAiMessageText);
         lastMsgRow.addClassName("mise-last-ai-message");
         lastMsgRow.getElement().setAttribute("data-testid", "chat-last-ai-message");
 

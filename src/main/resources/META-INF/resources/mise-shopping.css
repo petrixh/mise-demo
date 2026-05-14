@@ -238,7 +238,7 @@
   gap: 5px;
   margin-top: 3px;
   padding: 3px 8px;
-  background: var(--mise-edited-fill, rgba(250, 238, 218, 0.18));
+  background: var(--mise-edited-fill, rgba(250, 238, 218, 0.32));
   border-radius: 4px;
   align-self: flex-start;
 }

@@ -184,7 +184,10 @@
 
 .mise-chat-dock .mise-last-ai-message .sparkle {
   font-size: 13px;
+  width: 14px !important;
+  height: 14px !important;
   flex-shrink: 0;
+  opacity: 0.7;
 }
 
 /*
