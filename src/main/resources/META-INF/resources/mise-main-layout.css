@@ -144,11 +144,14 @@
 }
 
 /*
- * M-6: Chat history is now off-screen (not expanded on focus).
- * The dock height stays constant — no extra bottom padding needed.
- * This rule is kept as a no-op to avoid removing it breaking older test references.
+ * When the dock is focused, the MessageList expands. The view content needs
+ * extra bottom-padding so the last rows aren't tucked under the expanded dock.
+ * Without :has() the bare dock height (~70px) is already covered by the per-view
+ * padding rules below.
  */
-/* .mise-shell:has(.mise-chat-dock:focus-within) > vaadin-vertical-layout { padding-bottom: 340px !important; } */
+.mise-shell:has(.mise-chat-dock:focus-within) > vaadin-vertical-layout {
+  padding-bottom: 320px !important;
+}
 
 /* ── Chat dock (bottom, full width) ─────────────────────────────────────── */
 
@@ -191,27 +194,35 @@
 }
 
 /*
- * M-6 fix: The MessageList is kept in the DOM so the AIOrchestrator can write
- * to it, but positioned off-screen so the full conversation thread is never
- * visible in the dock. The single-line AI hint row (.mise-last-ai-message) is
- * the only chat history shown to the user in the compact dock.
+ * Chat dock history is hidden by default (compact dock = single-line preview +
+ * input pill), and expands on focus so the user can see recent conversation
+ * without leaving the page. The MessageList stays in normal flow (not off-screen)
+ * so the expansion animates from the top edge of the dock.
  *
- * Using absolute off-screen positioning (not display:none) because display:none
- * would prevent the Vaadin element from receiving server-side updates.
+ * Using max-height + opacity (not display:none) so:
+ *  - Vaadin still streams updates to the element when collapsed
+ *  - The transition can animate height + fade smoothly
  */
 .mise-chat-dock .mise-chat-history {
-  position: absolute;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
+  max-height: 0;
+  opacity: 0;
   overflow: hidden;
   pointer-events: none;
-  /* Remove the expand-on-focus behavior — dock stays compact at all times */
+  transition: max-height 180ms cubic-bezier(0.2, 0, 0, 1),
+              opacity 140ms ease-out;
 }
 
-/* Remove the old focus-within expansion — no longer applicable */
 .mise-chat-dock:focus-within .mise-chat-history {
-  /* Intentionally empty — history stays off-screen even when input is focused */
+  max-height: 240px;
+  opacity: 1;
+  overflow-y: auto;
+  pointer-events: auto;
+  margin-bottom: 6px;
+}
+
+/* When expanded, the single-line "latest reply" hint is redundant — hide it. */
+.mise-chat-dock:focus-within .mise-last-ai-message {
+  display: none;
 }
 
 /* ── UC-004: chat-reply undo strip ─────────────────────────────────────── */
