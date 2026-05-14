@@ -269,6 +269,19 @@ public class MainLayout extends VerticalLayout
         var dock = new Div(messageList, lastMsgRow, undoStrip, messageInput);
         dock.addClassName("mise-chat-dock");
         dock.getElement().setAttribute("data-testid", "chat-dock");
+
+        // On expand (focus enters the dock), scroll the message history to the
+        // most recent turn. scrollHeight is read at transitionend so the
+        // container has its final height before we assign scrollTop.
+        dock.getElement().executeJs("""
+            this.addEventListener('focusin', () => {
+              const h = this.querySelector('.mise-chat-history');
+              if (!h) return;
+              const scrollNow = () => { h.scrollTop = h.scrollHeight; };
+              scrollNow();
+              h.addEventListener('transitionend', scrollNow, { once: true });
+            });
+            """);
         return dock;
     }
 
