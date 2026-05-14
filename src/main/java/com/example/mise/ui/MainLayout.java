@@ -50,6 +50,10 @@ public class MainLayout extends VerticalLayout
     private final HouseholdOrchestrator household;
     private final MessageList messageList;
     private final Span lastAiMessageText;
+    /** The chat dock container — assigned in buildChatDock(); referenced by the
+     *  submit + responseComplete hooks to toggle the .ai-working class for the
+     *  thinking indicator (wand pulse when collapsed, avatar glow when expanded). */
+    private Div chatDock;
     /** UC-004: holds the "Undo last AI change" button strip shown above the chat input. Hidden when no recent edit. */
     private final Div chatUndoStrip;
     /** UC-009: insight banner shown above the view outlet. Hidden when no undismissed insight. */
@@ -86,6 +90,14 @@ public class MainLayout extends VerticalLayout
         var messageInput = new MessageInput();
         messageInput.setWidthFull();
 
+        // AI-thinking indicator (paired with the removeClassName in the response-
+        // complete callback below). Set on submit, cleared when streaming finishes.
+        // chatDock is assigned later in buildChatDock(); null-check guards the
+        // (impossible-in-practice) case where a submit fires before that runs.
+        messageInput.addSubmitListener(e -> {
+            if (chatDock != null) chatDock.addClassName("ai-working");
+        });
+
         // Capture UI reference (on UI thread) for use in the response-complete
         // callback and NavigationTools which both run on background streaming threads.
         this.ui = UI.getCurrent();
@@ -98,7 +110,11 @@ public class MainLayout extends VerticalLayout
                 llmProvider, conversationService, messageList, messageInput,
                 text -> {
                     if (ui != null && !ui.isClosing()) {
-                        ui.access(() -> updateLastAiMessage(text));
+                        ui.access(() -> {
+                            updateLastAiMessage(text);
+                            // Streaming finished — clear the thinking indicator.
+                            if (chatDock != null) chatDock.removeClassName("ai-working");
+                        });
                     }
                     // BR-08: push plan refresh to all attached PlanView instances after every AI turn
                     planRefreshBroadcaster.fireRefresh();
@@ -269,6 +285,7 @@ public class MainLayout extends VerticalLayout
         var dock = new Div(messageList, lastMsgRow, undoStrip, messageInput);
         dock.addClassName("mise-chat-dock");
         dock.getElement().setAttribute("data-testid", "chat-dock");
+        this.chatDock = dock;  // exposed to constructor hooks for .ai-working toggling
 
         // On expand (focus enters the dock), scroll the message history to the
         // most recent turn. scrollHeight is read at transitionend so the

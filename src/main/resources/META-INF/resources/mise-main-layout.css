@@ -225,6 +225,36 @@
   display: none;
 }
 
+/* ── AI-thinking indicator ────────────────────────────────────────────────
+ * Active while the dock has the .ai-working class. MainLayout adds it on
+ * MessageInput submit and removes it inside the responseCompleteListener.
+ * Two manifestations split by dock state:
+ *  - collapsed (input blurred): the wand icon in .mise-last-ai-message
+ *    shimmers and shifts to the info-blue accent
+ *  - expanded (input focused): the last vaadin-message's avatar gets a
+ *    pulsing glow ring (the message that's currently filling in)
+ */
+@keyframes mise-wand-shimmer {
+  0%, 100% { opacity: 0.7; transform: scale(1) rotate(0deg); }
+  50%      { opacity: 1.0; transform: scale(1.15) rotate(8deg); }
+}
+
+@keyframes mise-avatar-glow {
+  0%, 100% { box-shadow: 0 0 0 2px var(--mise-info, hsl(200, 60%, 50%)); }
+  50%      { box-shadow: 0 0 0 4px var(--mise-info, hsl(200, 60%, 50%)),
+                          0 0 10px 2px var(--mise-info, hsl(200, 60%, 50%)); }
+}
+
+.mise-chat-dock.ai-working .mise-last-ai-message .sparkle {
+  color: var(--mise-info, hsl(200, 60%, 50%));
+  animation: mise-wand-shimmer 1.2s ease-in-out infinite;
+}
+
+.mise-chat-dock.ai-working .mise-chat-history vaadin-message:last-of-type vaadin-avatar[slot="avatar"] {
+  border-radius: 50%;
+  animation: mise-avatar-glow 1.2s ease-in-out infinite;
+}
+
 /* ── UC-004: chat-reply undo strip ─────────────────────────────────────── */
 
 /*
