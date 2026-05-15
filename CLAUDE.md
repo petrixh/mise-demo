@@ -54,9 +54,13 @@ The project ships custom skills under [`.claude/skills/`](.claude/skills/) — i
 - **`spec-*`** — `spec-status`, `spec-validate`, `spec-architect`, `spec-interview`, `spec-generate` for working with the spec tree.
 - **`vaadin-playwright-test`** — generates `*IT.java` tests for a Vaadin view using DramaFinder element wrappers. Triggers on "write an IT test for X", "DramaFinder", "Playwright test". Vendored from [parttio/dramafinder](https://github.com/parttio/dramafinder) under Apache 2.
 
+## Project agent memory
+
+Shared, project-wide gotchas and conventions for agents live under [`.claude/memory/`](.claude/memory/) — each file is a single topic (codebase quirks, references, workflow feedback). `.claude/memory/MEMORY.md` is the index. Read the index when starting work on this repo; pull the linked files when their topic is in scope. Workers spinning up via `/ticket-worker` should treat that dir as load-bearing context, not optional reading.
+
 ## Sharp edges to know about
 
-These are non-obvious behaviors discovered while wiring the prep branches; relevant when working on the AI backbone:
+These are non-obvious behaviors discovered while wiring the prep branches; relevant when working on the AI backbone (more in [`.claude/memory/`](.claude/memory/)):
 
 - **Spring Boot 4 dropped `H2ConsoleAutoConfiguration`.** The `spring.h2.console.*` properties are inert; `H2ConsoleConfig` registers `JakartaWebServlet` manually. If H2 ever stops responding under the Vaadin `/*` mapping, that config is the place to look.
 - **Vaadin AI components are pinned to Spring AI 2.0.0-M4.** Newer milestones (M5/M6) renamed `MessageChatMemoryAdvisor$Builder.conversationId(...)` and break `SpringAILLMProvider` at runtime with `NoSuchMethodError`. Spring AI 1.x is incompatible with Spring Boot 4 entirely. Bump only when Vaadin republishes.
