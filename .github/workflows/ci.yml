@@ -12,42 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Unit + Browserless tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Check out
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-
-      - name: Set up Node (Vaadin frontend bundle)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Run tests
-        # commercialWithBanner: lets Vaadin Charts (and other commercial
-        # add-ons) run in CI without a license — bannered output is fine here.
-        run: ./mvnw -B -ntp -Dvaadin.commercialWithBanner=true test
-
-      - name: Upload Surefire reports on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: surefire-reports
-          path: target/surefire-reports/
-          retention-days: 7
-
-  playwright-it:
-    name: Playwright IT (-Pit)
+  build:
+    name: Build, unit + Playwright IT
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -67,22 +33,30 @@ jobs:
         with:
           node-version: '22'
 
-      # Pre-install Playwright browsers + OS deps so the first IT run doesn't
-      # fail on a missing libnss3 / cold browser fetch. Java binding reads from
+      # Pre-install Chromium + OS deps so the first IT doesn't fail on a
+      # missing libnss3 or cold browser fetch. Playwright Java reads from
       # ~/.cache/ms-playwright/ which `npx playwright install` populates.
       - name: Install Playwright browsers
         run: npx -y playwright@1 install --with-deps chromium
 
-      - name: Run Playwright IT (skips unit tests already covered by `test` job)
-        run: ./mvnw -B -ntp -Pit -Dvaadin.commercialWithBanner=true -Dsurefire.skip=true verify
+      # Single Maven invocation: runs Surefire (unit + Browserless), then
+      # build-frontend, then Failsafe (Playwright IT). If unit tests fail,
+      # Maven short-circuits and IT never runs — fast feedback for cheap
+      # failures, no rebuild cost between phases.
+      #
+      # -Pit activates the IT profile.
+      # -Dvaadin.commercialWithBanner=true lets vaadin-chart (commercial)
+      # build without a license — CI gets the bannered/watermarked variant.
+      - name: Verify (unit + IT)
+        run: ./mvnw -B -ntp -Pit -Dvaadin.commercialWithBanner=true verify
 
-      - name: Upload Failsafe reports on failure
+      - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: failsafe-reports
+          name: test-reports
           path: |
+            target/surefire-reports/
             target/failsafe-reports/
-            target/playwright-*
           retention-days: 7
           if-no-files-found: ignore
