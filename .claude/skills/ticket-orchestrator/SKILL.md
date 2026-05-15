@@ -1,6 +1,7 @@
 ---
+name: ticket-orchestrator
 description: "Supervise the ticket-worker fleet: detect stalls, triage worker comments, surface bottlenecks, open follow-ups. Run from an Opus session via /loop /ticket-orchestrator."
-user-invokable: true
+user-invocable: true
 ---
 
 # /ticket-orchestrator — Fleet supervisor

@@ -1,6 +1,7 @@
 ---
+name: ticket-worker
 description: "Pick up and complete the next eligible ticket end-to-end (eligibility → claim → implement → test → PR → merge). Designed for /loop usage in worker containers."
-user-invokable: true
+user-invocable: true
 ---
 
 # /ticket-worker — Single-iteration ticket worker
