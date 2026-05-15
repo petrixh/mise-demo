@@ -40,17 +40,22 @@ jobs:
         run: npx -y playwright@1 install --with-deps chromium
 
       # Single Maven invocation: Surefire (unit + Browserless) → build-frontend
-      # (production bundle, bannered) → Failsafe (Playwright IT against the
-      # packaged production app). Fast-fail on unit failures.
+      # (production bundle, licensed via VAADIN_OFFLINE_KEY) → Failsafe
+      # (Playwright IT against the packaged production app). Fast-fail on
+      # unit failures.
       #
       # -Pit activates the IT profile (excludes *AIIT.java).
-      # -Dvaadin.commercialWithBanner=true lets vaadin-chart build unlicensed.
       # -Dvaadin.productionMode=true serves the prebuilt bundle at runtime
       # instead of starting a Vite dev server — without this the first IT
-      # times out waiting for Vite's cold compile (locally this is hidden by
-      # warm Vite caches across runs; in CI it's always cold).
+      # times out waiting for Vite's cold compile (locally this is hidden
+      # by warm Vite caches across runs; in CI it's always cold).
+      # VAADIN_OFFLINE_KEY (env): pre-generated offline license key so
+      # commercial components (vaadin-chart) build + run without showing
+      # the unlicensed-build banner that overlays the chat dock.
       - name: Verify (unit + IT)
-        run: ./mvnw -B -ntp -Pit -Dvaadin.commercialWithBanner=true -Dvaadin.productionMode=true verify
+        env:
+          VAADIN_OFFLINE_KEY: ${{ secrets.VAADIN_OFFLINE_KEY }}
+        run: ./mvnw -B -ntp -Pit -Dvaadin.productionMode=true verify
 
       - name: Upload test reports on failure
         if: failure()
@@ -60,5 +65,6 @@ jobs:
           path: |
             target/surefire-reports/
             target/failsafe-reports/
+            target/playwright-screenshots/
           retention-days: 7
           if-no-files-found: ignore
