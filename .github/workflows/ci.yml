@@ -6,12 +6,12 @@ on:
   pull_request:
     branches: [dev-main]
 
-# Vaadin's license-checker reads VAADIN_PRO_KEY env at runtime; the secret
-# stored on the repo is named VAADIN_OFFLINE_KEY for historical reasons but
-# holds a Pro Key value. Expose it at workflow level so every step (build,
-# test, IT) sees it.
+# Vaadin license-checker reads VAADIN_OFFLINE_KEY at runtime. The repo
+# secret of the same name holds the server license key for CI builds.
+# Exposed at workflow level so it propagates to build-frontend and the
+# IT JVM forks (same pattern as petrixh/25-4-testbench).
 env:
-  VAADIN_PRO_KEY: ${{ secrets.VAADIN_OFFLINE_KEY }}
+  VAADIN_OFFLINE_KEY: ${{ secrets.VAADIN_OFFLINE_KEY }}
 
 # Cancel in-progress runs for the same branch/PR when new commits arrive.
 concurrency:
