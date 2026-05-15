@@ -170,6 +170,15 @@
                             </execution>
                         </executions>
                         <configuration>
+                            <!--
+                                Failsafe's default include is **/*IT.java, which also matches
+                                **/*AIIT.java (the suffix `IT.java` is a substring of `AIIT.java`).
+                                Exclude AIIT explicitly so -Pit runs Playwright ITs only — AIIT
+                                stays gated behind -Pai-it where the live LLM endpoint is wired.
+                            -->
+                            <excludes>
+                                <exclude>**/*AIIT.java</exclude>
+                            </excludes>
                             <systemPropertyVariables>
                                 <headless>${headless}</headless>
                             </systemPropertyVariables>

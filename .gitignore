@@ -26,3 +26,5 @@ vite.generated.ts
 
 # Progress files are per-run artefacts, not part of the spec.
 /docs/progress/
+images/
+Mise-review-1/
