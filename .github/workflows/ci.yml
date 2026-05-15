@@ -39,16 +39,18 @@ jobs:
       - name: Install Playwright browsers
         run: npx -y playwright@1 install --with-deps chromium
 
-      # Single Maven invocation: runs Surefire (unit + Browserless), then
-      # build-frontend, then Failsafe (Playwright IT). If unit tests fail,
-      # Maven short-circuits and IT never runs — fast feedback for cheap
-      # failures, no rebuild cost between phases.
+      # Single Maven invocation: Surefire (unit + Browserless) → build-frontend
+      # (production bundle, bannered) → Failsafe (Playwright IT against the
+      # packaged production app). Fast-fail on unit failures.
       #
-      # -Pit activates the IT profile.
-      # -Dvaadin.commercialWithBanner=true lets vaadin-chart (commercial)
-      # build without a license — CI gets the bannered/watermarked variant.
+      # -Pit activates the IT profile (excludes *AIIT.java).
+      # -Dvaadin.commercialWithBanner=true lets vaadin-chart build unlicensed.
+      # -Dvaadin.productionMode=true serves the prebuilt bundle at runtime
+      # instead of starting a Vite dev server — without this the first IT
+      # times out waiting for Vite's cold compile (locally this is hidden by
+      # warm Vite caches across runs; in CI it's always cold).
       - name: Verify (unit + IT)
-        run: ./mvnw -B -ntp -Pit -Dvaadin.commercialWithBanner=true verify
+        run: ./mvnw -B -ntp -Pit -Dvaadin.commercialWithBanner=true -Dvaadin.productionMode=true verify
 
       - name: Upload test reports on failure
         if: failure()
