@@ -1,0 +1,49 @@
+id: chicken-rice
+name: "Lemon Herb Chicken with Rice"
+cuisine: Mediterranean
+categoryTags: [chicken, rice, weeknight, gluten-free]
+prepMinutes: 40
+defaultServings: 4
+estimatedCost: 12.00
+ingredients:
+  - name: chicken thighs
+    quantity: 800
+    unit: g
+    aisle: meat
+    optional: false
+  - name: rice
+    quantity: 300
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: lemon
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: garlic
+    quantity: 4
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: olive oil
+    quantity: 40
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: rosemary
+    quantity: 10
+    unit: g
+    aisle: produce
+    optional: true
+  - name: salt
+    quantity: 5
+    unit: g
+    aisle: dry-goods
+    optional: false
+macros:
+  kcal: 520
+  protein: 46
+  carb: 55
+  fat: 14
+notes: "Marinate chicken for best results."

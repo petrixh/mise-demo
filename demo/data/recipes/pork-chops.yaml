@@ -1,0 +1,49 @@
+id: pork-chops
+name: "Pan-Fried Pork Chops with Apple Sauce"
+cuisine: Finnish
+categoryTags: [pork, weeknight, comfort]
+prepMinutes: 30
+defaultServings: 4
+estimatedCost: 13.00
+ingredients:
+  - name: pork chops
+    quantity: 800
+    unit: g
+    aisle: meat
+    optional: false
+  - name: apple
+    quantity: 3
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: onion
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: butter
+    quantity: 40
+    unit: g
+    aisle: dairy
+    optional: false
+  - name: sage
+    quantity: 5
+    unit: g
+    aisle: dry-goods
+    optional: true
+  - name: salt
+    quantity: 5
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: black pepper
+    quantity: 2
+    unit: g
+    aisle: dry-goods
+    optional: false
+macros:
+  kcal: 460
+  protein: 44
+  carb: 18
+  fat: 24
+notes: "Serve with mashed potatoes."

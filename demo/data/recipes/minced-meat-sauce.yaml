@@ -1,0 +1,54 @@
+id: minced-meat-sauce
+name: "Minced Meat Sauce with Rice"
+cuisine: Finnish
+categoryTags: [meat, rice, budget, weeknight, comfort]
+prepMinutes: 30
+defaultServings: 4
+estimatedCost: 8.50
+ingredients:
+  - name: ground beef
+    quantity: 400
+    unit: g
+    aisle: meat
+    optional: false
+  - name: rice
+    quantity: 300
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: onion
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: canned tomatoes
+    quantity: 400
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: paprika powder
+    quantity: 5
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: black pepper
+    quantity: 2
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: salt
+    quantity: 5
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: vegetable stock
+    quantity: 200
+    unit: ml
+    aisle: dry-goods
+    optional: false
+macros:
+  kcal: 500
+  protein: 36
+  carb: 58
+  fat: 14
+notes: "A Finnish weeknight staple. Quick and filling."

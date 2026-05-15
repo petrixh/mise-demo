@@ -1,0 +1,70 @@
+id: lidl
+name: "Lidl"
+detourMinutesFromRoute: 8
+defaultStore: false
+catalog:
+  - ingredientName: salmon fillet
+    price: 5.99
+    unit: 100g
+    packSize: 400
+    onSale: false
+  - ingredientName: chicken breast
+    price: 3.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: ground beef
+    price: 4.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: pasta
+    price: 0.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: rice
+    price: 0.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: canned tomatoes
+    price: 0.79
+    unit: piece
+    packSize: 1
+    onSale: false
+  - ingredientName: olive oil
+    price: 3.99
+    unit: 500ml
+    packSize: 1
+    onSale: false
+  - ingredientName: onion
+    price: 0.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: carrot
+    price: 0.99
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: potato
+    price: 1.19
+    unit: kg
+    packSize: 1
+    onSale: false
+  - ingredientName: cream
+    price: 1.49
+    unit: 200ml
+    packSize: 1
+    onSale: false
+  - ingredientName: butter
+    price: 1.99
+    unit: 250g
+    packSize: 1
+    onSale: false
+  - ingredientName: egg
+    price: 2.49
+    unit: dozen
+    packSize: 1
+    onSale: false

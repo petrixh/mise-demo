@@ -1,0 +1,49 @@
+id: potato-gratin
+name: "Potato Gratin"
+cuisine: Finnish
+categoryTags: [vegetarian, comfort, weekend, hosting]
+prepMinutes: 70
+defaultServings: 4
+estimatedCost: 8.00
+ingredients:
+  - name: potato
+    quantity: 1200
+    unit: g
+    aisle: produce
+    optional: false
+  - name: cream
+    quantity: 400
+    unit: ml
+    aisle: dairy
+    optional: false
+  - name: garlic
+    quantity: 3
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: parmesan
+    quantity: 80
+    unit: g
+    aisle: dairy
+    optional: false
+  - name: butter
+    quantity: 20
+    unit: g
+    aisle: dairy
+    optional: false
+  - name: nutmeg
+    quantity: 2
+    unit: g
+    aisle: dry-goods
+    optional: true
+  - name: salt
+    quantity: 5
+    unit: g
+    aisle: dry-goods
+    optional: false
+macros:
+  kcal: 480
+  protein: 12
+  carb: 52
+  fat: 26
+notes: "Pairs well with a green salad or roasted meat."

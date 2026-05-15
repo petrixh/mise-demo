@@ -1,19 +1,19 @@
-package com.example.specdriven;
+package com.example.mise;
 
+import com.vaadin.flow.component.dependency.StyleSheet;
+import com.vaadin.flow.component.page.AppShellConfigurator;
+import com.vaadin.flow.component.page.Push;
 import com.vaadin.flow.theme.aura.Aura;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import com.vaadin.flow.component.dependency.StyleSheet;
-import com.vaadin.flow.component.page.AppShellConfigurator;
-
+@Push
 @SpringBootApplication
 @StyleSheet(Aura.STYLESHEET)
-@StyleSheet("styles.css") // Your custom styles
+@StyleSheet("styles.css")
 public class Application implements AppShellConfigurator {
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }
-
 }

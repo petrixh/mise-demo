@@ -1,0 +1,54 @@
+id: salmon-pasta
+name: "Creamy Salmon Pasta"
+cuisine: Finnish
+categoryTags: [fish, pasta, quick, weeknight]
+prepMinutes: 25
+defaultServings: 4
+estimatedCost: 14.50
+ingredients:
+  - name: salmon fillet
+    quantity: 400
+    unit: g
+    aisle: fish
+    optional: false
+  - name: pasta
+    quantity: 400
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: cream
+    quantity: 200
+    unit: ml
+    aisle: dairy
+    optional: false
+  - name: garlic
+    quantity: 3
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: dill
+    quantity: 20
+    unit: g
+    aisle: produce
+    optional: true
+  - name: lemon
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: salt
+    quantity: 5
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: black pepper
+    quantity: 2
+    unit: g
+    aisle: dry-goods
+    optional: false
+macros:
+  kcal: 620
+  protein: 38
+  carb: 68
+  fat: 18
+notes: "A Finnish classic. Serve with rye bread."

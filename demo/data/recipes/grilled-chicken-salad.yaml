@@ -1,0 +1,49 @@
+id: grilled-chicken-salad
+name: "Grilled Chicken Caesar Salad"
+cuisine: American
+categoryTags: [chicken, salad, light, weeknight]
+prepMinutes: 25
+defaultServings: 4
+estimatedCost: 11.00
+ingredients:
+  - name: chicken breast
+    quantity: 600
+    unit: g
+    aisle: meat
+    optional: false
+  - name: romaine lettuce
+    quantity: 1
+    unit: head
+    aisle: produce
+    optional: false
+  - name: parmesan
+    quantity: 60
+    unit: g
+    aisle: dairy
+    optional: false
+  - name: croutons
+    quantity: 100
+    unit: g
+    aisle: dry-goods
+    optional: true
+  - name: lemon
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: olive oil
+    quantity: 30
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: garlic
+    quantity: 2
+    unit: cloves
+    aisle: produce
+    optional: false
+macros:
+  kcal: 380
+  protein: 46
+  carb: 12
+  fat: 16
+notes: "No anchovies in this version. Use store-bought Caesar dressing."

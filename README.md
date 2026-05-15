@@ -1,34 +1,111 @@
-# My Application README
+# Mise — Spec-Driven Demo
 
-- [ ] TODO Replace or update this README with instructions relevant to your application
+Mise is a weekly meal planner used as a working demo of a **deeply AI-integrated Vaadin business application**: chat, grid, charts, and dashboard widgets coordinated by one orchestrator over shared state, not a chat bot bolted onto a form.
 
-To start the application in development mode, import it into your IDE and run the `Application` class. 
-You can also start the application from the command line by running: 
+The product concept and rough mockups live under [`ai-meal-planner/mise/`](ai-meal-planner/mise/). The full specification is in [`spec/`](spec/) — read [`spec/README.md`](spec/README.md) first.
+
+## Stack
+
+- **Java 21** · **Spring Boot 4.0.6** · **Maven** (wrapper included)
+- **Vaadin Flow 25.2.0-alpha5** with the **Aura** theme — server-side Java UI
+- **Vaadin AI components (preview)** — `AIOrchestrator`, `GridAIController`, `ChartAIController`, gated by the `com.vaadin.experimental.aiComponents` feature flag
+- **Spring AI 2.0.0-M4** with the OpenAI starter — default chat model is the local **Qwen3.6-35B-A3B-UD-Q5_K_XL** at `http://192.168.1.196:8080`; any OpenAI-compatible endpoint works
+- **Spring Data JPA + H2** (file mode at `./data/mise`) — conversation history and application state persist across restarts; the **H2 console** is reachable at `/h2-console` (also linked from the side drawer)
+
+## Run
 
 ```bash
+./mvnw                            # dev mode (default goal: spring-boot:run)
+./mvnw clean package              # production build (JAR in target/)
+./mvnw test                       # all tests
+./mvnw test -Dtest=ClassName      # single test class
+```
+
+Port defaults to **8080** (override with `PORT`). Open <http://localhost:8080> in a browser; the chat panel and the H2 console link live in the side drawer.
+
+### Integration (browser) tests
+
+End-to-end tests live next to the unit tests in `src/test/java/.../it/` and are named `*IT.java`. They run a real Chromium under [Microsoft Playwright](https://playwright.dev/java/) against a real Spring Boot server, using [DramaFinder](https://github.com/parttio/dramafinder) wrappers for Vaadin component locators. They are **opt-in via the `it` Maven profile** so plain `./mvnw test` stays fast.
+
+```bash
+# one-time per machine: download the Chromium browser
+./mvnw exec:java -Dexec.mainClass=com.microsoft.playwright.CLI \
+    -Dexec.args="install chromium" -Dexec.classpathScope=test
+
+# run all IT tests (headless — works in CI, dev containers, anywhere)
+./mvnw -Pit verify
+
+# run a single IT test
+./mvnw -Pit verify -Dit.test=HomeViewIT
+```
+
+> First run rebuilds the Vaadin frontend bundle (3–5 minutes). Subsequent runs are ~25 seconds.
+
+#### Headed (visible browser) mode
+
+The `debug-ui` profile flips Playwright out of headless mode so you can watch the browser drive itself. **A graphical display is required** — this won't work inside the dev container by default. Run it from a host with a desktop, or wire up Xvfb / a VNC display first.
+
+```bash
+./mvnw -Pit -Pdebug-ui verify -Dit.test=HomeViewIT
+```
+
+### Pointing at a different chat model
+
+The default model and endpoint are baked into `application.properties` but can be overridden without recompiling:
+
+```bash
+MISE_MODEL_BASE_URL=https://api.openai.com \
+MISE_MODEL_API_KEY=sk-... \
+MISE_MODEL_NAME=gpt-4o-mini \
 ./mvnw
 ```
 
-To build the application in production mode, run:
+These map to `spring.ai.openai.base-url`, `spring.ai.openai.api-key`, and `spring.ai.openai.chat.options.model` respectively.
 
-```bash
-./mvnw package
+### H2 console
+
+The console is registered explicitly (Spring Boot 4 no longer auto-registers it — see [`spec/architecture.md`](spec/architecture.md)).
+
+JDBC URL to type when connecting:
+
+```
+jdbc:h2:file:./data/mise;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1
 ```
 
-To build a Docker image, run:
+User `sa`, no password.
 
-```bash
-docker build -t my-application:latest .
+## Repository layout
+
+```
+ai-meal-planner/mise/   — product concept + mockups
+spec/                   — spec-driven development docs (single source of truth)
+  README.md             — process and file overview
+  project-context.md
+  architecture.md
+  datamodel/datamodel.md
+  use-cases/            — UC-001..UC-009
+  verification.md
+src/main/java/com/example/mise/
+  Application.java
+  ai/                   — HouseholdOrchestrator wrapping Vaadin AIOrchestrator
+  config/               — AIConfig (Spring AI → Vaadin LLMProvider) + H2ConsoleConfig
+  domain/conversation/  — ConversationMessage JPA + ConversationService
+  ui/                   — MainLayout (shared chat panel) + views
+src/main/resources/
+  application.properties
+  vaadin-featureflags.properties  — AI components enabled
+data/                   — H2 file-mode database (gitignored)
 ```
 
-If you use commercial components, pass the license key as a build secret:
+## Current state
 
-```bash
-docker build --secret id=proKey,src=$HOME/.vaadin/proKey .
-```
+The first three commits on `dev-main` carry the spec. Two prep branches build the runtime backbone:
 
-## Getting Started
+- **`app/mise-prep`** — project skeleton + persistent H2 + H2 console, Playwright-verified.
+- **`app/mise-prep-2`** — AI backbone (Spring AI ↔ Vaadin `AIOrchestrator` ↔ persisted conversation), Playwright-verified against the live Qwen endpoint.
 
-The [Quick Start](https://vaadin.com/docs/v25/getting-started/quick-start) tutorial helps you get started with Vaadin in 
-around 10 minutes. This tutorial walks you through building a simple application, introducing the core concepts along 
-the way.
+Use cases (UC-001..UC-009) are specified and ready to implement.
+
+## Getting started with Vaadin
+
+The [Vaadin Quick Start](https://vaadin.com/docs/v25/getting-started/quick-start) is a good 10-minute orientation for anyone new to Vaadin Flow.

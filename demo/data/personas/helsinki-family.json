@@ -1,0 +1,19 @@
+{
+  "id": "helsinki-family",
+  "name": "Helsinki Family",
+  "size": 4,
+  "dietaryConstraints": [],
+  "allergies": [],
+  "hatedFoods": ["liver", "anchovies"],
+  "lovedFoods": ["pasta", "salmon", "berries"],
+  "weeklyBudget": 120.0,
+  "currency": "EUR",
+  "hostingPattern": "occasional Saturday hosting",
+  "defaultPantry": [
+    "olive oil", "salt", "black pepper", "garlic", "onion",
+    "pasta", "rice", "canned tomatoes", "butter", "flour",
+    "sugar", "eggs", "milk", "vegetable stock"
+  ],
+  "cuisinePrefs": ["Finnish", "Italian", "Mediterranean"],
+  "seedWeeks": 4
+}

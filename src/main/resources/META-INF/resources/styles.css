@@ -1,1 +1,32 @@
-/* Add your styles here */
+/* Mise application styles — master file.
+ * Per-view styles live in mise-<view>.css and are pulled in below. */
+@import "mise-dark.css";
+@import "mise-onboarding.css";
+@import "mise-main-layout.css";
+@import "mise-plan.css";
+@import "mise-shopping.css";
+@import "mise-reports.css";
+@import "mise-insights.css";
+
+/* ── Mise category colors (app-level custom properties) ─────────────────── */
+html {
+  --mise-category-protein:        #7F77DD;
+  --mise-category-protein-strong: #534AB7;
+  --mise-category-protein-text:   #26215C;
+
+  --mise-category-produce:        #1D9E75;
+  --mise-category-produce-strong: #0F6E56;
+  --mise-category-produce-text:   #04342C;
+
+  --mise-category-pantry:         #D85A30;
+  --mise-category-pantry-strong:  #993C1D;
+  --mise-category-pantry-text:    #4A1B0C;
+
+  --mise-category-dairy:          #D4537E;
+  --mise-category-dairy-strong:   #993556;
+  --mise-category-dairy-text:     #4B1528;
+
+  --mise-category-other:          #B4B2A9;
+  --mise-category-other-strong:   #5F5E5A;
+  --mise-category-other-text:     #2C2C2A;
+}

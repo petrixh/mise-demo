@@ -1,0 +1,221 @@
+/* ── MainLayout shell ───────────────────────────────────────────────────── */
+
+.mise-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 48px;
+  border-bottom: 0.5px solid rgba(255,255,255,0.08);
+  background: var(--vaadin-background);
+  flex-shrink: 0;
+}
+
+.mise-brand {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.mise-week-badge {
+  font-size: 11px;
+  color: var(--vaadin-secondary-text-color);
+  margin-left: auto;
+  letter-spacing: 0.03em;
+}
+
+.mise-tabs {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid rgba(255,255,255,0.08);
+  background: var(--vaadin-background);
+  padding: 0 16px;
+}
+
+.mise-tab {
+  font-size: 13px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--vaadin-secondary-text-color);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: inherit;
+  font-weight: 400;
+  transition: color 0.15s;
+}
+
+.mise-tab:hover {
+  color: var(--vaadin-body-text-color);
+}
+
+.mise-tab[active] {
+  color: var(--vaadin-body-text-color);
+  font-weight: 500;
+  border-bottom-color: var(--vaadin-body-text-color);
+}
+
+.mise-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--vaadin-background);
+}
+
+/*
+ * The outlet div is unused at runtime — Vaadin appends the routed component
+ * directly to the RouterLayout VerticalLayout AFTER this div. Collapse it
+ * completely so it doesn't consume flex space.
+ */
+.mise-view-outlet {
+  display: none;
+}
+
+/*
+ * Vaadin injects the route component as a direct child vaadin-vertical-layout
+ * inside .mise-shell. Give it flex-grow so it fills available space and
+ * overflow-y: auto so its content scrolls within the viewport (not the page).
+ * Bottom padding compensates for the fixed chat dock (dock is ~75px).
+ */
+.mise-shell > vaadin-vertical-layout {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 90px !important;
+  box-sizing: border-box;
+  transition: padding-bottom 0.2s ease;
+}
+
+/*
+ * When the chat dock receives focus, its chat-history region expands to
+ * max-height: 240px (see below). Match the view's bottom padding so the
+ * scrollable region pushes upward instead of being overlapped — the user
+ * can still see the meal grid above the now-tall dock and the chat
+ * history scrolls in its own region.
+ */
+.mise-shell:has(.mise-chat-dock:focus-within) > vaadin-vertical-layout {
+  padding-bottom: 340px !important;
+}
+
+/* ── Chat dock (bottom, full width) ─────────────────────────────────────── */
+
+/*
+ * The dock is fixed to the viewport bottom. Vaadin's RouterLayout appends the
+ * routed view component after the static children (header, tabs, dock), so a
+ * flex-grow approach cannot push the dock below the injected view. Fixed
+ * positioning is the only reliable cross-viewport solution.
+ * Bottom padding on the view outlet/injected content compensates for the dock.
+ */
+.mise-chat-dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--vaadin-background-container);
+  border-top: 0.5px solid rgba(255,255,255,0.08);
+  padding: 8px 16px 10px;
+}
+
+.mise-chat-dock .mise-last-ai-message {
+  font-size: 12px;
+  color: var(--vaadin-secondary-text-color);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mise-chat-dock .mise-last-ai-message .sparkle {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/*
+ * Chat history within the dock: collapsed by default (0 height, invisible)
+ * so the dock stays compact. Expands to a scrollable region when the dock
+ * receives focus (user clicks the input) providing an "expand chat" affordance
+ * without requiring a full drawer/popover implementation (those come in UC-005/007).
+ * The data-testid="chat-message-list" element is always in the DOM.
+ */
+.mise-chat-dock .mise-chat-history {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+
+.mise-chat-dock:focus-within .mise-chat-history {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* ── UC-004: chat-reply undo strip ─────────────────────────────────────── */
+
+/*
+ * Compact pill shown just above the chat input after an AI-driven meal swap.
+ * Allows the user to undo the last AI change without re-opening the grid.
+ * Hidden (display: none) until MainLayout.showChatUndoStrip() sets it visible.
+ */
+.mise-chat-undo-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 4px 0;
+}
+
+.mise-chat-undo-btn {
+  font-size: 11px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 10px !important;
+  border-radius: 12px !important;
+  background: rgba(250, 238, 218, 0.15) !important;
+  color: var(--vaadin-body-text-color) !important;
+  border: 1px solid rgba(250, 238, 218, 0.3) !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mise-chat-undo-btn:hover {
+  background: rgba(250, 238, 218, 0.28) !important;
+}
+
+/* ── UC-004: inline row buttons ─────────────────────────────────────────── */
+
+/*
+ * "why?" inline button — compact text button in the tags area of an edited row.
+ */
+.mise-row-why-btn {
+  font-size: 10px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  padding: 0 7px !important;
+  border-radius: 10px !important;
+  background: rgba(230, 241, 251, 0.12) !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  border: 1px solid rgba(230, 241, 251, 0.2) !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mise-row-why-btn:hover {
+  background: rgba(230, 241, 251, 0.24) !important;
+  color: var(--vaadin-body-text-color) !important;
+}
+
+/*
+ * "undo" inline icon button — styled consistently with existing row action buttons.
+ */
+.mise-row-undo-btn {
+  color: rgba(250, 238, 218, 0.6) !important;
+}
+
+.mise-row-undo-btn:hover {
+  color: rgba(250, 238, 218, 1) !important;
+}

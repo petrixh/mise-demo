@@ -1,0 +1,25 @@
+/* ── Onboarding view ────────────────────────────────────────────────────── */
+
+/*
+ * Page-level background: tertiary surface (furthest back layer).
+ * Uses the Aura theme's --vaadin-background token (the app-level base color)
+ * instead of the cross-theme --lumo-base-color.
+ */
+.mise-onboarding-page {
+  background: var(--vaadin-background);
+}
+
+/*
+ * Chat container: secondary surface (one step up from the page background).
+ * Sits between the page background and the message bubbles (primary surface).
+ * Border-radius ~12px per design-system §"Outer container, panel groupings".
+ * Padding ~12-14px per design-system §"Padding & gaps".
+ * max-width: 860px — keeps the chat at a comfortable reading width on wide screens.
+ */
+.mise-chat-container {
+  background: var(--vaadin-background-container);
+  border-radius: var(--vaadin-radius-m, 12px);
+  padding: 12px;
+  box-sizing: border-box;
+  max-width: 860px;
+}

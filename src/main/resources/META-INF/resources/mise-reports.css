@@ -1,0 +1,172 @@
+/* mise-reports.css — styles for UC-007 Reports view.
+ * Per the project CSS convention: all Reports-view selectors live here.
+ * Imported from styles.css via @import "mise-reports.css";
+ */
+
+/* ── View shell ─────────────────────────────────────────────────────────── */
+.mise-reports-view {
+  overflow-y: auto;
+}
+
+.mise-reports-content {
+  padding: var(--lumo-space-m);
+  box-sizing: border-box;
+}
+
+.mise-reports-content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--lumo-space-m);
+  align-items: start;
+}
+
+/* ── Widget card ────────────────────────────────────────────────────────── */
+.mise-reports-widget {
+  background: var(--lumo-base-color);
+  border: 1px solid var(--lumo-contrast-10pct);
+  border-radius: var(--lumo-border-radius-l);
+  padding: var(--lumo-space-m);
+  overflow: hidden;
+}
+
+.mise-reports-widget-header {
+  margin-bottom: var(--lumo-space-s);
+}
+
+.mise-reports-widget-title {
+  margin: 0;
+  font-size: var(--lumo-font-size-s);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--lumo-secondary-text-color);
+}
+
+.mise-reports-reset-btn {
+  color: var(--lumo-secondary-text-color);
+}
+
+.mise-reports-reset-btn:hover {
+  color: var(--lumo-error-color);
+}
+
+.mise-reports-widget-body {
+  min-height: 80px;
+}
+
+/* ── Edited highlight — fades out after ~4 s ────────────────────────────── */
+@keyframes mise-edited-fade {
+  0%   { box-shadow: 0 0 0 2px var(--lumo-primary-color-50pct); background: var(--lumo-primary-color-10pct); }
+  100% { box-shadow: none; background: var(--lumo-base-color); }
+}
+
+.mise-reports-widget-edited {
+  animation: mise-edited-fade 4s ease-out forwards;
+}
+
+/* ── Chart container ────────────────────────────────────────────────────── */
+.mise-reports-chart-container {
+  width: 100%;
+}
+
+/* ── Leaderboard grid ───────────────────────────────────────────────────── */
+.mise-reports-leaderboard {
+  font-size: var(--lumo-font-size-s);
+}
+
+.mise-reports-extra-col {
+  font-weight: 600;
+  color: var(--lumo-primary-text-color);
+}
+
+/* Mobile card list — hidden on desktop, visible on mobile */
+.mise-reports-leaderboard-cards {
+  display: none;
+}
+
+/* Desktop Grid — visible on desktop, hidden on mobile */
+.mise-reports-leaderboard-desktop {
+  display: block;
+}
+
+/* ── Mobile leaderboard card layout ────────────────────────────────────── */
+@media (max-width: 639px) {
+  /* Hide the desktop Grid on mobile */
+  .mise-reports-leaderboard-desktop {
+    display: none !important;
+  }
+
+  /* Show card list on mobile */
+  .mise-reports-leaderboard-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--lumo-space-xs);
+  }
+
+  .mise-reports-leaderboard-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--lumo-space-xs);
+    padding: var(--lumo-space-s) var(--lumo-space-xs);
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+  }
+
+  .mise-reports-leaderboard-card:last-child {
+    border-bottom: none;
+  }
+
+  /* Top row: rank + name + times */
+  .mise-reports-leaderboard-card-top {
+    display: flex;
+    align-items: baseline;
+    gap: var(--lumo-space-xs);
+    flex-wrap: nowrap;
+  }
+
+  .mise-reports-leaderboard-card-rank {
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+    flex-shrink: 0;
+    min-width: 1.8em;
+  }
+
+  .mise-reports-leaderboard-card-name {
+    font-size: var(--lumo-font-size-s);
+    font-weight: 500;
+    flex: 1 1 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .mise-reports-leaderboard-card-times {
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+    flex-shrink: 0;
+  }
+
+  /* Bottom row: cost · kcal */
+  .mise-reports-leaderboard-card-bottom {
+    display: flex;
+    align-items: center;
+    gap: var(--lumo-space-s);
+    padding-left: 1.8em;
+  }
+
+  .mise-reports-leaderboard-card-cost,
+  .mise-reports-leaderboard-card-kcal {
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+  }
+
+  .mise-reports-leaderboard-card-cost {
+    font-weight: 500;
+    color: var(--lumo-primary-text-color);
+  }
+
+  /* Add a · separator between cost and kcal */
+  .mise-reports-leaderboard-card-cost::after {
+    content: " ·";
+    font-weight: 400;
+    color: var(--lumo-secondary-text-color);
+  }
+}

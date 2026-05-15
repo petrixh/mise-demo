@@ -12,3 +12,13 @@
 node_modules/
 src/main/frontend/generated/
 vite.generated.ts
+
+# Playwright MCP output and ad-hoc screenshots at project root
+.playwright-mcp/
+/*.png
+
+# H2 database (file mode) — see application.properties
+/data/
+
+# Progress files are per-run artefacts, not part of the spec.
+/docs/progress/

@@ -1,0 +1,49 @@
+id: tuna-pasta
+name: "Tuna Pasta Bake"
+cuisine: Italian
+categoryTags: [fish, pasta, weeknight, budget]
+prepMinutes: 35
+defaultServings: 4
+estimatedCost: 10.00
+ingredients:
+  - name: pasta
+    quantity: 400
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: canned tuna
+    quantity: 300
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: canned tomatoes
+    quantity: 400
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: onion
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: garlic
+    quantity: 3
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: olive oil
+    quantity: 30
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: parmesan
+    quantity: 50
+    unit: g
+    aisle: dairy
+    optional: true
+macros:
+  kcal: 450
+  protein: 32
+  carb: 62
+  fat: 9
+notes: "Can sub tuna with salmon for variety."

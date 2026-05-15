@@ -1,0 +1,54 @@
+id: vegetable-soup
+name: "Finnish Root Vegetable Soup"
+cuisine: Finnish
+categoryTags: [vegetarian, soup, gluten-free, weeknight]
+prepMinutes: 35
+defaultServings: 4
+estimatedCost: 7.50
+ingredients:
+  - name: carrot
+    quantity: 4
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: potato
+    quantity: 3
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: parsnip
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: onion
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: vegetable stock
+    quantity: 1000
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: butter
+    quantity: 20
+    unit: g
+    aisle: dairy
+    optional: false
+  - name: cream
+    quantity: 100
+    unit: ml
+    aisle: dairy
+    optional: true
+  - name: salt
+    quantity: 5
+    unit: g
+    aisle: dry-goods
+    optional: false
+macros:
+  kcal: 280
+  protein: 6
+  carb: 48
+  fat: 8
+notes: "Classic Finnish lohikeitto variant without fish."

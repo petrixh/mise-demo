@@ -1,0 +1,18 @@
+{
+  "id": "young-couple",
+  "name": "Young Couple",
+  "size": 2,
+  "dietaryConstraints": ["vegetarian"],
+  "allergies": ["nuts"],
+  "hatedFoods": ["mushrooms", "olives"],
+  "lovedFoods": ["tacos", "sushi", "pizza"],
+  "weeklyBudget": 70.0,
+  "currency": "EUR",
+  "hostingPattern": "rarely",
+  "defaultPantry": [
+    "olive oil", "salt", "black pepper", "garlic", "onion",
+    "pasta", "rice", "canned tomatoes", "butter", "soy sauce"
+  ],
+  "cuisinePrefs": ["Mexican", "Japanese", "Italian"],
+  "seedWeeks": 4
+}

@@ -1,0 +1,59 @@
+id: lentil-soup
+name: "Red Lentil Soup"
+cuisine: Middle Eastern
+categoryTags: [vegan, soup, budget, weeknight, gluten-free]
+prepMinutes: 30
+defaultServings: 4
+estimatedCost: 6.00
+ingredients:
+  - name: red lentils
+    quantity: 300
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: onion
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: garlic
+    quantity: 4
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: carrot
+    quantity: 2
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: canned tomatoes
+    quantity: 400
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: vegetable stock
+    quantity: 800
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: cumin
+    quantity: 10
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: olive oil
+    quantity: 30
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: lemon
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: true
+macros:
+  kcal: 320
+  protein: 18
+  carb: 54
+  fat: 6
+notes: "Blend half the soup for a creamier texture."

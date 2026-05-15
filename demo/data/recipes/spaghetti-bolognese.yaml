@@ -1,0 +1,59 @@
+id: spaghetti-bolognese
+name: "Spaghetti Bolognese"
+cuisine: Italian
+categoryTags: [meat, pasta, classic, weeknight]
+prepMinutes: 50
+defaultServings: 4
+estimatedCost: 11.00
+ingredients:
+  - name: spaghetti
+    quantity: 400
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: ground beef
+    quantity: 500
+    unit: g
+    aisle: meat
+    optional: false
+  - name: onion
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: garlic
+    quantity: 3
+    unit: cloves
+    aisle: produce
+    optional: false
+  - name: carrot
+    quantity: 1
+    unit: piece
+    aisle: produce
+    optional: false
+  - name: canned tomatoes
+    quantity: 800
+    unit: g
+    aisle: dry-goods
+    optional: false
+  - name: olive oil
+    quantity: 30
+    unit: ml
+    aisle: dry-goods
+    optional: false
+  - name: parmesan
+    quantity: 60
+    unit: g
+    aisle: dairy
+    optional: true
+  - name: basil
+    quantity: 10
+    unit: g
+    aisle: produce
+    optional: true
+macros:
+  kcal: 580
+  protein: 38
+  carb: 70
+  fat: 16
+notes: "Let sauce simmer at least 30 minutes."
