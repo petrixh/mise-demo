@@ -28,7 +28,7 @@ Mise — a weekly meal planner that demonstrates a deeply AI-integrated Vaadin a
 ./mvnw -Pai-it verify -Dit.test=X # Run a single AIIT class
 ```
 
-The app runs on port 8080 (configurable via `PORT` env var). Default chat model points at the local Qwen at `http://192.168.1.196:8080`; override with `MISE_MODEL_BASE_URL`, `MISE_MODEL_API_KEY`, `MISE_MODEL_NAME`.
+The app runs on port 8080 (configurable via `PORT` env var). For the LLM endpoint, copy [`application-local.properties.example`](application-local.properties.example) → `application-local.properties` (gitignored, project root) and edit. The `local` Spring profile is always included (`spring.profiles.include=local` in both `application.properties` and `application-ai-it.properties`), so Spring Boot auto-loads the file for dev runs and AIIT alike. Env vars (`MISE_MODEL_BASE_URL`, `MISE_MODEL_API_KEY`, `MISE_MODEL_NAME`) still work for Docker / CI but aren't needed day-to-day.
 
 There are three test layers, each with its own purpose:
 

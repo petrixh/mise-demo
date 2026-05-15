@@ -9,7 +9,7 @@ The product concept and rough mockups live under [`ai-meal-planner/mise/`](ai-me
 - **Java 21** · **Spring Boot 4.0.6** · **Maven** (wrapper included)
 - **Vaadin Flow 25.2.0-alpha5** with the **Aura** theme — server-side Java UI
 - **Vaadin AI components (preview)** — `AIOrchestrator`, `GridAIController`, `ChartAIController`, gated by the `com.vaadin.experimental.aiComponents` feature flag
-- **Spring AI 2.0.0-M4** with the OpenAI starter — default chat model is the local **Qwen3.6-35B-A3B-UD-Q5_K_XL** at `http://192.168.1.196:8080`; any OpenAI-compatible endpoint works
+- **Spring AI 2.0.0-M4** with the OpenAI starter — default chat model is a local **Qwen3.6-35B-A3B-UD-Q5_K_XL** instance; point at any OpenAI-compatible endpoint by copying [`application-local.properties.example`](application-local.properties.example) → `application-local.properties` (gitignored) and editing the URL / model
 - **Spring Data JPA + H2** (file mode at `./data/mise`) — conversation history and application state persist across restarts; the **H2 console** is reachable at `/h2-console` (also linked from the side drawer)
 
 ## Run

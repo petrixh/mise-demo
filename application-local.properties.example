@@ -1,0 +1,12 @@
+# Machine-local overrides — copy to `application-local.properties` (gitignored) to activate.
+#
+# Activated by `spring.profiles.include=local` set in application.properties (dev)
+# and application-ai-it.properties (AIIT). Spring Boot then auto-loads this file
+# from the default `file:./` config location whenever the `local` profile is
+# active. Anything set here wins over the committed defaults.
+
+# --- LLM endpoint (OpenAI-compatible) ---
+spring.ai.openai.base-url=http://10.0.55.2:8080
+spring.ai.openai.api-key=not-needed
+spring.ai.openai.chat.options.model=Qwen3.6-35B-A3B-UD-Q4_K_XL-128k-coding-paralel-2
+# spring.ai.openai.chat.options.max-tokens=16384
