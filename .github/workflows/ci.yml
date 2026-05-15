@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [dev-main]
 
+# Vaadin's license-checker reads VAADIN_PRO_KEY env at runtime; the secret
+# stored on the repo is named VAADIN_OFFLINE_KEY for historical reasons but
+# holds a Pro Key value. Expose it at workflow level so every step (build,
+# test, IT) sees it.
+env:
+  VAADIN_PRO_KEY: ${{ secrets.VAADIN_OFFLINE_KEY }}
+
 # Cancel in-progress runs for the same branch/PR when new commits arrive.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -40,21 +47,16 @@ jobs:
         run: npx -y playwright@1 install --with-deps chromium
 
       # Single Maven invocation: Surefire (unit + Browserless) → build-frontend
-      # (production bundle, licensed via VAADIN_OFFLINE_KEY) → Failsafe
-      # (Playwright IT against the packaged production app). Fast-fail on
-      # unit failures.
+      # (production bundle, licensed via VAADIN_PRO_KEY at workflow level) →
+      # Failsafe (Playwright IT against the packaged production app).
+      # Fast-fail on unit failures.
       #
       # -Pit activates the IT profile (excludes *AIIT.java).
       # -Dvaadin.productionMode=true serves the prebuilt bundle at runtime
       # instead of starting a Vite dev server — without this the first IT
       # times out waiting for Vite's cold compile (locally this is hidden
       # by warm Vite caches across runs; in CI it's always cold).
-      # VAADIN_OFFLINE_KEY (env): pre-generated offline license key so
-      # commercial components (vaadin-chart) build + run without showing
-      # the unlicensed-build banner that overlays the chat dock.
       - name: Verify (unit + IT)
-        env:
-          VAADIN_OFFLINE_KEY: ${{ secrets.VAADIN_OFFLINE_KEY }}
         run: ./mvnw -B -ntp -Pit -Dvaadin.productionMode=true verify
 
       - name: Upload test reports on failure
