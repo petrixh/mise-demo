@@ -6,23 +6,16 @@ on:
   pull_request:
     branches: [dev-main]
 
-# Vaadin license-checker reads VAADIN_OFFLINE_KEY at runtime. The repo
-# secret of the same name holds the server license key for CI builds.
-# Exposed at workflow level so it propagates to build-frontend and the
-# IT JVM forks (same pattern as petrixh/25-4-testbench).
-env:
-  VAADIN_OFFLINE_KEY: ${{ secrets.VAADIN_OFFLINE_KEY }}
-
 # Cancel in-progress runs for the same branch/PR when new commits arrive.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build, unit + Playwright IT
+  test:
+    name: Unit + Browserless tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
       - name: Check out
@@ -40,33 +33,20 @@ jobs:
         with:
           node-version: '22'
 
-      # Pre-install Chromium + OS deps so the first IT doesn't fail on a
-      # missing libnss3 or cold browser fetch. Playwright Java reads from
-      # ~/.cache/ms-playwright/ which `npx playwright install` populates.
-      - name: Install Playwright browsers
-        run: npx -y playwright@1 install --with-deps chromium
+      # Runs Surefire only — unit + Browserless tests. No Playwright IT,
+      # no AIIT. Playwright IT (`-Pit verify`) is left to local runs where
+      # a Vaadin Pro license is available; in CI the chart-license banner
+      # overlays the chat dock and reliably blocks Send-button clicks even
+      # with a server license key wired up, so the value isn't worth the
+      # chase for a demo project. Run it locally before merging.
+      - name: Run tests
+        run: ./mvnw -B -ntp test
 
-      # Single Maven invocation: Surefire (unit + Browserless) → build-frontend
-      # (production bundle, licensed via VAADIN_PRO_KEY at workflow level) →
-      # Failsafe (Playwright IT against the packaged production app).
-      # Fast-fail on unit failures.
-      #
-      # -Pit activates the IT profile (excludes *AIIT.java).
-      # -Dvaadin.productionMode=true serves the prebuilt bundle at runtime
-      # instead of starting a Vite dev server — without this the first IT
-      # times out waiting for Vite's cold compile (locally this is hidden
-      # by warm Vite caches across runs; in CI it's always cold).
-      - name: Verify (unit + IT)
-        run: ./mvnw -B -ntp -Pit -Dvaadin.productionMode=true verify
-
-      - name: Upload test reports on failure
+      - name: Upload Surefire reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
-          path: |
-            target/surefire-reports/
-            target/failsafe-reports/
-            target/playwright-screenshots/
+          name: surefire-reports
+          path: target/surefire-reports/
           retention-days: 7
           if-no-files-found: ignore
