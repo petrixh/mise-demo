@@ -34,7 +34,9 @@ jobs:
           node-version: '22'
 
       - name: Run tests
-        run: ./mvnw -B -ntp test
+        # commercialWithBanner: lets Vaadin Charts (and other commercial
+        # add-ons) run in CI without a license — bannered output is fine here.
+        run: ./mvnw -B -ntp -Dvaadin.commercialWithBanner=true test
 
       - name: Upload Surefire reports on failure
         if: failure()
@@ -72,7 +74,7 @@ jobs:
         run: npx -y playwright@1 install --with-deps chromium
 
       - name: Run Playwright IT (skips unit tests already covered by `test` job)
-        run: ./mvnw -B -ntp -Pit verify -Dsurefire.skip=true
+        run: ./mvnw -B -ntp -Pit -Dvaadin.commercialWithBanner=true -Dsurefire.skip=true verify
 
       - name: Upload Failsafe reports on failure
         if: failure()
