@@ -170,6 +170,37 @@ public class ReportService {
     }
 
     /**
+     * Returns the average weekly total cost across the most recent {@code weeks} completed plans
+     * (ACTIVE and HISTORICAL), excluding the current/most-recent plan.
+     * Returns {@link BigDecimal#ZERO} when there is insufficient history.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal weeklyAverage(Long householdId, int weeks) {
+        List<Plan> allPlans = planService.findAllPlans(householdId).stream()
+                .filter(p -> p.getStatus() == Plan.Status.ACTIVE
+                          || p.getStatus() == Plan.Status.HISTORICAL)
+                .sorted(Comparator.comparing(Plan::getWeekStartDate).reversed())
+                .toList();
+
+        // Skip the most-recent plan (current week) — average is of past weeks only
+        List<Plan> pastPlans = allPlans.size() > 1
+                ? allPlans.subList(1, Math.min(1 + weeks, allPlans.size()))
+                : List.of();
+
+        if (pastPlans.isEmpty()) return BigDecimal.ZERO;
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (Plan plan : pastPlans) {
+            List<Meal> meals = planService.findMeals(plan.getId());
+            BigDecimal weekCost = meals.stream()
+                    .map(mealCostCalculator::costFor)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            total = total.add(weekCost);
+        }
+        return total.divide(BigDecimal.valueOf(pastPlans.size()), 2, RoundingMode.HALF_UP);
+    }
+
+    /**
      * Returns the leaderboard: recipes ranked by frequency of appearance across all
      * ACTIVE and HISTORICAL plans.  When {@code includeKcalPerEuro} is true, each
      * entry's extras map contains {@code "kcalPerEuro"}.

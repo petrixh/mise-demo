@@ -139,14 +139,24 @@ class ShoppingViewIT extends MisePlaywrightIT {
     }
 
     /**
-     * AC #1: the recommended-store badge is visible and contains a non-empty store name.
+     * AC #1: the recommended-store name is present somewhere in the view.
+     * On desktop the store badge in the header strip is hidden (display:none per CSS) and
+     * the store name appears in the recommendation panel headline instead. The badge is
+     * always attached to the DOM (for mobile use) but not visible on desktop. We assert the
+     * recommendation-panel headline carries a non-empty store name on desktop.
      */
     @Test
     void recommendedStoreBadgeIsVisible() {
+        // Store badge is in the DOM (for mobile) but hidden on desktop — check it's attached
         Locator badge = page.locator("#mise-shopping-store-recommended");
-        assertThat(badge).isVisible();
-        assertThat(badge).not().hasText("—");
-        assertThat(badge).not().isEmpty();
+        assertThat(badge).isAttached();
+
+        // The store name is always visible via the recommendation panel headline on desktop
+        Locator storeHeadline = page.getByTestId("recommendation-panel")
+                .locator(".mise-shopping-rec-store-name");
+        assertThat(storeHeadline).isVisible();
+        assertThat(storeHeadline).not().hasText("—");
+        assertThat(storeHeadline).not().isEmpty();
     }
 
     /**
@@ -161,12 +171,15 @@ class ShoppingViewIT extends MisePlaywrightIT {
 
     /**
      * AC #1: the store-mode toggle control is visible with both segment buttons.
+     * Scoped to the recommendation panel — the toggle appears in two places in the DOM
+     * (mobile strip + desktop panel); on desktop only the panel instance is visible.
      */
     @Test
     void storeModeToggleIsVisible() {
-        assertThat(page.getByTestId("store-mode-toggle")).isVisible();
-        assertThat(page.getByTestId("store-mode-one")).isVisible();
-        assertThat(page.getByTestId("store-mode-mix")).isVisible();
+        Locator panel = page.getByTestId("recommendation-panel");
+        assertThat(panel.getByTestId("store-mode-toggle")).isVisible();
+        assertThat(panel.getByTestId("store-mode-one")).isVisible();
+        assertThat(panel.getByTestId("store-mode-mix")).isVisible();
     }
 
     /**
@@ -258,11 +271,15 @@ class ShoppingViewIT extends MisePlaywrightIT {
      */
     @Test
     void storeModeTogglePersistsAcrossReload() {
+        // Scope to the recommendation panel — both strip and panel have the same data-testids;
+        // on desktop the panel is the visible/interactive one.
+        Locator panel = page.getByTestId("recommendation-panel");
+
         // Click the "Cheapest mix" button
-        page.getByTestId("store-mode-mix").click();
+        panel.getByTestId("store-mode-mix").click();
 
         // Wait for the view to rebuild (the button should now have the "active" class)
-        assertThat(page.getByTestId("store-mode-mix")).hasClass(
+        assertThat(panel.getByTestId("store-mode-mix")).hasClass(
                 new java.util.regex.Pattern[]{java.util.regex.Pattern.compile("active")});
 
         // Assert DB: ViewPreference row exists with mode=CHEAPEST_MIX
@@ -279,12 +296,15 @@ class ShoppingViewIT extends MisePlaywrightIT {
         // Reload the page — the preference must be restored from DB
         page.reload();
 
+        // Re-scope after reload
+        Locator panelAfterReload = page.getByTestId("recommendation-panel");
+
         // After reload, the Cheapest-mix button must still carry the "active" class
-        assertThat(page.getByTestId("store-mode-mix")).hasClass(
+        assertThat(panelAfterReload.getByTestId("store-mode-mix")).hasClass(
                 new java.util.regex.Pattern[]{java.util.regex.Pattern.compile("active")});
 
         // And the One-store button must NOT carry the "active" class
-        assertThat(page.getByTestId("store-mode-one")).not().hasClass(
+        assertThat(panelAfterReload.getByTestId("store-mode-one")).not().hasClass(
                 new java.util.regex.Pattern[]{java.util.regex.Pattern.compile("active")});
     }
 

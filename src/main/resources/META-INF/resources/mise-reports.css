@@ -9,45 +9,55 @@
 }
 
 .mise-reports-content {
-  padding: var(--lumo-space-m);
+  padding: 16px;
   box-sizing: border-box;
 }
 
 .mise-reports-content-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--lumo-space-m);
+  gap: 16px;
   align-items: start;
+}
+
+/* M-5: KPI strip spans full grid width */
+#mise-reports-kpi-strip {
+  grid-column: 1 / -1;
+}
+
+/* M-5: over-budget KPI value in warning amber */
+.mise-kpi-value-warn {
+  color: var(--mise-edited-text, #633806) !important;
 }
 
 /* ── Widget card ────────────────────────────────────────────────────────── */
 .mise-reports-widget {
-  background: var(--lumo-base-color);
-  border: 1px solid var(--lumo-contrast-10pct);
-  border-radius: var(--lumo-border-radius-l);
-  padding: var(--lumo-space-m);
+  background: var(--vaadin-background-container);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--vaadin-radius-m, 8px);
+  padding: 16px;
   overflow: hidden;
 }
 
 .mise-reports-widget-header {
-  margin-bottom: var(--lumo-space-s);
+  margin-bottom: 8px;
 }
 
 .mise-reports-widget-title {
   margin: 0;
-  font-size: var(--lumo-font-size-s);
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--lumo-secondary-text-color);
+  color: var(--vaadin-secondary-text-color);
 }
 
 .mise-reports-reset-btn {
-  color: var(--lumo-secondary-text-color);
+  color: var(--vaadin-secondary-text-color);
 }
 
 .mise-reports-reset-btn:hover {
-  color: var(--lumo-error-color);
+  color: var(--vaadin-color-danger, #d33b3b);
 }
 
 .mise-reports-widget-body {
@@ -56,8 +66,8 @@
 
 /* ── Edited highlight — fades out after ~4 s ────────────────────────────── */
 @keyframes mise-edited-fade {
-  0%   { box-shadow: 0 0 0 2px var(--lumo-primary-color-50pct); background: var(--lumo-primary-color-10pct); }
-  100% { box-shadow: none; background: var(--lumo-base-color); }
+  0%   { box-shadow: 0 0 0 2px rgba(43, 154, 243, 0.45); background: rgba(43, 154, 243, 0.10); }
+  100% { box-shadow: none; background: var(--vaadin-background-container); }
 }
 
 .mise-reports-widget-edited {
@@ -71,12 +81,12 @@
 
 /* ── Leaderboard grid ───────────────────────────────────────────────────── */
 .mise-reports-leaderboard {
-  font-size: var(--lumo-font-size-s);
+  font-size: 13px;
 }
 
 .mise-reports-extra-col {
   font-weight: 600;
-  color: var(--lumo-primary-text-color);
+  color: var(--vaadin-body-text-color);
 }
 
 /* Mobile card list — hidden on desktop, visible on mobile */
@@ -87,6 +97,15 @@
 /* Desktop Grid — visible on desktop, hidden on mobile */
 .mise-reports-leaderboard-desktop {
   display: block;
+}
+
+/* ── Mobile overrides ───────────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  /* KPI strip: 2x2 grid on mobile */
+  #mise-reports-kpi-strip.mise-kpi-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* ── Mobile leaderboard card layout ────────────────────────────────────── */
@@ -100,15 +119,15 @@
   .mise-reports-leaderboard-cards {
     display: flex;
     flex-direction: column;
-    gap: var(--lumo-space-xs);
+    gap: 4px;
   }
 
   .mise-reports-leaderboard-card {
     display: flex;
     flex-direction: column;
-    gap: var(--lumo-space-xs);
-    padding: var(--lumo-space-s) var(--lumo-space-xs);
-    border-bottom: 1px solid var(--lumo-contrast-10pct);
+    gap: 4px;
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.10);
   }
 
   .mise-reports-leaderboard-card:last-child {
@@ -119,19 +138,19 @@
   .mise-reports-leaderboard-card-top {
     display: flex;
     align-items: baseline;
-    gap: var(--lumo-space-xs);
+    gap: 6px;
     flex-wrap: nowrap;
   }
 
   .mise-reports-leaderboard-card-rank {
-    font-size: var(--lumo-font-size-xs);
-    color: var(--lumo-secondary-text-color);
+    font-size: 11px;
+    color: rgba(255,255,255,0.52);
     flex-shrink: 0;
     min-width: 1.8em;
   }
 
   .mise-reports-leaderboard-card-name {
-    font-size: var(--lumo-font-size-s);
+    font-size: 13px;
     font-weight: 500;
     flex: 1 1 0;
     overflow-wrap: break-word;
@@ -139,8 +158,8 @@
   }
 
   .mise-reports-leaderboard-card-times {
-    font-size: var(--lumo-font-size-xs);
-    color: var(--lumo-secondary-text-color);
+    font-size: 11px;
+    color: rgba(255,255,255,0.52);
     flex-shrink: 0;
   }
 
@@ -148,25 +167,25 @@
   .mise-reports-leaderboard-card-bottom {
     display: flex;
     align-items: center;
-    gap: var(--lumo-space-s);
+    gap: 8px;
     padding-left: 1.8em;
   }
 
   .mise-reports-leaderboard-card-cost,
   .mise-reports-leaderboard-card-kcal {
-    font-size: var(--lumo-font-size-xs);
-    color: var(--lumo-secondary-text-color);
+    font-size: 11px;
+    color: rgba(255,255,255,0.52);
   }
 
   .mise-reports-leaderboard-card-cost {
     font-weight: 500;
-    color: var(--lumo-primary-text-color);
+    color: rgba(255,255,255,0.87);
   }
 
   /* Add a · separator between cost and kcal */
   .mise-reports-leaderboard-card-cost::after {
     content: " ·";
     font-weight: 400;
-    color: var(--lumo-secondary-text-color);
+    color: rgba(255,255,255,0.52);
   }
 }

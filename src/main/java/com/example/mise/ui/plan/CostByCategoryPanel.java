@@ -33,12 +33,14 @@ public class CostByCategoryPanel extends Div {
     private static final List<String> CATEGORY_ORDER = List.of(
             "Protein", "Produce", "Pantry", "Dairy", "Other");
 
+    // Hex fallbacks used in inline styles so they resolve even outside Shadow DOM scope.
+    // Values must match --mise-category-* in styles.css.
     private static final Map<String, String> CATEGORY_FILL = Map.of(
-            "Protein", "var(--mise-category-protein)",
-            "Produce", "var(--mise-category-produce)",
-            "Pantry",  "var(--mise-category-pantry)",
-            "Dairy",   "var(--mise-category-dairy)",
-            "Other",   "var(--mise-category-other)"
+            "Protein", "#7F77DD",
+            "Produce", "#1D9E75",
+            "Pantry",  "#D85A30",
+            "Dairy",   "#D4537E",
+            "Other",   "#B4B2A9"
     );
 
     public CostByCategoryPanel(Plan plan,

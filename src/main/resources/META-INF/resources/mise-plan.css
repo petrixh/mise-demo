@@ -81,7 +81,7 @@
 }
 
 .mise-meal-row.edited {
-  background: rgba(250, 238, 218, 0.12);
+  background: rgba(250, 238, 218, 0.28);
 }
 
 .mise-day-chip {
@@ -198,8 +198,12 @@
 }
 
 .mise-category-bar-fill {
+  display: block;
   height: 100%;
   border-radius: 3px;
+  /* width is set via inline style (runtime-computed per category) */
+  min-width: 0;
+  transition: width 0.3s ease;
 }
 
 .mise-category-amount {
@@ -259,5 +263,78 @@
   .mise-plan-sidebar {
     padding: 0 10px 16px;
     box-sizing: border-box;
+  }
+
+  /* M-8 fix: compact single-row meal item at mobile (grid: chip + info + pin) */
+  .mise-meal-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 32px;
+    grid-template-areas: "chip info pin";
+    align-items: center;
+    padding: 9px 10px;
+    gap: 8px;
+    min-height: 44px;
+  }
+
+  .mise-day-chip {
+    grid-area: chip;
+    width: 28px;
+    font-size: 10px;
+  }
+
+  .mise-meal-info {
+    grid-area: info;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .mise-meal-name {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    display: block;
+  }
+
+  .mise-meal-meta {
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
+  }
+
+  /* Tags hidden on mobile — no room in 2-line budget */
+  .mise-meal-tags {
+    display: none;
+  }
+
+  /*
+   * Row actions: only the pin button is shown on mobile.
+   * Positioned in the "pin" grid area; all other buttons hidden.
+   */
+  .mise-row-actions {
+    grid-area: pin;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0;
+  }
+
+  /* On mobile hide all row-action buttons EXCEPT the pin button.
+     Pin button is identified by data-testid="meal-action-pin". */
+  .mise-row-actions vaadin-button {
+    display: none;
+  }
+  .mise-row-actions vaadin-button[data-testid="meal-action-pin"] {
+    display: inline-flex;
+  }
+
+  /* Hide why? and undo buttons entirely on mobile */
+  .mise-row-why-btn,
+  .mise-row-undo-btn {
+    display: none !important;
   }
 }

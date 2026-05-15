@@ -56,10 +56,23 @@
 /* Segmented control */
 .mise-shopping-mode-control {
   display: flex;
-  gap: 4px;
   flex-shrink: 0;
 }
 
+/*
+ * M-2 fix: shared track container — design-system §"Toggle track".
+ * Secondary surface background, 2px padding, rounded.
+ * The two segments sit inside this track; active segment gets a fill.
+ */
+.mise-shopping-mode-track {
+  display: flex;
+  background: rgba(255,255,255,0.06);
+  border-radius: 16px;
+  padding: 2px;
+  gap: 0;
+}
+
+/* Both segments: reset border, transparent background */
 .mise-shopping-mode-btn {
   font-size: 11px !important;
   height: 26px !important;
@@ -68,19 +81,22 @@
   border-radius: 13px !important;
   background: transparent !important;
   color: var(--vaadin-secondary-text-color) !important;
-  border: 1px solid rgba(255,255,255,0.16) !important;
+  /* M-2: inactive segments have NO border per design system */
+  border: none !important;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   white-space: nowrap;
 }
 
+/* Active segment: white fill, 0.5px border, weight 500 */
 .mise-shopping-mode-btn.active {
-  background: rgba(255,255,255,0.12) !important;
+  background: rgba(255,255,255,0.18) !important;
   color: var(--vaadin-body-text-color) !important;
-  border-color: rgba(255,255,255,0.32) !important;
+  border: 0.5px solid rgba(255,255,255,0.30) !important;
+  font-weight: 500 !important;
 }
 
-.mise-shopping-mode-btn:hover {
+.mise-shopping-mode-btn:hover:not(.active) {
   background: rgba(255,255,255,0.08) !important;
   color: var(--vaadin-body-text-color) !important;
 }
@@ -90,7 +106,8 @@
 .mise-shopping-pantry-section {
   background: var(--vaadin-background-container);
   border-radius: var(--vaadin-radius-m, 8px);
-  overflow: hidden;
+  /* overflow:hidden removed — it collapsed the vaadin-details host to 0px,
+     hiding the summary toggle. Border-radius clipping is not needed here. */
 }
 
 .mise-shopping-pantry-chips {
@@ -209,16 +226,35 @@
   font-weight: 500;
   padding: 2px 6px;
   border-radius: 8px;
-  background: rgba(29, 158, 117, 0.15);
-  color: var(--mise-category-produce-text, #04342C);
+  background: var(--mise-info-fill, #E6F1FB);
+  color: var(--mise-info-text, #0C447C);
   align-self: flex-start;
 }
 
-/* "saves €X at Y" hint (BR-06) */
-.mise-shopping-item-hint {
+/* "saves €X at Y" amber strip (BR-06) — design system §"Save-elsewhere hint" */
+.mise-shopping-item-savings-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  padding: 3px 8px;
+  background: var(--mise-edited-fill, rgba(250, 238, 218, 0.32));
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+.mise-shopping-item-savings-icon {
+  width: 11px !important;
+  height: 11px !important;
+  color: var(--mise-edited-text, #633806);
+  flex-shrink: 0;
+}
+
+.mise-shopping-item-savings-text {
   font-size: 10px;
-  color: var(--vaadin-secondary-text-color);
-  font-style: italic;
+  font-weight: 500;
+  color: var(--mise-edited-text, #633806);
+  white-space: nowrap;
 }
 
 /* Price column */
@@ -330,6 +366,14 @@
   color: var(--vaadin-body-text-color);
   margin: 0;
   line-height: 1.2;
+}
+
+/* M-1: comparison narrative — body text, secondary color */
+.mise-shopping-rec-narrative {
+  font-size: 12px;
+  color: var(--vaadin-secondary-text-color);
+  line-height: 1.5;
+  display: block;
 }
 
 /* Total cost row */
@@ -476,8 +520,12 @@
     display: flex;
   }
 
-  /* Header strip slims down on desktop — store name moves to right panel */
-  .mise-shopping-store-badge {
+  /*
+   * M-3: Hide entire header strip on desktop — the right-panel owns store identity
+   * and total cost on desktop. On mobile (where the right-panel is hidden), the
+   * header strip remains visible so total cost is accessible.
+   */
+  .mise-shopping-header-strip {
     display: none;
   }
 }

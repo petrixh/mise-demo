@@ -1,5 +1,6 @@
 package com.example.mise.ui.reports;
 
+import com.example.mise.domain.household.Household;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.preferences.ViewPreference;
 import com.example.mise.domain.preferences.ViewPreferenceService;
@@ -12,6 +13,7 @@ import com.vaadin.flow.component.charts.model.*;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -138,8 +140,11 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         contentArea.removeAll();
         contentArea.addClassName("mise-reports-content-grid");
 
-        // ── 1. Weekly cost trend ──────────────────────────────────────────
+        // ── 0. KPI strip (M-5) ────────────────────────────────────────────
         WeeklyCostTrend trend = reportService.computeCostTrend(hh.getId());
+        contentArea.add(buildKpiStrip(hh, trend));
+
+        // ── 1. Weekly cost trend ──────────────────────────────────────────
         contentArea.add(buildCostTrendWidget(trend, hh.getId(), highlight));
 
         // ── 2. Category breakdown ─────────────────────────────────────────
@@ -157,6 +162,68 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         boolean includeKcalPerEuro = extraColumns.contains("kcalPerEuro");
         List<LeaderboardEntry> leaderboard = reportService.computeLeaderboard(hh.getId(), includeKcalPerEuro);
         contentArea.add(buildLeaderboardWidget(leaderboard, extraColumns, hh.getId(), highlight));
+    }
+
+    // ── KPI strip (M-5) ───────────────────────────────────────────────────────
+
+    /**
+     * Builds the 4-card KPI strip for the Reports view top:
+     * "4-week avg", "this week", "avg/meal", "vs target".
+     */
+    private Div buildKpiStrip(Household hh, WeeklyCostTrend trend) {
+        var strip = new Div();
+        strip.setId("mise-reports-kpi-strip");
+        strip.addClassName("mise-kpi-strip");
+        strip.getElement().setAttribute("data-testid", "reports-kpi-strip");
+
+        // 4-week avg — average of the past 4 weeks (excludes current week)
+        BigDecimal fourWeekAvg = reportService.weeklyAverage(hh.getId(), 4);
+
+        // This week — most recent point in the trend
+        BigDecimal thisWeek = trend.points().isEmpty() ? BigDecimal.ZERO
+                : trend.points().get(trend.points().size() - 1).totalCost();
+
+        // Avg/meal — this week total / 7 (7 meals in a plan week)
+        BigDecimal avgMeal = thisWeek.divide(BigDecimal.valueOf(7), 2, java.math.RoundingMode.HALF_UP);
+
+        // vs target — this week vs household budget (positive = over, negative = under)
+        BigDecimal vsTarget = BigDecimal.ZERO;
+        boolean budgetSet = hh.getWeeklyBudget() != null
+                && hh.getWeeklyBudget().compareTo(BigDecimal.ZERO) > 0;
+        if (budgetSet) {
+            vsTarget = thisWeek.subtract(hh.getWeeklyBudget());
+        }
+
+        strip.add(buildKpiCard("4-week avg", "€" + String.format("%.2f", fourWeekAvg), false));
+        strip.add(buildKpiCard("this week", "€" + String.format("%.2f", thisWeek), false));
+        strip.add(buildKpiCard("avg/meal", "€" + String.format("%.2f", avgMeal), false));
+
+        if (budgetSet) {
+            String vsLabel = (vsTarget.compareTo(BigDecimal.ZERO) >= 0 ? "+" : "") +
+                    String.format("%.2f", vsTarget);
+            boolean overBudget = vsTarget.compareTo(BigDecimal.ZERO) > 0;
+            var vsCard = buildKpiCard("vs target", "€" + vsLabel, overBudget);
+            strip.add(vsCard);
+        } else {
+            strip.add(buildKpiCard("vs target", "—", false));
+        }
+
+        return strip;
+    }
+
+    private Div buildKpiCard(String label, String value, boolean warn) {
+        var card = new Div();
+        card.addClassName("mise-kpi-card");
+
+        var labelP = new Paragraph(label);
+        labelP.addClassName("mise-kpi-label");
+
+        var valueP = new Paragraph(value);
+        valueP.addClassName("mise-kpi-value");
+        if (warn) valueP.addClassName("mise-kpi-value-warn");
+
+        card.add(labelP, valueP);
+        return card;
     }
 
     // ── Widget builders ────────────────────────────────────────────────────────
@@ -239,6 +306,10 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
                 DataSeries series = new DataSeries("Cost");
                 PlotOptionsPie plotOpts = new PlotOptionsPie();
                 plotOpts.setInnerSize("50%");
+                // m-2: set data label color to a light value so callouts are readable on dark theme
+                DataLabels dataLabels = new DataLabels();
+                dataLabels.setColor(new com.vaadin.flow.component.charts.model.style.SolidColor("#E4E4E7"));
+                plotOpts.setDataLabels(dataLabels);
                 conf.setPlotOptions(plotOpts);
                 for (var entry : breakdown.entries()) {
                     DataSeriesItem item = new DataSeriesItem(
@@ -301,7 +372,7 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         grid.addColumn(LeaderboardEntry::recipeName).setHeader("Meal").setFlexGrow(3);
         grid.addColumn(LeaderboardEntry::frequency).setHeader("Times").setFlexGrow(1);
         grid.addColumn(e -> "€" + e.averageCost().toPlainString()).setHeader("Avg cost").setFlexGrow(1);
-        grid.addColumn(e -> Math.round(e.averageKcal()) + " kcal").setHeader("Avg kcal").setFlexGrow(1);
+        grid.addColumn(e -> Math.round(e.averageKcal()) + " kcal").setHeader("Kcal avg").setFlexGrow(2);
 
         if (extraColumns.contains("kcalPerEuro")) {
             grid.addColumn(e -> {

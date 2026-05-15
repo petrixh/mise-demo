@@ -20,5 +20,9 @@ vite.generated.ts
 # H2 database (file mode) — see application.properties
 /data/
 
+# Machine-local Spring profile overrides (LLM endpoint, model name, API key, etc.).
+# See application-local.properties.example for the template.
+/application-local.properties
+
 # Progress files are per-run artefacts, not part of the spec.
 /docs/progress/

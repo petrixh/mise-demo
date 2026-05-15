@@ -21,6 +21,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
 import com.vaadin.flow.component.notification.Notification;
@@ -29,6 +30,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.RouterLayout;
+
+import java.math.BigDecimal;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -47,6 +50,10 @@ public class MainLayout extends VerticalLayout
     private final HouseholdOrchestrator household;
     private final MessageList messageList;
     private final Span lastAiMessageText;
+    /** The chat dock container — assigned in buildChatDock(); referenced by the
+     *  submit + responseComplete hooks to toggle the .ai-working class for the
+     *  thinking indicator (wand pulse when collapsed, avatar glow when expanded). */
+    private Div chatDock;
     /** UC-004: holds the "Undo last AI change" button strip shown above the chat input. Hidden when no recent edit. */
     private final Div chatUndoStrip;
     /** UC-009: insight banner shown above the view outlet. Hidden when no undismissed insight. */
@@ -83,6 +90,14 @@ public class MainLayout extends VerticalLayout
         var messageInput = new MessageInput();
         messageInput.setWidthFull();
 
+        // AI-thinking indicator (paired with the removeClassName in the response-
+        // complete callback below). Set on submit, cleared when streaming finishes.
+        // chatDock is assigned later in buildChatDock(); null-check guards the
+        // (impossible-in-practice) case where a submit fires before that runs.
+        messageInput.addSubmitListener(e -> {
+            if (chatDock != null) chatDock.addClassName("ai-working");
+        });
+
         // Capture UI reference (on UI thread) for use in the response-complete
         // callback and NavigationTools which both run on background streaming threads.
         this.ui = UI.getCurrent();
@@ -95,7 +110,11 @@ public class MainLayout extends VerticalLayout
                 llmProvider, conversationService, messageList, messageInput,
                 text -> {
                     if (ui != null && !ui.isClosing()) {
-                        ui.access(() -> updateLastAiMessage(text));
+                        ui.access(() -> {
+                            updateLastAiMessage(text);
+                            // Streaming finished — clear the thinking indicator.
+                            if (chatDock != null) chatDock.removeClassName("ai-working");
+                        });
                     }
                     // BR-08: push plan refresh to all attached PlanView instances after every AI turn
                     planRefreshBroadcaster.fireRefresh();
@@ -158,16 +177,56 @@ public class MainLayout extends VerticalLayout
     // The VerticalLayout's last "expand" slot holds the route content.
 
     private Div buildHeader(HouseholdService householdService, PlanService planService) {
+        // ── Wordmark (left) ──────────────────────────────────────────────────
         var brand = new H1("Mise");
         brand.addClassName("mise-brand");
+        brand.getElement().setAttribute("data-testid", "app-header-wordmark");
+
+        // ── Week navigator (center-right): disabled prev + badge + disabled next ──
+        // Arrows are present for visual completeness per design system but disabled
+        // (week navigation is not in scope for any UC in this build).
+        var prevBtn = new Button(VaadinIcon.ANGLE_LEFT.create());
+        prevBtn.addClassName("mise-header-week-nav-btn");
+        prevBtn.setEnabled(false);
+        prevBtn.getElement().setAttribute("aria-label", "Previous week");
 
         String weekLabel = buildWeekLabel(householdService, planService);
         var weekBadge = new Span(weekLabel);
         weekBadge.addClassName("mise-week-badge");
+        weekBadge.getElement().setAttribute("data-testid", "app-header-week");
 
-        var header = new Div(brand, weekBadge);
+        var nextBtn = new Button(VaadinIcon.ANGLE_RIGHT.create());
+        nextBtn.addClassName("mise-header-week-nav-btn");
+        nextBtn.setEnabled(false);
+        nextBtn.getElement().setAttribute("aria-label", "Next week");
+
+        var weekNav = new Div(prevBtn, weekBadge, nextBtn);
+        weekNav.addClassName("mise-header-week-nav");
+
+        // ── Budget pill (right) ──────────────────────────────────────────────
+        var budgetBadge = new Span(buildBudgetLabel(householdService));
+        budgetBadge.addClassName("mise-header-budget-badge");
+        budgetBadge.getElement().setAttribute("data-testid", "app-header-budget");
+
+        // ── Assemble full-width header bar ───────────────────────────────────
+        var header = new Div(brand, weekNav, budgetBadge);
+        header.setId("mise-app-header");
+        header.getElement().setAttribute("data-testid", "app-header");
         header.addClassName("mise-header");
         return header;
+    }
+
+    private String buildBudgetLabel(HouseholdService householdService) {
+        try {
+            if (householdService.exists()) {
+                var hh = householdService.findHousehold().orElse(null);
+                if (hh != null && hh.getWeeklyBudget() != null) {
+                    BigDecimal budget = hh.getWeeklyBudget();
+                    return "€" + String.format("%.0f", budget) + " budget";
+                }
+            }
+        } catch (Exception ignored) {}
+        return "";
     }
 
     private String buildWeekLabel(HouseholdService householdService, PlanService planService) {
@@ -206,11 +265,11 @@ public class MainLayout extends VerticalLayout
     }
 
     private Div buildChatDock(MessageInput messageInput, Div undoStrip) {
-        var sparkle = new Span("✦");
-        sparkle.addClassName("sparkle");
+        var sparkleIcon = VaadinIcon.MAGIC.create();
+        sparkleIcon.addClassName("sparkle");
         lastAiMessageText.setText("Ask Mise anything about your week…");
 
-        var lastMsgRow = new Div(sparkle, lastAiMessageText);
+        var lastMsgRow = new Div(sparkleIcon, lastAiMessageText);
         lastMsgRow.addClassName("mise-last-ai-message");
         lastMsgRow.getElement().setAttribute("data-testid", "chat-last-ai-message");
 
@@ -226,6 +285,20 @@ public class MainLayout extends VerticalLayout
         var dock = new Div(messageList, lastMsgRow, undoStrip, messageInput);
         dock.addClassName("mise-chat-dock");
         dock.getElement().setAttribute("data-testid", "chat-dock");
+        this.chatDock = dock;  // exposed to constructor hooks for .ai-working toggling
+
+        // On expand (focus enters the dock), scroll the message history to the
+        // most recent turn. scrollHeight is read at transitionend so the
+        // container has its final height before we assign scrollTop.
+        dock.getElement().executeJs("""
+            this.addEventListener('focusin', () => {
+              const h = this.querySelector('.mise-chat-history');
+              if (!h) return;
+              const scrollNow = () => { h.scrollTop = h.scrollHeight; };
+              scrollNow();
+              h.addEventListener('transitionend', scrollNow, { once: true });
+            });
+            """);
         return dock;
     }
 
@@ -296,6 +369,10 @@ public class MainLayout extends VerticalLayout
     private void renderInsightBanner(Insight insight) {
         insightBanner.removeAll();
 
+        // M-7: bulb icon prefix per design system §"AI insight callout"
+        var bulbIcon = VaadinIcon.LIGHTBULB.create();
+        bulbIcon.addClassName("mise-insight-banner-icon");
+
         var bodySpan = new Span(insight.getBody());
         bodySpan.getElement().setAttribute("data-testid", "insight-banner-body");
         bodySpan.addClassName("mise-insight-banner-body");
@@ -322,7 +399,7 @@ public class MainLayout extends VerticalLayout
             insightBanner.removeAll();
         });
 
-        insightBanner.add(bodySpan, actBtn, dismissBtn);
+        insightBanner.add(bulbIcon, bodySpan, actBtn, dismissBtn);
         insightBanner.setVisible(true);
     }
 
