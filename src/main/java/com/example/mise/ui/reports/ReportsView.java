@@ -504,7 +504,6 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    @SuppressWarnings("unchecked")
     private List<String> extractExtraColumns(Map<String, Object> prefs) {
         Object raw = prefs.get("extraColumns");
         if (raw instanceof List<?> list) {
