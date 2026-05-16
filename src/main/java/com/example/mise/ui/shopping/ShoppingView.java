@@ -249,8 +249,11 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         panel.getElement().setAttribute("data-testid", "recommendation-panel");
         panel.addClassName("mise-shopping-recommendation-panel");
 
-        // Label row — "BEST STORE THIS WEEK" in info color, uppercase
-        var label = new Span("BEST STORE THIS WEEK");
+        // Label row — dynamic per store mode, uppercase
+        String labelText = currentStoreMode == StoreMode.CHEAPEST_MIX
+                ? "CHEAPEST MIX THIS WEEK"
+                : "BEST STORE THIS WEEK";
+        var label = new Span(labelText);
         label.addClassName("mise-shopping-rec-label");
         panel.add(label);
 
