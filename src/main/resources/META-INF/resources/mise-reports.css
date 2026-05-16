@@ -25,6 +25,11 @@
   grid-column: 1 / -1;
 }
 
+/* R-L-01: leaderboard is full-width on its own row below the two chart widgets */
+#mise-reports-widget-leaderboard {
+  grid-column: 1 / -1;
+}
+
 /* M-5: over-budget KPI value in warning amber */
 .mise-kpi-value-warn {
   color: var(--mise-edited-text, #633806) !important;
