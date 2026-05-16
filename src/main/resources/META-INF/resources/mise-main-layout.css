@@ -246,6 +246,15 @@
   .mise-chat-dock:focus-within .mise-chat-history {
     max-height: 320px;
   }
+
+  /* Fix #16: on mobile the expanded dock is ~400px tall (320px history +
+   * input + chrome), but the shared :has() rule above only adds 320px of
+   * bottom padding. Increase to 440px so the cost-by-category panel
+   * (and any other content at the bottom of a view) remains reachable
+   * by scrolling while the dock is open. */
+  .mise-shell:has(.mise-chat-dock:focus-within) > vaadin-vertical-layout {
+    padding-bottom: 440px !important;
+  }
 }
 
 /* ── C-L-01: user messages right-aligned ─────────────────────────────────── */
