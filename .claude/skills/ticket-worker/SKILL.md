@@ -6,7 +6,9 @@ user-invocable: true
 
 # /ticket-worker — Single-iteration ticket worker
 
-You are a **single-iteration worker** in a fleet. `/loop` invokes you periodically; each invocation does **one ticket end-to-end** (or exits if nothing's eligible). Concurrency is bounded by the dependency graph encoded as native GitHub `Blocked by` relations, plus atomic claim via `assignees` + `wip` label.
+You are a **lightweight orchestrator** in a fleet. Your job is fleet management: claim a ticket, delegate the implementation to a sub-agent, then handle PR creation, merge, and cleanup based on the result. You do **not** write code yourself.
+
+`/loop` invokes you periodically; each invocation does **one ticket end-to-end** (or exits if nothing's eligible).
 
 ## Usage
 
@@ -18,187 +20,22 @@ You are a **single-iteration worker** in a fleet. `/loop` invokes you periodical
 /ticket-worker --model sonnet --area shopping
 ```
 
-Typical container invocation:
-
-```
-/loop 10m /ticket-worker --model sonnet
-```
-
 - `--model` filters to issues labeled `model:<value>`. If omitted, use the model of the running session (Opus or Sonnet).
-- `--area` filters to issues labeled `area:<value>`. Useful for "lane" specialisation but optional.
+- `--area` filters to issues labeled `area:<value>`. Optional lane specialisation.
 
-## What you do (one pass)
+---
 
-### Phase 1 — Eligibility query
+## Phase 1 — Eligibility query
 
-Determine the repo from `git remote get-url origin` (strip to `owner/name`). Then run **one** GraphQL query for minimal fields — no body fetches yet:
+Determine the repo from `git remote get-url origin`. Run one GraphQL query:
 
-```bash
-gh api graphql -f query='
-query($owner: String!, $repo: String!) {
-  repository(owner: $owner, name: $repo) {
-    issues(first: 50, states: OPEN, orderBy: {field: CREATED_AT, direction: ASC}) {
-      nodes {
-        number
-        assignees(first: 1) { totalCount }
-        labels(first: 20) { nodes { name } }
-        issueDependenciesSummary { blockedBy }
-      }
-    }
-  }
-}' -f owner=<OWNER> -f repo=<REPO>
-```
-
-Filter the result locally to issues that satisfy **all** of:
-
-- `state == OPEN`
-- `assignees.totalCount == 0`
-- `issueDependenciesSummary.blockedBy == 0`
-- Labels do **not** include `wip`, `needs-spec`, or `needs-human`
-- Labels **include** `model:<your-model>` (matching `--model` or your running session)
-- If `--area X` was passed: labels include `area:<X>`
-
-Pick the **lowest-numbered** match. If none, exit cleanly — `/loop` sleeps until the next tick.
-
-### Phase 2 — Atomic claim
-
-```bash
-gh issue edit <N> --add-assignee @me --add-label wip
-```
-
-Wait 2 seconds, then re-fetch the issue:
-
-```bash
-gh issue view <N> --json assignees,labels
-```
-
-If `assignees.totalCount > 1` (race) or `wip` was added by someone else first, **back off**: remove yourself with `gh issue edit <N> --remove-assignee @me` and exit. Another worker got there first.
-
-### Phase 3 — Fetch context
-
-Only **now** read the full issue body and any linked artefacts:
-
-```bash
-gh issue view <N> --json title,body,labels,number > /tmp/issue.json
-```
-
-The body for every Mise review ticket points at:
-- `Mise-review-1/Screenshot <timestamp>.png` (reviewer screenshots)
-- `Mise-review-1/verify/*.png` (Playwright verification screenshots, if any)
-- `Mise-review-1/findings.md` — search for the trailing `Finding ID:` line to find the matching entry
-
-Read those for full context. Pay particular attention to:
-- The reviewer's transcript quote
-- Verification notes from earlier in this conversation
-- "Acceptance" / "Likely fix" sections in the issue body
-
-### Phase 4 — Implementation
-
-1. **Sync**: `git fetch origin`, `git checkout dev-main`, `git pull --ff-only origin dev-main`.
-2. **Branch**: `git checkout -b fix/issue-<N>-<short-slug>` where `<short-slug>` is 2–4 hyphenated words derived from the title.
-3. **Read project memory first**: scan `.claude/memory/MEMORY.md` for topics that touch your ticket. Pull in linked files — codebase quirks, references, and workflow feedback live there and *will* save you from re-discovering known traps.
-4. **Implement the fix**. Constraints:
-   - Stay inside files identified by the issue body. If your fix would touch unrelated files, **stop** and escalate (see Failure paths).
-   - Respect `CLAUDE.md` conventions — especially the **CSS rules**: no inline styling (use class names), one CSS file per view (`mise-<view>.css`), and for the master `styles.css` only **add** `@import` lines, never edit shared tokens.
-   - Quick-reference gotchas (full detail in `.claude/memory/`):
-     - Don't bump Spring AI past 2.0.0-M4 (breaks Vaadin AI).
-     - Don't use Lumo `--lumo-*` tokens — they don't resolve under Aura.
-     - Multi-line `/* */` comments inside `@media` blocks break the Vaadin CSS bundler.
-     - When editing `mise-<view>.css`, also touch `styles.css` (no-op whitespace) so the bundler rebuilds — sub-file edits alone are ignored.
-5. **Tests**:
-   - `./mvnw test` — must pass. This runs unit + Browserless tests.
-   - For view changes: if the change is visible on screen, also smoke-test with Playwright MCP at 1440×900 (desktop) and 390×844 (mobile). Compare against the `Mise-review-1/` baseline screenshots if applicable.
-   - For AI tool changes (issues #5, #6): consider running `./mvnw -Pai-it verify` against the live LLM. Slow (~minutes) — only if relevant.
-6. **Commit**: one commit with a clear message ending with `Closes #<N>`. Co-author tag:
-   ```
-   Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-   ```
-   (Use your actual model name in the co-author line.)
-
-### Phase 5 — PR + merge
-
-1. **Push**: `git push -u origin fix/issue-<N>-<short-slug>`.
-2. **Open PR**:
-   ```bash
-   gh pr create --base dev-main --title "Fix #<N>: <slug>" --body "$(cat <<EOF
-   Closes #<N>
-
-   ## Summary
-   <1-3 bullets describing the change>
-
-   ## Verification
-   - [x] \`./mvnw test\` passes locally
-   - [x] <view-specific smoke if applicable>
-
-   🤖 Auto-merged by /ticket-worker once tests are green.
-   EOF
-   )"
-   ```
-3. **Mirror labels**: add the issue's `model:*` and `area:*` labels to the PR for visibility.
-4. **Self-merge**:
-   - `gh pr merge <PR#> --squash --delete-branch --auto` (uses GH auto-merge if CI is wired; immediate squash if not).
-   - If merge fails due to merge conflict on `dev-main`: rebase and retry once. If still conflicting, escalate (Failure paths).
-   - If merge fails due to branch protection: leave the PR open, post a comment `Auto-merge blocked by branch protection — needs human merge.`, remove `wip`, exit. The orchestrator will surface this.
-
-### Phase 6 — Cleanup
-
-After successful merge:
-- The `Closes #<N>` automatically closes the issue. Verify with `gh issue view <N> --json state`.
-- Remove the `wip` label (issue close removes assignee but labels persist):
-  ```bash
-  gh issue edit <N> --remove-label wip
-  ```
-- Optionally: post a short close-out comment with the PR URL.
-
-Exit cleanly. `/loop` will re-tick.
-
-## Failure paths
-
-If anything fails irrecoverably in Phases 3–5, **always** clean up before exiting:
-
-```bash
-gh issue edit <N> --remove-label wip --remove-assignee @me
-gh issue comment <N> --body "/cc orchestrator
-
-<one-paragraph description of what blocked you>
-
-- What you tried: ...
-- What's needed: <human triage / spec clarification / unrelated fix / dependency unblock>"
-```
-
-Examples:
-- **Ambiguous spec**: post comment, exit. Orchestrator labels `needs-spec`.
-- **Unrelated regression in tests**: post comment with failing test names, exit. Orchestrator may label `needs-human`.
-- **Discovered blocker** (e.g. realized this ticket actually depends on another open one): post comment naming the blocker. Orchestrator adds the `Blocked by` link.
-- **Merge conflict that can't be auto-resolved**: post comment, exit.
-
-Never:
-- Force-push to `dev-main`.
-- Bypass branch protection (`--no-verify`, `--admin`).
-- Delete branches that aren't yours.
-- Edit `pom.xml`, `vite.config.ts`, or `spec/architecture.md` — those require human approval per `CLAUDE.md` guardrails. Escalate instead.
-
-## Out of scope for you
-
-- **The dependency graph** is owned by the orchestrator. If a ticket seems mis-ordered, escalate; don't rewrite `Blocked by` relations.
-- **Spec decisions** (anything labeled `needs-spec`) — skip these entirely.
-
-## Snippets reference
-
-**Get owner/repo**:
-```bash
-git remote get-url origin | sed -E 's|.*[:/]([^/]+)/([^/]+)\.git$|\1 \2|'
-```
-
-**Issue eligibility check (drop-in)**:
 ```bash
 OWNER=$(git remote get-url origin | sed -E 's|.*[:/]([^/]+)/[^/]+\.git$|\1|')
 REPO=$(git remote get-url origin | sed -E 's|.*[:/][^/]+/([^/]+)\.git$|\1|')
-MODEL=${1:-sonnet}  # default; override via --model
 gh api graphql \
   -f query='query($o:String!,$r:String!){repository(owner:$o,name:$r){issues(first:50,states:OPEN,orderBy:{field:CREATED_AT,direction:ASC}){nodes{number assignees(first:1){totalCount} labels(first:20){nodes{name}} issueDependenciesSummary{blockedBy}}}}}' \
   -f o="$OWNER" -f r="$REPO" \
-  | jq -r --arg m "model:$MODEL" '.data.repository.issues.nodes
+  | jq -r --arg m "model:sonnet" '.data.repository.issues.nodes
     | map(select(.assignees.totalCount==0
         and .issueDependenciesSummary.blockedBy==0
         and (.labels.nodes | map(.name) | index($m))
@@ -206,4 +43,236 @@ gh api graphql \
     | sort_by(.number) | .[0].number // empty'
 ```
 
-If the output is empty, no work — exit.
+Replace `"model:sonnet"` with the `--model` value (or your session model). If the output is empty, **exit cleanly** — no work available.
+
+---
+
+## Phase 2 — Atomic claim
+
+```bash
+gh issue edit <N> --add-assignee @me --add-label wip
+sleep 2
+gh issue view <N> --json assignees,labels
+```
+
+If `assignees.totalCount > 1`: remove yourself (`gh issue edit <N> --remove-assignee @me`) and exit — another worker got there first.
+
+---
+
+## Phase 3 — Derive branch name
+
+Fetch just the title (minimal context — the sub-agent fetches the full body itself):
+
+```bash
+gh issue view <N> --json title,number | jq -r '.title'
+```
+
+Derive the branch name: `fix/issue-<N>-<2-4-word-slug>` from the title.
+
+---
+
+## Phase 4 — Spawn implementation sub-agent
+
+Use the **Agent tool** to spawn a sub-agent. Pass a self-contained prompt (see template below). The sub-agent fetches its own issue context and handles all of: git sync, branch, read project memory, implement, test, commit, push.
+
+**Wait for the sub-agent to complete** (foreground, not background).
+
+Parse the sub-agent's output for a fenced block that starts with `IMPLEMENTATION_RESULT`:
+
+```
+IMPLEMENTATION_RESULT
+status: success | failure
+branch: fix/issue-<N>-<slug>
+pr_title: Fix #<N>: <short description>
+pr_body: |
+  Closes #<N>
+
+  ## Summary
+  - bullet 1
+  - bullet 2
+
+  ## Verification
+  - [x] `./mvnw test` passes
+  - [x] <other checks>
+```
+
+For failure:
+```
+IMPLEMENTATION_RESULT
+status: failure
+reason: <one paragraph — what blocked the sub-agent>
+```
+
+If the sub-agent output contains no `IMPLEMENTATION_RESULT` block, treat it as a failure with reason "sub-agent returned no result block".
+
+---
+
+## Phase 5 — Act on sub-agent result
+
+### On success
+
+```bash
+# PR is on the branch the sub-agent pushed
+gh pr create --base dev-main \
+  --title "<pr_title from result>" \
+  --body "<pr_body from result>"
+
+# Mirror labels
+gh pr edit <PR#> --add-label "model:<model>,area:<area>"
+
+# Merge
+gh pr merge <PR#> --squash --delete-branch
+```
+
+If merge fails due to conflict: rebase the branch onto `dev-main`, retry once. If still conflicting, go to failure path.
+
+If merge fails due to branch protection: post a comment on the issue (`Auto-merge blocked by branch protection — needs human merge.`), remove `wip`, exit.
+
+### On failure
+
+```bash
+gh issue edit <N> --remove-label wip --remove-assignee @me
+gh issue comment <N> --body "/cc orchestrator
+
+<reason from result block or sub-agent output>
+
+- What was tried: implementation sub-agent was spawned but did not complete
+- What's needed: <human triage / spec clarification / dependency unblock>"
+```
+
+Exit cleanly.
+
+---
+
+## Phase 6 — Cleanup
+
+After successful merge:
+
+```bash
+gh issue view <N> --json state   # confirm CLOSED (Closes #N in PR does this)
+gh issue edit <N> --remove-label wip
+```
+
+Exit cleanly. `/loop` re-ticks.
+
+---
+
+## Sub-agent prompt template
+
+Build this prompt dynamically, substituting only `<N>`, `<BRANCH>`, and `<MODEL>`. The sub-agent fetches its own issue context. Pass it to the Agent tool.
+
+```
+You are an implementation sub-agent for the Mise meal-planner project.
+Your job: implement a fix for GitHub issue #<N>, commit it, and push the branch.
+You do NOT create PRs or handle GitHub issue management — just the code.
+
+## Steps
+
+1. Fetch your ticket context:
+   gh issue view <N> --json title,body,labels,number
+
+2. Read `.claude/memory/MEMORY.md` and pull any linked files relevant to this ticket.
+   These contain project gotchas and conventions that will save you debugging time.
+
+3. Read `CLAUDE.md` at the repo root for conventions (especially CSS rules).
+
+5. Sync and branch:
+   git fetch origin
+   git checkout dev-main
+   git pull --ff-only origin dev-main
+   git checkout -b <BRANCH>
+
+6. Implement the fix. Key constraints from CLAUDE.md and project memory:
+   - No inline CSS for static styling — use class names and put rules in the view's CSS file.
+   - One CSS file per view (`mise-<view>.css`), imported from `styles.css`.
+   - After editing any `mise-<view>.css`, also touch `styles.css` (add a blank line) so the
+     Vaadin bundler rebuilds — sub-file edits alone are ignored.
+   - Do NOT use Lumo `--lumo-*` tokens — they don't resolve under the Aura theme.
+   - Do NOT bump Spring AI past 2.0.0-M4 (breaks `SpringAILLMProvider`).
+   - No multi-line `/* */` comments inside `@media` blocks (breaks Vaadin CSS parser).
+   - Do NOT edit `pom.xml`, `vite.config.ts`, or `spec/architecture.md` — escalate instead.
+   - Screenshot context is in `Mise-review-1/` and `Mise-review-1/verify/`.
+
+7. Run tests:
+   ./mvnw test
+   Tests must pass (175 tests, 0 failures). If they fail due to your change, fix it.
+   If they fail for an unrelated reason, escalate (see below).
+
+8. Commit (one commit):
+   git add <changed files>
+   git commit -m "Fix #<N>: <short description>
+
+   <optional detail>
+
+   Closes #<N>
+
+   Co-Authored-By: Claude <MODEL> <noreply@anthropic.com>"
+
+9. Push:
+   git push -u origin <BRANCH>
+
+## Output format
+
+After completing your work, output **exactly** this block (fill in the fields):
+
+\`\`\`
+IMPLEMENTATION_RESULT
+status: success
+branch: <BRANCH>
+pr_title: Fix #<N>: <short description matching commit>
+pr_body: |
+  Closes #<N>
+
+  ## Summary
+  - <bullet 1>
+  - <bullet 2>
+
+  ## Verification
+  - [x] `./mvnw test` passes — 175 tests, 0 failures
+  - [x] <any other checks performed>
+
+  🤖 Auto-merged by /ticket-worker once tests are green.
+\`\`\`
+
+If you cannot complete the implementation (ambiguous spec, unrelated test failure,
+would need to touch pom.xml/vite.config.ts/spec/, discovered blocker), output:
+
+\`\`\`
+IMPLEMENTATION_RESULT
+status: failure
+reason: <one paragraph describing exactly what blocked you and what a human needs to do>
+\`\`\`
+
+Do not attempt any GitHub operations (gh issue, gh pr). Those are the orchestrator's job.
+```
+
+---
+
+## Failure paths (main agent)
+
+Clean up and exit whenever:
+- Sub-agent returns `status: failure`
+- Sub-agent produces no `IMPLEMENTATION_RESULT` block
+- PR merge fails after one rebase retry
+
+Cleanup command:
+```bash
+gh issue edit <N> --remove-label wip --remove-assignee @me
+gh issue comment <N> --body "/cc orchestrator
+
+<reason>
+
+- What you tried: ...
+- What's needed: ..."
+```
+
+Never:
+- Force-push to `dev-main`
+- Bypass branch protection
+- Edit `pom.xml`, `vite.config.ts`, or `spec/architecture.md`
+- Delete branches that aren't yours
+
+## Out of scope
+
+- Rewriting `Blocked by` dependency relations — that's the orchestrator.
+- Spec decisions on `needs-spec` issues — skip them entirely.
