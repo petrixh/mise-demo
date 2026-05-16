@@ -9,6 +9,7 @@ import com.example.mise.domain.plan.MealRepository;
 import com.example.mise.domain.plan.PlanRepository;
 import com.example.mise.domain.preferences.ViewPreference;
 import com.example.mise.domain.preferences.ViewPreferenceRepository;
+import com.example.mise.ui.reports.ReportsRefreshBroadcaster;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,9 @@ class ReportsToolsTest {
 
     @Autowired
     private ReportsTools reportsTools;
+
+    @Autowired
+    private ReportsRefreshBroadcaster refreshBroadcaster;
 
     @Autowired
     private HouseholdRepository householdRepository;
@@ -209,5 +213,43 @@ class ReportsToolsTest {
 
         // BR-06: must mention catalog note
         assertThat(result).containsIgnoringCase("current catalog");
+    }
+
+    // ── Issue #5: each mutating tool fires the refresh broadcaster ────────────
+
+    @Test
+    void mutatingTools_fireRefreshBroadcasterOnCompletion() {
+        java.util.concurrent.atomic.AtomicInteger fired = new java.util.concurrent.atomic.AtomicInteger();
+        Runnable hook = fired::incrementAndGet;
+        refreshBroadcaster.register(hook);
+        try {
+            reportsTools.addLeaderboardColumn("kcalPerEuro");
+            assertThat(fired.get()).as("addLeaderboardColumn fires refresh").isEqualTo(1);
+
+            reportsTools.transformCategoryChart("bar", "horizontal");
+            assertThat(fired.get()).as("transformCategoryChart fires refresh").isEqualTo(2);
+
+            reportsTools.removeLeaderboardColumn("kcalPerEuro");
+            assertThat(fired.get()).as("removeLeaderboardColumn fires refresh").isEqualTo(3);
+
+            reportsTools.resetWidget("categoryBreakdown");
+            assertThat(fired.get()).as("resetWidget fires refresh").isEqualTo(4);
+        } finally {
+            refreshBroadcaster.deregister(hook);
+        }
+    }
+
+    @Test
+    void refusedTool_doesNotFireRefresh() {
+        java.util.concurrent.atomic.AtomicInteger fired = new java.util.concurrent.atomic.AtomicInteger();
+        Runnable hook = fired::incrementAndGet;
+        refreshBroadcaster.register(hook);
+        try {
+            String result = reportsTools.addLeaderboardColumn("carbonFootprint");
+            assertThat(result).startsWith("REFUSED:");
+            assertThat(fired.get()).as("refused tool must not fire refresh").isZero();
+        } finally {
+            refreshBroadcaster.deregister(hook);
+        }
     }
 }
