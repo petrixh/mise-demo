@@ -11,15 +11,9 @@
   box-sizing: border-box;
 }
 
-/* ── Two-column grid (desktop) / single-column (mobile) ──────────────────── */
+/* ── Shopping list column ─────────────────────────────────────────────────── */
 
-.mise-shopping-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.mise-shopping-left-col {
+.mise-shopping-list-col {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -302,9 +296,9 @@
     padding: 10px;
   }
 
+  /* Header strip hidden on mobile too — recommendation panel at top covers this */
   .mise-shopping-header-strip {
-    flex-wrap: wrap;
-    gap: 8px;
+    display: none;
   }
 
   .mise-shopping-total-cost {
@@ -476,55 +470,33 @@
   color: var(--vaadin-body-text-color);
 }
 
-/* Mode control visibility: mobile shows in header strip, desktop shows in panel */
-.mise-shopping-mode-control-desktop {
+/* Mode control visibility: panel is always at top so its control is always shown.
+   Header strip mode control (mobile fallback) is hidden — panel owns this on all breakpoints. */
+.mise-shopping-mode-control-mobile {
   display: none;
 }
 
-/* ── Desktop two-column layout (≥ 1024px) ────────────────────────────────── */
+.mise-shopping-mode-control-panel {
+  display: flex;
+}
+
+/* ── Desktop layout (≥ 1024px) ───────────────────────────────────────────── */
 
 @media (min-width: 1024px) {
-  /* Switch layout outer to have a max-width that accommodates both columns */
   .mise-shopping-layout {
     max-width: none;
   }
 
-  /* Two-column grid: list left, recommendation panel right */
-  .mise-shopping-grid {
-    display: grid;
-    grid-template-columns: 1fr 360px;
-    grid-template-rows: auto;
-    gap: 20px;
-    align-items: start;
-  }
-
-  /* Left column scrolls independently so sticky headers work within it */
-  .mise-shopping-left-col {
-    /* Sticky context: left col is the scroll ancestor for aisle headers */
-    overflow-y: auto;
-    max-height: calc(100vh - 180px);
-  }
-
-  /* Right panel is the second grid cell — sticks to top on scroll */
+  /* Recommendation panel sits full-width at top; constrain width so it
+     doesn't stretch uncomfortably across a wide viewport. */
   .mise-shopping-recommendation-panel {
-    position: sticky;
-    top: 0;
+    max-width: 720px;
+    align-self: flex-start;
+    width: 100%;
   }
 
-  /* Desktop mode control visible; mobile one hidden */
-  .mise-shopping-mode-control-mobile {
-    display: none;
-  }
-
-  .mise-shopping-mode-control-desktop {
-    display: flex;
-  }
-
-  /*
-   * M-3: Hide entire header strip on desktop — the right-panel owns store identity
-   * and total cost on desktop. On mobile (where the right-panel is hidden), the
-   * header strip remains visible so total cost is accessible.
-   */
+  /* Hide header strip on desktop — the top panel owns store identity and total cost.
+     On mobile the panel is also shown at top so the strip is hidden there too (see above). */
   .mise-shopping-header-strip {
     display: none;
   }
