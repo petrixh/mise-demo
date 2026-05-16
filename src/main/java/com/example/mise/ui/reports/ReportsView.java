@@ -397,11 +397,10 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         grid.setWidthFull();
         grid.setAllRowsVisible(true);
 
-        grid.addColumn(LeaderboardEntry::rank).setHeader("#").setWidth("3em").setFlexGrow(0);
+        grid.addColumn(e -> "#" + e.rank()).setHeader("#").setWidth("3.5em").setFlexGrow(0);
         grid.addColumn(LeaderboardEntry::recipeName).setHeader("Meal").setFlexGrow(3);
-        grid.addColumn(LeaderboardEntry::frequency).setHeader("Times").setFlexGrow(1);
+        grid.addColumn(e -> "×" + e.frequency()).setHeader("Times").setWidth("5em").setFlexGrow(0);
         grid.addColumn(e -> "€" + e.averageCost().toPlainString()).setHeader("Avg cost").setFlexGrow(1);
-        grid.addColumn(e -> Math.round(e.averageKcal()) + " kcal").setHeader("Kcal avg").setFlexGrow(2);
 
         if (extraColumns.contains("kcalPerEuro")) {
             grid.addColumn(e -> {
@@ -421,9 +420,9 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
             var card = new Div();
             card.addClassName("mise-reports-leaderboard-card");
 
-            // Top row: rank + meal name + times cooked
-            var topRow = new Div();
-            topRow.addClassName("mise-reports-leaderboard-card-top");
+            // Left side: rank + meal name
+            var leftGroup = new Div();
+            leftGroup.addClassName("mise-reports-leaderboard-card-left");
 
             var rankSpan = new Span("#" + entry.rank());
             rankSpan.addClassName("mise-reports-leaderboard-card-rank");
@@ -431,23 +430,20 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
             var nameSpan = new Span(entry.recipeName());
             nameSpan.addClassName("mise-reports-leaderboard-card-name");
 
+            leftGroup.add(rankSpan, nameSpan);
+
+            // Right side: times-cooked badge + avg cost
+            var rightGroup = new Div();
+            rightGroup.addClassName("mise-reports-leaderboard-card-right");
+
             var timesSpan = new Span("×" + entry.frequency());
             timesSpan.addClassName("mise-reports-leaderboard-card-times");
-
-            topRow.add(rankSpan, nameSpan, timesSpan);
-
-            // Bottom row: avg cost + avg kcal
-            var bottomRow = new Div();
-            bottomRow.addClassName("mise-reports-leaderboard-card-bottom");
 
             var costSpan = new Span("€" + entry.averageCost().toPlainString());
             costSpan.addClassName("mise-reports-leaderboard-card-cost");
 
-            var kcalSpan = new Span(Math.round(entry.averageKcal()) + " kcal");
-            kcalSpan.addClassName("mise-reports-leaderboard-card-kcal");
-
-            bottomRow.add(costSpan, kcalSpan);
-            card.add(topRow, bottomRow);
+            rightGroup.add(timesSpan, costSpan);
+            card.add(leftGroup, rightGroup);
             cardList.add(card);
         }
 

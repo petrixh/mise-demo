@@ -124,13 +124,15 @@
   .mise-reports-leaderboard-cards {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
   }
 
+  /* Single-row card: left (rank + name) and right (×N + price) */
   .mise-reports-leaderboard-card {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
     padding: 10px 8px;
     border-bottom: 1px solid rgba(255,255,255,0.10);
   }
@@ -139,58 +141,48 @@
     border-bottom: none;
   }
 
-  /* Top row: rank + name + times */
-  .mise-reports-leaderboard-card-top {
+  /* Left group: rank pill + meal name, takes remaining space */
+  .mise-reports-leaderboard-card-left {
     display: flex;
     align-items: baseline;
     gap: 6px;
-    flex-wrap: nowrap;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .mise-reports-leaderboard-card-rank {
     font-size: 11px;
     color: rgba(255,255,255,0.52);
     flex-shrink: 0;
-    min-width: 1.8em;
+    min-width: 2em;
   }
 
   .mise-reports-leaderboard-card-name {
     font-size: 13px;
     font-weight: 500;
-    flex: 1 1 0;
-    overflow-wrap: break-word;
-    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Right group: ×N badge + avg cost, fixed to right edge */
+  .mise-reports-leaderboard-card-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .mise-reports-leaderboard-card-times {
     font-size: 11px;
     color: rgba(255,255,255,0.52);
-    flex-shrink: 0;
-  }
-
-  /* Bottom row: cost · kcal */
-  .mise-reports-leaderboard-card-bottom {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding-left: 1.8em;
-  }
-
-  .mise-reports-leaderboard-card-cost,
-  .mise-reports-leaderboard-card-kcal {
-    font-size: 11px;
-    color: rgba(255,255,255,0.52);
   }
 
   .mise-reports-leaderboard-card-cost {
+    font-size: 13px;
     font-weight: 500;
     color: rgba(255,255,255,0.87);
-  }
-
-  /* Add a · separator between cost and kcal */
-  .mise-reports-leaderboard-card-cost::after {
-    content: " ·";
-    font-weight: 400;
-    color: rgba(255,255,255,0.52);
+    min-width: 4em;
+    text-align: right;
   }
 }
