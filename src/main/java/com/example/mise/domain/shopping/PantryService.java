@@ -28,6 +28,16 @@ public class PantryService {
     }
 
     /**
+     * Removes a pantry item by its id.
+     * No-op if the id is null or not found.
+     */
+    @Transactional
+    public void remove(Long id) {
+        if (id == null) return;
+        repository.deleteById(id);
+    }
+
+    /**
      * Seeds pantry staples from a list of ingredient names.
      * Idempotent: does not duplicate if the household already has items.
      */

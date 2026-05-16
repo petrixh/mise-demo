@@ -133,13 +133,53 @@
   padding: 8px 0 4px 0;
 }
 
-.mise-shopping-pantry-chip {
+/* Chip wrapper — holds label + hidden remove button; reveals × on hover/focus */
+.mise-shopping-pantry-chip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   padding: 3px 9px;
   border-radius: 10px;
   background: rgba(255,255,255,0.07);
   color: var(--vaadin-secondary-text-color);
   white-space: nowrap;
+}
+
+.mise-shopping-pantry-chip-label {
+  font-size: 11px;
+  color: var(--vaadin-secondary-text-color);
+}
+
+/* Remove button: hidden by default, revealed on chip hover or focus-within */
+.mise-shopping-pantry-remove-btn {
+  display: none !important;
+  align-items: center;
+  justify-content: center;
+  width: 14px !important;
+  min-width: 14px !important;
+  height: 14px !important;
+  min-height: 14px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,0.18) !important;
+  color: var(--vaadin-body-text-color) !important;
+  border: none !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mise-shopping-pantry-chip-wrap:hover .mise-shopping-pantry-remove-btn,
+.mise-shopping-pantry-chip-wrap:focus-within .mise-shopping-pantry-remove-btn {
+  display: inline-flex !important;
+}
+
+.mise-shopping-pantry-remove-btn:hover {
+  background: rgba(255,80,80,0.55) !important;
+  color: #fff !important;
 }
 
 /* ── Aisle groups ─────────────────────────────────────────────────────────── */
