@@ -130,8 +130,6 @@ public class PlanView extends VerticalLayout
         var mealGrid = new MealGrid(
                 activePlan, planService, recipeCatalog, mealCostCalculator,
                 this::handlePinToggle,
-                this::handleMarkCooked,
-                this::handleMarkSkipped,
                 this::handleUndo,
                 this::handleSubmitChatMessage
         );
@@ -162,18 +160,6 @@ public class PlanView extends VerticalLayout
                     String msg = !m.isPinned() ? "Meal pinned" : "Meal unpinned";
                     Notification.show(msg, 1500, Notification.Position.BOTTOM_CENTER);
                 });
-    }
-
-    private void handleMarkCooked(Long mealId) {
-        planService.markStatus(mealId, com.example.mise.domain.plan.Meal.Status.COOKED);
-        refresh();
-        Notification.show("Marked as cooked", 1500, Notification.Position.BOTTOM_CENTER);
-    }
-
-    private void handleMarkSkipped(Long mealId) {
-        planService.markStatus(mealId, com.example.mise.domain.plan.Meal.Status.SKIPPED);
-        refresh();
-        Notification.show("Marked as skipped", 1500, Notification.Position.BOTTOM_CENTER);
     }
 
     /**
