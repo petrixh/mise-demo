@@ -255,6 +255,12 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
             y.setTitle(new AxisTitle("Cost (€)"));
             conf.addyAxis(y);
 
+            // Apply a single brand-aligned hue to the trend line
+            PlotOptionsLine lineOpts = new PlotOptionsLine();
+            lineOpts.setColor(new com.vaadin.flow.component.charts.model.style.SolidColor(
+                    CATEGORY_COLORS.get("Protein")));
+            conf.setPlotOptions(lineOpts);
+
             DataSeries series = new DataSeries("Weekly cost");
             for (var point : trend.points()) {
                 series.add(new DataSeriesItem(
@@ -336,7 +342,13 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
 
                 DataSeries series = new DataSeries("Cost (€)");
                 for (var entry : breakdown.entries()) {
-                    series.add(new DataSeriesItem(entry.category(), entry.totalCost().doubleValue()));
+                    DataSeriesItem item = new DataSeriesItem(
+                            entry.category(), entry.totalCost().doubleValue());
+                    String barColor = CATEGORY_COLORS.get(entry.category());
+                    if (barColor != null) {
+                        item.setColor(new com.vaadin.flow.component.charts.model.style.SolidColor(barColor));
+                    }
+                    series.add(item);
                 }
                 conf.addSeries(series);
             }
