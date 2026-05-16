@@ -148,7 +148,7 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         listCol.add(weekHeading);
 
         // ── Pantry "You already have" section ─────────────────────────────────
-        listCol.add(buildPantrySection(list.pantrySection()));
+        listCol.add(buildPantrySection(householdId, list.pantrySection()));
 
         // ── Aisle groups ──────────────────────────────────────────────────────
         if (list.aisleGroups().isEmpty()) {
@@ -226,7 +226,7 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         return modeControl;
     }
 
-    private Details buildPantrySection(PantrySection section) {
+    private Details buildPantrySection(Long householdId, PantrySection section) {
         var pantryDiv = new Div();
         pantryDiv.addClassName("mise-shopping-pantry-chips");
 
@@ -234,9 +234,21 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
             pantryDiv.add(new Span("No pantry items — add staples via chat."));
         } else {
             for (var item : section.items()) {
-                var chip = new Span(item.getIngredientName() + (item.isStaple() ? " ✦" : ""));
-                chip.addClassName("mise-shopping-pantry-chip");
-                pantryDiv.add(chip);
+                var chipWrap = new Div();
+                chipWrap.addClassName("mise-shopping-pantry-chip-wrap");
+                chipWrap.getElement().setAttribute("data-testid", "pantry-chip");
+
+                var label = new Span(item.getIngredientName() + (item.isStaple() ? " ✦" : ""));
+                label.addClassName("mise-shopping-pantry-chip-label");
+
+                var removeBtn = new Button("×");
+                removeBtn.addClassName("mise-shopping-pantry-remove-btn");
+                removeBtn.getElement().setAttribute("aria-label", "Remove " + item.getIngredientName() + " from pantry");
+                removeBtn.getElement().setAttribute("data-testid", "pantry-chip-remove");
+                removeBtn.addClickListener(e -> handlePantryRemove(householdId, item));
+
+                chipWrap.add(label, removeBtn);
+                pantryDiv.add(chipWrap);
             }
         }
 
@@ -473,6 +485,22 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         viewPreferenceService.saveSettings(householdId, ViewPreference.View.SHOPPING, "storeMode",
                 Map.of("mode", newMode.name()));
         // Re-derive and rebuild
+        currentList = shoppingService.deriveList(householdId, currentStoreMode);
+        buildUI(householdId, currentList);
+    }
+
+    /**
+     * Removes a pantry item (un-have): deletes it and moves the ingredient back to the
+     * active shopping list by reflowing (BR-04 reverse).
+     */
+    private void handlePantryRemove(Long householdId, PantryItem item) {
+        pantryService.remove(item.getId());
+
+        var n = Notification.show(item.getIngredientName() + " moved back to shopping list", 2000,
+                Notification.Position.BOTTOM_CENTER);
+        n.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+
+        // Reflow
         currentList = shoppingService.deriveList(householdId, currentStoreMode);
         buildUI(householdId, currentList);
     }
