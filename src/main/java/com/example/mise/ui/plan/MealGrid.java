@@ -40,8 +40,6 @@ public class MealGrid extends Div {
                     RecipeCatalog recipeCatalog,
                     MealCostCalculator costCalculator,
                     Consumer<Long> onPinToggle,
-                    Consumer<Long> onMarkCooked,
-                    Consumer<Long> onMarkSkipped,
                     Consumer<Long> onUndo,
                     Consumer<String> onSubmitChatMessage) {
         addClassName("mise-meal-grid");
@@ -57,7 +55,7 @@ public class MealGrid extends Div {
             LocalDate date = monday.plusDays(d);
             Meal meal = byDate.get(date);
             add(buildRow(date, meal, recipeCatalog, costCalculator,
-                    planService, onPinToggle, onMarkCooked, onMarkSkipped, onUndo, onSubmitChatMessage));
+                    planService, onPinToggle, onUndo, onSubmitChatMessage));
         }
     }
 
@@ -67,8 +65,6 @@ public class MealGrid extends Div {
                          MealCostCalculator costCalculator,
                          PlanService planService,
                          Consumer<Long> onPinToggle,
-                         Consumer<Long> onMarkCooked,
-                         Consumer<Long> onMarkSkipped,
                          Consumer<Long> onUndo,
                          Consumer<String> onSubmitChatMessage) {
         var row = new Div();
@@ -161,35 +157,9 @@ public class MealGrid extends Div {
 
         row.add(tags);
 
-        // Row action buttons (pin / cooked / skipped)
+        // Row action buttons: pin (always) + undo (only when AI edit history exists)
         var actions = new Div();
         actions.addClassName("mise-row-actions");
-
-        var pinIcon = meal.isPinned() ? VaadinIcon.PIN.create() : VaadinIcon.PIN_POST.create();
-        var pinBtn = new Button(pinIcon);
-        pinBtn.setThemeName("tertiary icon small");
-        if (meal.isPinned()) pinBtn.getElement().setAttribute("title", "Unpin meal");
-        else pinBtn.getElement().setAttribute("title", "Pin meal");
-        // Stable testids for IT: generic + per-date variant
-        pinBtn.getElement().setAttribute("data-testid", "meal-action-pin");
-        pinBtn.getElement().setAttribute("data-pin-date", date.toString());
-        pinBtn.addClickListener(e -> {
-            if (onPinToggle != null) onPinToggle.accept(meal.getId());
-        });
-
-        var cookedBtn = new Button((com.vaadin.flow.component.Component) VaadinIcon.CHECK.create());
-        cookedBtn.setThemeName("tertiary icon small");
-        cookedBtn.getElement().setAttribute("title", "Mark cooked");
-        cookedBtn.addClickListener(e -> {
-            if (onMarkCooked != null) onMarkCooked.accept(meal.getId());
-        });
-
-        var skipBtn = new Button((com.vaadin.flow.component.Component) VaadinIcon.CLOSE_SMALL.create());
-        skipBtn.setThemeName("tertiary icon small");
-        skipBtn.getElement().setAttribute("title", "Mark skipped");
-        skipBtn.addClickListener(e -> {
-            if (onMarkSkipped != null) onMarkSkipped.accept(meal.getId());
-        });
 
         // UC-004: "undo" inline button — available when there is edit history (AC #1)
         // Calls planService.undoLastEdit directly (no LLM round-trip) then the broadcaster reflows.
@@ -207,7 +177,20 @@ public class MealGrid extends Div {
             actions.add(undoBtn);
         }
 
-        actions.add(pinBtn, cookedBtn, skipBtn);
+        var pinIcon = meal.isPinned() ? VaadinIcon.PIN.create() : VaadinIcon.PIN_POST.create();
+        var pinBtn = new Button(pinIcon);
+        pinBtn.setThemeName("tertiary icon small");
+        String pinLabel = meal.isPinned() ? "Unpin meal — AI can swap it again" : "Pin meal — AI won't swap it";
+        pinBtn.getElement().setAttribute("title", pinLabel);
+        pinBtn.getElement().setAttribute("aria-label", pinLabel);
+        // Stable testids for IT: generic + per-date variant
+        pinBtn.getElement().setAttribute("data-testid", "meal-action-pin");
+        pinBtn.getElement().setAttribute("data-pin-date", date.toString());
+        pinBtn.addClickListener(e -> {
+            if (onPinToggle != null) onPinToggle.accept(meal.getId());
+        });
+
+        actions.add(pinBtn);
         row.add(actions);
 
         return row;
