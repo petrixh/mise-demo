@@ -4,6 +4,7 @@ import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.preferences.ViewPreference;
 import com.example.mise.domain.preferences.ViewPreferenceService;
 import com.example.mise.domain.reports.ReportService;
+import com.example.mise.ui.reports.ReportsRefreshBroadcaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
@@ -29,13 +30,16 @@ public class ReportsTools {
     private final HouseholdService householdService;
     private final ViewPreferenceService viewPreferenceService;
     private final ReportService reportService;
+    private final ReportsRefreshBroadcaster refreshBroadcaster;
 
     public ReportsTools(HouseholdService householdService,
                         ViewPreferenceService viewPreferenceService,
-                        ReportService reportService) {
+                        ReportService reportService,
+                        ReportsRefreshBroadcaster refreshBroadcaster) {
         this.householdService = householdService;
         this.viewPreferenceService = viewPreferenceService;
         this.reportService = reportService;
+        this.refreshBroadcaster = refreshBroadcaster;
     }
 
     // ── Leaderboard column tools ───────────────────────────────────────────────
@@ -74,6 +78,9 @@ public class ReportsTools {
                 cols.add(columnKey);
             }
             viewPreferenceService.saveSettings(hh.getId(), ViewPreference.View.REPORTS, "leaderboard", settings);
+            // Issue #5: fire refresh on tool-call completion, not assistant-message stream end —
+            // the @Transactional saveSettings has already committed at this point.
+            refreshBroadcaster.fireRefresh();
             return "Added column " + columnKey + " to the leaderboard.";
         } catch (Exception e) {
             log.warn("addLeaderboardColumn error: {}", e.getMessage());
@@ -106,6 +113,7 @@ public class ReportsTools {
             updated.remove(columnKey);
             settings.put("extraColumns", updated);
             viewPreferenceService.saveSettings(hh.getId(), ViewPreference.View.REPORTS, "leaderboard", settings);
+            refreshBroadcaster.fireRefresh();
             return "Removed column " + columnKey + " from the leaderboard.";
         } catch (Exception e) {
             log.warn("removeLeaderboardColumn error: {}", e.getMessage());
@@ -140,6 +148,7 @@ public class ReportsTools {
             settings.put("chartType", resolvedType);
             settings.put("orientation", resolvedOrientation);
             viewPreferenceService.saveSettings(hh.getId(), ViewPreference.View.REPORTS, "categoryBreakdown", settings);
+            refreshBroadcaster.fireRefresh();
 
             String desc = "bar".equals(resolvedType)
                     ? ("horizontal".equals(resolvedOrientation) ? "horizontal bar" : "vertical bar")
@@ -176,6 +185,7 @@ public class ReportsTools {
 
             String priorDesc = existing.get().toString();
             viewPreferenceService.deleteSettings(hh.getId(), ViewPreference.View.REPORTS, widgetKey);
+            refreshBroadcaster.fireRefresh();
             return "Reset '" + widgetKey + "' to defaults. Prior settings were: " + priorDesc;
         } catch (Exception e) {
             log.warn("resetWidget error: {}", e.getMessage());
