@@ -79,23 +79,35 @@
   display: none;
 }
 
-.mise-tabs {
+/* ── Header nav (tabs inline in the header bar) ─────────────────────────── */
+/*
+ * Desktop: tabs sit in the header row to the right of the week badge.
+ * align-self: stretch + align-items: stretch lets the tab divs fill the
+ * full 52 px header height so the active border-bottom appears flush with
+ * the header's bottom edge.
+ * Mobile (<640px): the nav wraps to a full-width second row via flex-wrap on
+ * .mise-header (see the mobile @media block below). Issue #8 addresses the
+ * equal-thirds styling of those wrapped tabs.
+ */
+.mise-header-nav {
   display: flex;
+  align-self: stretch;
+  align-items: stretch;
   flex-shrink: 0;
-  border-bottom: 0.5px solid rgba(255,255,255,0.08);
-  background: var(--vaadin-background);
-  padding: 0 16px;
+  margin-left: 8px;
 }
 
 .mise-tab {
   font-size: 13px;
-  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
   cursor: pointer;
   border: none;
   background: transparent;
   color: var(--vaadin-secondary-text-color);
   border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  margin-bottom: 0;
   font-family: inherit;
   font-weight: 400;
   transition: color 0.15s;
@@ -322,15 +334,17 @@
 
 /* ── C-3: mobile header collapse (< 640px) ──────────────────────────────── */
 /*
- * On mobile: compact single row — wordmark + week badge inline.
- * Week nav arrows hidden; budget badge hidden (saves space).
- * Week badge resets its pill style to plain secondary text.
+ * On mobile the header wraps: first row = wordmark + week badge, second row
+ * = nav tabs spanning full width. Issue #8 styles the tab row as equal thirds.
  */
 @media (max-width: 639px) {
   .mise-header {
-    height: 44px;
+    height: auto;
+    min-height: 44px;
     padding: 0 14px;
     gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
   }
 
   .mise-brand {
@@ -354,5 +368,20 @@
   /* Budget pill dropped on mobile to save space */
   .mise-header-budget-badge {
     display: none;
+  }
+
+  /* Nav tabs wrap to a full-width second row below the wordmark/week */
+  .mise-header-nav {
+    order: 10;
+    width: 100%;
+    align-self: auto;
+    margin-left: 0;
+    border-bottom: 0.5px solid rgba(255,255,255,0.08);
+  }
+
+  .mise-header-nav .mise-tab {
+    flex: 1;
+    justify-content: center;
+    padding: 9px 0;
   }
 }

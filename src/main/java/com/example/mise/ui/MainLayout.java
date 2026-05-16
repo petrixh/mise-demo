@@ -132,17 +132,13 @@ public class MainLayout extends VerticalLayout
         setSpacing(false);
         addClassName("mise-shell");
 
-        // Header
-        add(buildHeader(householdService, planService));
-
-        // Tabs
+        // Tabs built before the header so buildHeader() can fold them into the nav row
         planTab = makeTab("Plan", "plan");
         shoppingTab = makeTab("Shopping", "shopping");
         reportsTab = makeTab("Reports", "reports");
 
-        var tabsBar = new Div(planTab, shoppingTab, reportsTab);
-        tabsBar.addClassName("mise-tabs");
-        add(tabsBar);
+        // Header (includes inline nav tabs via mise-header-nav; one row on desktop)
+        add(buildHeader(householdService, planService));
 
         // UC-009: insight banner — sits between the tabs and the view outlet.
         // Populated/hidden in afterNavigation.
@@ -208,8 +204,12 @@ public class MainLayout extends VerticalLayout
         budgetBadge.addClassName("mise-header-budget-badge");
         budgetBadge.getElement().setAttribute("data-testid", "app-header-budget");
 
+        // ── Nav tabs (desktop: inline in header; mobile: wraps full-width via CSS) ──
+        var navTabs = new Div(planTab, shoppingTab, reportsTab);
+        navTabs.addClassName("mise-header-nav");
+
         // ── Assemble full-width header bar ───────────────────────────────────
-        var header = new Div(brand, weekNav, budgetBadge);
+        var header = new Div(brand, weekNav, navTabs, budgetBadge);
         header.setId("mise-app-header");
         header.getElement().setAttribute("data-testid", "app-header");
         header.addClassName("mise-header");
