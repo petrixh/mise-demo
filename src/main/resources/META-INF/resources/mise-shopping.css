@@ -19,6 +19,28 @@
   gap: 12px;
 }
 
+/* "This week" AI-generated section heading */
+.mise-shopping-week-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 2px 0;
+}
+
+.mise-shopping-week-heading span {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vaadin-secondary-text-color);
+}
+
+.mise-shopping-ai-wand {
+  font-size: 12px;
+  color: var(--vaadin-secondary-text-color);
+  flex-shrink: 0;
+}
+
 /* ── Header strip (store + total + mode toggle) ──────────────────────────── */
 
 .mise-shopping-header-strip {
