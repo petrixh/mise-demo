@@ -153,7 +153,18 @@ gh issue view <N> --json state   # confirm CLOSED (Closes #N in PR does this)
 gh issue edit <N> --remove-label wip
 ```
 
-Exit cleanly. `/loop` re-ticks.
+---
+
+## Phase 7 — Continue or stop
+
+Before exiting, check whether another ticket is immediately actionable for this worker. If so, re-invoke the skill in the same session; if not, exit cleanly.
+
+Re-run the **Phase 1 eligibility query** (same `--model` / `--area` filters that brought you here). Two outcomes:
+
+- **A ticket number is returned** — there's more work. Invoke the `ticket-worker` skill again via the Skill tool with the same arguments you were called with. This will start a fresh Phase 1 → Phase 6 pass against that ticket.
+- **Empty result** — nothing eligible right now. Exit cleanly with a one-line note (`No further eligible tickets — exiting.`). `/loop` (if running) will re-tick later and re-check.
+
+Do **not** chain to Phase 7 from a failure path. After a failure-path cleanup (Phase 5 failure branch, or a no-result-block sub-agent), exit immediately — the orchestrator needs the escalation comment visible without another worker layering on top.
 
 ---
 
