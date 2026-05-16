@@ -17,6 +17,11 @@
   /* Ensure full viewport width regardless of any ancestor constraints */
   width: 100%;
   box-sizing: border-box;
+  /* X-L-01: header now contains the nav tabs; on mobile the tabs child wraps
+   * to a second row via flex-wrap. Desktop layout stays a single row because
+   * total intrinsic width fits comfortably within ≥640px. */
+  flex-wrap: wrap;
+  row-gap: 0;
 }
 
 .mise-brand {
@@ -82,9 +87,12 @@
 .mise-tabs {
   display: flex;
   flex-shrink: 0;
-  border-bottom: 0.5px solid rgba(255,255,255,0.08);
   background: var(--vaadin-background);
-  padding: 0 16px;
+  /* X-L-01: inside the header on desktop, tabs sit flush against its right edge.
+   * height matches the header so the active-tab underline aligns with the
+   * header border-bottom (no double border). */
+  align-self: stretch;
+  align-items: stretch;
 }
 
 .mise-tab {
@@ -328,10 +336,21 @@
  */
 @media (max-width: 639px) {
   .mise-header {
-    height: 44px;
-    padding: 0 14px;
+    /* X-L-01: header wraps to two rows on mobile — brand+week row, then tabs row.
+     * Auto height accommodates the wrapped child; padding moves to the inner row. */
+    height: auto;
+    padding: 0;
     gap: 6px;
   }
+
+  /* The brand+week+budget row gets its own padding via a synthetic flex slot */
+  .mise-header > .mise-brand,
+  .mise-header > .mise-header-week-nav,
+  .mise-header > .mise-header-budget-badge {
+    padding-block: 8px;
+  }
+  .mise-header > .mise-brand { padding-left: 14px; }
+  .mise-header > .mise-header-budget-badge { margin-right: 14px; }
 
   .mise-brand {
     font-size: 16px;
@@ -354,5 +373,14 @@
   /* Budget pill dropped on mobile to save space */
   .mise-header-budget-badge {
     display: none;
+  }
+
+  /* X-L-01: tabs wrap to a full-width second row on mobile.
+   * The border-bottom returns so the tabs row visually separates from the view. */
+  .mise-tabs {
+    flex-basis: 100%;
+    border-bottom: 0.5px solid rgba(255,255,255,0.08);
+    padding: 0 16px;
+    align-self: auto;
   }
 }
