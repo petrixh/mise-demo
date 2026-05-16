@@ -29,7 +29,6 @@ import com.vaadin.flow.router.Route;
 
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.stream.IntStream;
 
 /**
  * UC-007 Reports view at /reports.
