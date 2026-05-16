@@ -281,6 +281,24 @@ public class MainLayout extends VerticalLayout
         messageList.addClassName("mise-chat-history");
         messageList.getElement().setAttribute("data-testid", "chat-message-list");
 
+        // C-L-01: right-align user messages. AIOrchestrator doesn't expose per-item
+        // theming hooks, so a MutationObserver tags each vaadin-message where the
+        // avatar name is not "Mise" (i.e. the user's own turn) with .current-user.
+        // CSS then reverses the flex direction on the host element.
+        messageList.getElement().executeJs("""
+            const mark = () => {
+              this.querySelectorAll('vaadin-message:not([data-aligned])').forEach(msg => {
+                msg.setAttribute('data-aligned', '');
+                const av = msg.querySelector('vaadin-avatar');
+                if (av && av.getAttribute('name') !== 'Mise') {
+                  msg.classList.add('current-user');
+                }
+              });
+            };
+            new MutationObserver(mark).observe(this, { childList: true, subtree: true });
+            mark();
+            """);
+
         messageInput.setWidthFull();
 
         // UC-004: undo strip sits between the last-AI-message row and the input field
