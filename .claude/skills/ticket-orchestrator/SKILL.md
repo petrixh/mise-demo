@@ -32,7 +32,8 @@ gh issue list --repo "$OWNER/$REPO" --state open --json number,labels,assignees 
       "needs-spec: \(map(select(.labels | map(.name) | index("needs-spec"))) | length)",
       "needs-human: \(map(select(.labels | map(.name) | index("needs-human"))) | length)"'
 
-# Per-area breakdown (ignore #4 and other unlabelled issues)
+# Per-area breakdown (issues without any area:* label show up as "unlabelled" —
+# these are typically tracking issues or experiments, not worker tickets)
 gh issue list --repo "$OWNER/$REPO" --state open --json number,labels | \
   jq -r 'map(.labels | map(.name) | map(select(startswith("area:"))) | .[0] // "unlabelled") | group_by(.) | map({area: .[0], count: length}) | .[] | "\(.area): \(.count)"'
 ```
@@ -78,24 +79,20 @@ For each escalation:
 
 ### 4. Graph hygiene
 
-Find issues that **should** be unblocked but aren't (rare with native deps — usually a sign of API drift):
+Find issues that **should** be unblocked but aren't (rare with native deps — usually a sign of API drift).
+
+The GraphQL `Issue` type does not expose a `blockedBy` connection (only the count via `issueDependenciesSummary { blockedBy }`). Use the REST endpoint `GET /repos/{o}/{r}/issues/{n}/dependencies/blocked_by`, which returns the full blocker issue objects including `state`:
 
 ```bash
-gh api graphql -f query='
-query($o:String!,$r:String!) {
-  repository(owner:$o, name:$r) {
-    issues(first:50, states:OPEN) {
-      nodes {
-        number
-        issueDependenciesSummary { blockedBy }
-        blockedBy(first:10) { nodes { number state } }
-      }
-    }
-  }
-}' -f o="$OWNER" -f r="$REPO" | jq '.data.repository.issues.nodes[]
-  | select(.issueDependenciesSummary.blockedBy > 0)
-  | select(.blockedBy.nodes | all(.state == "CLOSED"))
-  | .number'
+# For each open issue, list any open blockers; flag issues whose tracked blockers are all closed.
+for n in $(gh issue list --repo "$OWNER/$REPO" --state open --json number -q '.[].number'); do
+  total=$(gh api "repos/$OWNER/$REPO/issues/$n" -q '.issue_dependencies_summary.total_blocked_by')
+  open_blockers=$(gh api "repos/$OWNER/$REPO/issues/$n/dependencies/blocked_by" \
+    -q '[.[] | select(.state=="open")] | length')
+  if [ "$total" -gt 0 ] && [ "$open_blockers" -eq 0 ]; then
+    echo "#$n has $total blocker(s), all closed — ghost-blocked"
+  fi
+done
 ```
 
 Any number returned has all blockers closed but is still marked blocked. Touch the dep (remove + re-add) to force refresh, or just flag it and move on.
@@ -137,20 +134,38 @@ Keep the comment under 15 lines. If nothing changed since last tick, **don't pos
 
 ## Snippet: critical-path
 
+Longest chain of `Blocked by` deps among open issues. Same REST-endpoint approach as graph hygiene — `Issue.blockedBy` does not exist in GraphQL, so don't try to query it there. Build the graph in bash, then compute the longest chain in Python (jq makes this painful).
+
 ```bash
-# Longest chain of Blocked by deps among open issues
-gh api graphql -f query='
-query($o:String!,$r:String!) {
-  repository(owner:$o, name:$r) {
-    issues(first:50, states:OPEN) {
-      nodes {
-        number
-        blockedBy(first:5) { nodes { number state } }
-      }
-    }
-  }
-}' -f o="$OWNER" -f r="$REPO" | jq -r '...'
-# (Computing longest chain in jq is tedious; pipe to a small Python snippet instead.)
+# 1. Build adjacency: each open issue → list of its open blockers
+> /tmp/deps.tsv
+for n in $(gh issue list --repo "$OWNER/$REPO" --state open --json number -q '.[].number' | sort -n); do
+  blockers=$(gh api "repos/$OWNER/$REPO/issues/$n/dependencies/blocked_by" \
+    -q '.[] | select(.state=="open") | .number' 2>/dev/null | paste -sd, -)
+  printf '%s\t%s\n' "$n" "${blockers:-}" >> /tmp/deps.tsv
+done
+
+# 2. Longest chain via memoised DFS
+python3 <<'PY'
+deps = {}
+for line in open('/tmp/deps.tsv'):
+    parts = line.rstrip('\n').split('\t')
+    n = int(parts[0])
+    deps[n] = [int(x) for x in parts[1].split(',') if x] if len(parts) > 1 else []
+
+memo = {}
+def longest(n):
+    if n in memo: return memo[n]
+    if not deps.get(n):
+        memo[n] = [n]; return memo[n]
+    best = max((longest(b) for b in deps[n]), key=len, default=[])
+    memo[n] = best + [n]
+    return memo[n]
+
+champ = max(deps, key=lambda n: len(longest(n)))
+chain = longest(champ)
+print(f"depth={len(chain)}  chain: {' → '.join('#'+str(x) for x in chain)}")
+PY
 ```
 
 ## When to ask the operator
