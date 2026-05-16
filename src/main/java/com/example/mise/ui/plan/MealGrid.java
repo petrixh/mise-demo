@@ -119,12 +119,7 @@ public class MealGrid extends Div {
         var name = new Paragraph(recipeName);
         name.addClassName("mise-meal-name");
 
-        // Meta: prep · cost · kcal
-        String meta = buildMeta(meal, recipe, costCalculator);
-        var metaP = new Paragraph(meta);
-        metaP.addClassName("mise-meal-meta");
-
-        info.add(name, metaP);
+        info.add(name, buildMetaElement(meal, recipe, costCalculator));
         row.add(info);
 
         // Tags
@@ -218,27 +213,50 @@ public class MealGrid extends Div {
         return row;
     }
 
-    private String buildMeta(Meal meal, Recipe recipe, MealCostCalculator costCalculator) {
-        var parts = new StringBuilder();
-        if (recipe != null) {
-            parts.append(recipe.getPrepMinutes()).append("m");
+    private Div buildMetaElement(Meal meal, Recipe recipe, MealCostCalculator costCalculator) {
+        var meta = new Div();
+        meta.addClassName("mise-meal-meta");
 
-            // Live cost from PriceCatalog; fall back to YAML estimatedCost only when 0
-            BigDecimal liveCost = costCalculator.costFor(meal);
-            if (liveCost.compareTo(BigDecimal.ZERO) > 0) {
-                parts.append(" · €").append(String.format("%.2f", liveCost.doubleValue()));
-            } else if (recipe.getEstimatedCost() != null) {
-                parts.append(" · €").append(String.format("%.2f", recipe.getEstimatedCost()));
-            }
-
-            if (recipe.getMacros() != null && recipe.getMacros().getKcal() > 0) {
-                int servings = meal.getServings() > 0 ? meal.getServings() : 1;
-                int defServ = recipe.getDefaultServings() > 0 ? recipe.getDefaultServings() : 1;
-                int kcal = recipe.getMacros().getKcal() * servings / defServ;
-                parts.append(" · ").append(kcal).append(" kcal");
-            }
+        if (recipe == null) {
+            meta.add(new Span("—"));
+            return meta;
         }
-        return parts.length() > 0 ? parts.toString() : "—";
+
+        var prep = new Span(recipe.getPrepMinutes() + "m");
+        prep.addClassName("mise-meal-prep");
+        meta.add(prep);
+
+        // Live cost from PriceCatalog; fall back to YAML estimatedCost only when 0
+        BigDecimal liveCost = costCalculator.costFor(meal);
+        if (liveCost.compareTo(BigDecimal.ZERO) > 0) {
+            addSep(meta);
+            var cost = new Span("€" + String.format("%.2f", liveCost.doubleValue()));
+            cost.addClassName("mise-meal-cost");
+            meta.add(cost);
+        } else if (recipe.getEstimatedCost() != null) {
+            addSep(meta);
+            var cost = new Span("€" + String.format("%.2f", recipe.getEstimatedCost()));
+            cost.addClassName("mise-meal-cost");
+            meta.add(cost);
+        }
+
+        if (recipe.getMacros() != null && recipe.getMacros().getKcal() > 0) {
+            int servings = meal.getServings() > 0 ? meal.getServings() : 1;
+            int defServ = recipe.getDefaultServings() > 0 ? recipe.getDefaultServings() : 1;
+            int kcal = recipe.getMacros().getKcal() * servings / defServ;
+            addSep(meta);
+            var kcalSpan = new Span(kcal + " kcal");
+            kcalSpan.addClassName("mise-meal-kcal");
+            meta.add(kcalSpan);
+        }
+
+        return meta;
+    }
+
+    private void addSep(Div parent) {
+        var sep = new Span(" · ");
+        sep.addClassName("mise-meal-meta-sep");
+        parent.add(sep);
     }
 
     private Span pill(String text, String cssClass) {
