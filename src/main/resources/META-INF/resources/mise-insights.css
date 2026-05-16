@@ -1,27 +1,30 @@
 /* ── UC-009: Insight banner ──────────────────────────────────────────────── */
 
 /*
- * Design-system info-blue tokens for the AI insight callout.
- * §"AI insight callout": pale info-blue panel with a bulb icon.
+ * Design-system info-blue accent token.
+ * §"AI insight callout": surface-tinted panel with an info-blue left border.
+ * Background uses --vaadin-background-container so it inherits the theme's
+ * surface color (dark in dark mode, light in light mode) rather than a
+ * hard-coded light fill that clashes on a dark background.
  */
 :root {
-  --mise-info-fill: #E6F1FB;
-  --mise-info-text: #0C447C;
   --mise-info: hsl(200, 60%, 50%);
 }
 
 /*
- * M-7 fix: Banner uses pale info-blue background with dark blue text.
- * Sits between the tab strip and the routed view content.
+ * Banner sits between the tab strip and the routed view content.
  * Hidden by default; made visible via MainLayout when an undismissed insight exists.
+ *
+ * Theming: uses --vaadin-background-container for the background (dark-mode safe)
+ * and an info-blue left accent stripe + body text via --vaadin-body-text-color.
  */
 .mise-insight-banner {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: var(--mise-info-fill, #E6F1FB);
-  border-left: 4px solid var(--mise-info-text, #0C447C);
+  background: var(--vaadin-background-container);
+  border-left: 3px solid var(--mise-info, hsl(200, 60%, 50%));
   flex-shrink: 0;
   flex-wrap: wrap;
 }
@@ -29,31 +32,31 @@
 .mise-insight-banner-body {
   flex: 1;
   font-size: 13px;
-  color: var(--mise-info-text, #0C447C);
+  color: var(--vaadin-body-text-color);
   line-height: 1.4;
   min-width: 0;
 }
 
-/* "Act on it" button: styled for info-blue background */
+/* "Act on it" button: matches the info-blue accent stripe */
 .mise-insight-banner vaadin-button.mise-insight-banner-act {
   font-size: 11px !important;
   height: 24px !important;
   min-height: 24px !important;
   padding: 0 10px !important;
   border-radius: 12px !important;
-  background: rgba(12, 68, 124, 0.12) !important;
-  color: var(--mise-info-text, #0C447C) !important;
-  border: 1px solid rgba(12, 68, 124, 0.30) !important;
+  background: rgba(100, 170, 220, 0.12) !important;
+  color: var(--vaadin-body-text-color) !important;
+  border: 1px solid rgba(100, 170, 220, 0.30) !important;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .mise-insight-banner vaadin-button.mise-insight-banner-act:hover {
-  background: rgba(12, 68, 124, 0.22) !important;
+  background: rgba(100, 170, 220, 0.22) !important;
 }
 
-/* Dismiss × button: visible against info-blue */
+/* Dismiss × button: visible against the container surface */
 .mise-insight-banner vaadin-button.mise-insight-banner-dismiss {
   font-size: 16px !important;
   height: 24px !important;
@@ -63,26 +66,26 @@
   padding: 0 !important;
   border-radius: 50% !important;
   background: transparent !important;
-  color: var(--mise-info-text, #0C447C) !important;
+  color: var(--vaadin-secondary-text-color) !important;
   border: none !important;
   cursor: pointer;
   flex-shrink: 0;
   line-height: 1;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .mise-insight-banner vaadin-button.mise-insight-banner-dismiss:hover {
   opacity: 1;
-  background: rgba(12, 68, 124, 0.12) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Bulb icon in the insight banner */
+/* Bulb icon: info-blue to echo the accent stripe */
 .mise-insight-banner-icon {
-  color: var(--mise-info-text, #0C447C);
+  color: var(--mise-info, hsl(200, 60%, 50%));
   flex-shrink: 0;
   width: 16px !important;
   height: 16px !important;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 /* ── Mobile: sticky at top of viewport ─────────────────────────────────── */

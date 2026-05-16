@@ -9,7 +9,22 @@ import org.springframework.stereotype.Component;
 
 /**
  * UC-009 BR-04 (a): On app startup, generate an insight for each existing household
- * if more than 7 days have elapsed since the last insight (or if no insight exists yet).
+ * when {@link InsightService#shouldTriggerStartup} returns true.
+ *
+ * <p>The trigger fires when any of the following hold:
+ * <ul>
+ *   <li>No insight exists yet for the household.
+ *   <li>The most-recent insight is older than 7 days.
+ *   <li>All existing insights are dismissed (queue is empty) — dismissal is
+ *       per-insight, not a 7-day global snooze.
+ * </ul>
+ *
+ * <p><b>Dev reset / retrigger</b>: to force the banner to reappear for testing,
+ * mark every insight dismissed via the H2 console at {@code /h2-console}:
+ * <pre>{@code UPDATE insight SET dismissed = TRUE, dismissed_at = NOW() WHERE dismissed = FALSE;}</pre>
+ * Then restart the app — the startup trigger will detect an empty undismissed queue
+ * and generate a fresh insight. Alternatively, delete all rows ({@code DELETE FROM insight;})
+ * to exercise the "no insight ever" path.
  *
  * <p>Wrapped in try/catch so a failure here never prevents app boot.
  */
