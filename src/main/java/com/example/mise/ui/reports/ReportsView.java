@@ -249,6 +249,14 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
                     .map(p -> p.weekStartDate().toString())
                     .toArray(String[]::new);
             x.setCategories(categories);
+            // R-V-03: keep date labels horizontal and compact so they don't eat chart area
+            Labels xLabels = new Labels();
+            xLabels.setRotation(0);
+            com.vaadin.flow.component.charts.model.style.Style xLabelStyle =
+                    new com.vaadin.flow.component.charts.model.style.Style();
+            xLabelStyle.setFontSize("10px");
+            xLabels.setStyle(xLabelStyle);
+            x.setLabels(xLabels);
             conf.addxAxis(x);
 
             YAxis y = new YAxis();
@@ -260,6 +268,10 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
             lineOpts.setColor(new com.vaadin.flow.component.charts.model.style.SolidColor(
                     CATEGORY_COLORS.get("Protein")));
             conf.setPlotOptions(lineOpts);
+
+            // R-V-04: hide legend for single-series chart (redundant label)
+            Legend trendLegend = new Legend(false);
+            conf.setLegend(trendLegend);
 
             DataSeries series = new DataSeries("Weekly cost");
             for (var point : trend.points()) {
@@ -317,6 +329,11 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
                 dataLabels.setColor(new com.vaadin.flow.component.charts.model.style.SolidColor("#E4E4E7"));
                 plotOpts.setDataLabels(dataLabels);
                 conf.setPlotOptions(plotOpts);
+                // R-V-02: show category legend with percentage alongside each color swatch
+                Legend pieLegend = new Legend(true);
+                pieLegend.setLabelFormat("{name} <span style=\"opacity:0.6\">{percentage:.0f}%</span>");
+                pieLegend.setUseHTML(true);
+                conf.setLegend(pieLegend);
                 for (var entry : breakdown.entries()) {
                     DataSeriesItem item = new DataSeriesItem(
                             entry.category(), entry.totalCost().doubleValue());
