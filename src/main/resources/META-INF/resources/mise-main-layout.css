@@ -228,6 +228,24 @@
   margin-bottom: 6px;
 }
 
+/* ── C-L-01: user messages right-aligned ─────────────────────────────────── */
+/*
+ * The MutationObserver in MainLayout adds .current-user to vaadin-message
+ * elements whose avatar name != "Mise". The host element is in the light DOM
+ * so external CSS with class specificity overrides shadow :host flex-direction.
+ */
+vaadin-message.current-user {
+  flex-direction: row-reverse;
+}
+
+vaadin-message.current-user::part(content) {
+  align-items: flex-end;
+}
+
+vaadin-message.current-user::part(header) {
+  flex-direction: row-reverse;
+}
+
 /* When expanded, the single-line "latest reply" hint is redundant — hide it. */
 .mise-chat-dock:focus-within .mise-last-ai-message {
   display: none;
