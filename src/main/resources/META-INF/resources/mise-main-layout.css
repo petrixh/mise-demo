@@ -169,6 +169,9 @@
  * flex-grow approach cannot push the dock below the injected view. Fixed
  * positioning is the only reliable cross-viewport solution.
  * Bottom padding on the view outlet/injected content compensates for the dock.
+ *
+ * C-V-01: rounded top corners + box-shadow replace the flat border-top so the
+ * dock reads as a single unified drawer rather than three stitched sections.
  */
 .mise-chat-dock {
   position: fixed;
@@ -177,8 +180,9 @@
   right: 0;
   z-index: 100;
   background: var(--vaadin-background-container);
-  border-top: 0.5px solid rgba(255,255,255,0.08);
-  padding: 8px 16px 10px;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -1px 0 rgba(255,255,255,0.09), 0 -8px 24px rgba(0,0,0,0.35);
+  padding: 12px 16px 10px;
 }
 
 .mise-chat-dock .mise-last-ai-message {
@@ -216,6 +220,7 @@
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
+  background: transparent;
   transition: max-height 180ms cubic-bezier(0.2, 0, 0, 1),
               opacity 140ms ease-out;
 }
@@ -225,7 +230,9 @@
   opacity: 1;
   overflow-y: auto;
   pointer-events: auto;
-  margin-bottom: 6px;
+  /* C-V-01: single separator between history and input — no double dividers */
+  border-bottom: 0.5px solid rgba(255,255,255,0.07);
+  margin-bottom: 10px;
 }
 
 /* ── C-L-01: user messages right-aligned ─────────────────────────────────── */
