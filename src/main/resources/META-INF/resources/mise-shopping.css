@@ -391,6 +391,18 @@
     border-radius: 22px !important;
     padding: 0 14px !important;
   }
+
+  /* Rec panel collapse/expand on mobile */
+  .mise-shopping-rec-chevron {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Body hidden when collapsed on mobile */
+  .mise-shopping-rec-body.collapsed {
+    display: none;
+  }
 }
 
 /* ── Recommendation panel ─────────────────────────────────────────────────── */
@@ -398,12 +410,57 @@
 .mise-shopping-recommendation-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   background: var(--vaadin-background-container);
   border: 2px solid var(--vaadin-color-info, #2B9AF3);
   border-radius: var(--vaadin-radius-m, 8px);
   padding: 16px;
   box-sizing: border-box;
+}
+
+/* Header row: always visible — label + store name on left, total + chevron on right */
+.mise-shopping-rec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mise-shopping-rec-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mise-shopping-rec-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Chevron toggle button — only shown on mobile */
+.mise-shopping-rec-chevron {
+  display: none;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+/* Rotate chevron when panel is open */
+.mise-shopping-rec-chevron.open {
+  transform: rotate(180deg);
 }
 
 /* "BEST STORE THIS WEEK" uppercase label in info color */
@@ -422,6 +479,14 @@
   color: var(--vaadin-body-text-color);
   margin: 0;
   line-height: 1.2;
+}
+
+/* Collapsible body — always visible on desktop, controlled on mobile */
+.mise-shopping-rec-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 /* M-1: comparison narrative — body text, secondary color */

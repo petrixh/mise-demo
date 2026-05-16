@@ -262,8 +262,10 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
     }
 
     /**
-     * Right-column recommendation panel (desktop) / top-stacked block (mobile).
+     * Right-column recommendation panel (desktop) / top-stacked collapsible block (mobile).
      * Shows: recommended store headline, total cost, cost-by-aisle breakdown, mode toggle.
+     * On mobile the body is collapsed by default (Issue #21); a chevron toggle in the
+     * header lets the user expand/collapse inline.
      */
     private Div buildRecommendationPanel(Long householdId, ShoppingList list) {
         var panel = new Div();
@@ -277,7 +279,6 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
                 : "BEST STORE THIS WEEK";
         var label = new Span(labelText);
         label.addClassName("mise-shopping-rec-label");
-        panel.add(label);
 
         // Store name as headline
         var storeHeadline = new H2();
@@ -285,29 +286,58 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         String defaultStoreName = list.recommendedStore() != null
                 ? list.recommendedStore().getName() : "—";
         storeHeadline.setText(defaultStoreName);
-        panel.add(storeHeadline);
+
+        // Total cost — shown in summary row (always visible on mobile even when collapsed)
+        BigDecimal total = list.totalCost() != null ? list.totalCost() : BigDecimal.ZERO;
+        var totalValue = new Span();
+        totalValue.addClassName("mise-shopping-rec-total-value");
+        totalValue.getElement().setAttribute("data-testid", "shopping-total-cost");
+        totalValue.setText("€" + String.format("%.2f", total));
+
+        // Chevron toggle button — visible on mobile, hidden on desktop
+        var chevron = new Button(VaadinIcon.CHEVRON_DOWN.create());
+        chevron.addClassName("mise-shopping-rec-chevron");
+        chevron.getElement().setAttribute("aria-label", "Expand store details");
+        chevron.getElement().setAttribute("data-testid", "rec-panel-toggle");
+
+        // Summary header — always visible; contains label, store name, total, chevron
+        var header = new Div();
+        header.addClassName("mise-shopping-rec-header");
+
+        var headerLeft = new Div();
+        headerLeft.addClassName("mise-shopping-rec-header-left");
+        headerLeft.add(label, storeHeadline);
+
+        var headerRight = new Div();
+        headerRight.addClassName("mise-shopping-rec-header-right");
+        headerRight.add(totalValue, chevron);
+
+        header.add(headerLeft, headerRight);
+        panel.add(header);
+
+        // Collapsible body — hidden on mobile by default, always visible on desktop
+        var body = new Div();
+        body.addClassName("mise-shopping-rec-body");
+        body.addClassName("collapsed"); // starts collapsed on mobile (CSS hides it)
+        body.getElement().setAttribute("data-testid", "rec-panel-body");
 
         // M-1: comparison narrative — context sentence per design system §"Recommendation card"
         String narrative = buildComparisonNarrative(householdId, list, defaultStoreName);
         if (narrative != null && !narrative.isBlank()) {
             var narrativeSpan = new Span(narrative);
             narrativeSpan.addClassName("mise-shopping-rec-narrative");
-            panel.add(narrativeSpan);
+            body.add(narrativeSpan);
         }
 
-        // Total cost row
+        // Total cost row (full label+value row in expanded body)
         var totalRow = new Div();
         totalRow.addClassName("mise-shopping-rec-total-row");
-
         var totalLabel = new Span("Total");
         totalLabel.addClassName("mise-shopping-rec-total-label");
-        var totalValue = new Span();
-        totalValue.addClassName("mise-shopping-rec-total-value");
-        totalValue.getElement().setAttribute("data-testid", "shopping-total-cost");
-        BigDecimal total = list.totalCost() != null ? list.totalCost() : BigDecimal.ZERO;
-        totalValue.setText("€" + String.format("%.2f", total));
-        totalRow.add(totalLabel, totalValue);
-        panel.add(totalRow);
+        var totalValueBody = new Span("€" + String.format("%.2f", total));
+        totalValueBody.addClassName("mise-shopping-rec-total-value");
+        totalRow.add(totalLabel, totalValueBody);
+        body.add(totalRow);
 
         // Cost-by-aisle breakdown
         if (!list.aisleGroups().isEmpty()) {
@@ -355,11 +385,29 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
                 row.add(rowLabel, rowValue);
                 breakdownDiv.add(row);
             }
-            panel.add(breakdownDiv);
+            body.add(breakdownDiv);
         }
 
         // Mode toggle — always visible in the panel (panel is now top-of-view on all breakpoints)
-        panel.add(buildModeControl(householdId, null, "mise-shopping-mode-control-panel"));
+        body.add(buildModeControl(householdId, null, "mise-shopping-mode-control-panel"));
+
+        panel.add(body);
+
+        // Chevron click: toggle 'collapsed' class on body; 'open' on chevron = expanded state
+        chevron.addClickListener(e -> {
+            boolean isCollapsed = body.hasClassName("collapsed");
+            if (isCollapsed) {
+                // Expand: show body, rotate chevron up
+                body.removeClassName("collapsed");
+                chevron.addClassName("open");
+                chevron.getElement().setAttribute("aria-label", "Collapse store details");
+            } else {
+                // Collapse: hide body, reset chevron
+                body.addClassName("collapsed");
+                chevron.removeClassName("open");
+                chevron.getElement().setAttribute("aria-label", "Expand store details");
+            }
+        });
 
         return panel;
     }
