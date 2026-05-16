@@ -9,10 +9,10 @@
 .mise-plan-main {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 10px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -20,7 +20,7 @@
   width: 220px;
   flex-shrink: 0;
   overflow-y: auto;
-  padding: 16px 16px 16px 0;
+  padding: 10px 16px 10px 0;
 }
 
 /* "No price data available." note shown when CostByCategoryPanel has nothing to plot. */
@@ -86,10 +86,10 @@
 
 .mise-day-chip {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--vaadin-secondary-text-color);
+  color: var(--vaadin-body-text-color);
   width: 32px;
   flex-shrink: 0;
 }
@@ -113,6 +113,22 @@
   font-size: 11px;
   color: var(--vaadin-secondary-text-color);
   margin: 0;
+}
+
+.mise-meal-prep {
+  color: var(--vaadin-secondary-text-color);
+}
+
+.mise-meal-cost {
+  color: var(--vaadin-body-text-color);
+}
+
+.mise-meal-kcal {
+  color: var(--vaadin-disabled-text-color, rgba(255,255,255,0.35));
+}
+
+.mise-meal-meta-sep {
+  color: rgba(255,255,255,0.15);
 }
 
 .mise-meal-tags {
@@ -176,21 +192,22 @@
 }
 
 .mise-category-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  grid-template-areas: "label amount" "bar bar";
+  gap: 3px 6px;
+  margin-bottom: 10px;
 }
 
 .mise-category-label {
+  grid-area: label;
   font-size: 11px;
   color: var(--vaadin-secondary-text-color);
-  width: 52px;
-  flex-shrink: 0;
 }
 
 .mise-category-bar-track {
-  flex: 1;
+  grid-area: bar;
   height: 6px;
   background: rgba(255,255,255,0.08);
   border-radius: 3px;
@@ -207,12 +224,11 @@
 }
 
 .mise-category-amount {
+  grid-area: amount;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   color: var(--vaadin-secondary-text-color);
-  width: 44px;
   text-align: right;
-  flex-shrink: 0;
 }
 
 /* AI insight callout */
