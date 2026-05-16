@@ -173,14 +173,28 @@ public class InsightService {
     }
 
     /**
-     * Returns true when the household has no insight yet, or the last one was created
-     * more than 7 days ago (BR-04 a).
+     * Returns true when the household should receive a new startup insight.
+     *
+     * <p>Triggers when any of the following is true (BR-04 a):
+     * <ol>
+     *   <li>No insight has ever been generated.
+     *   <li>The last generated insight is older than 7 days.
+     *   <li>All existing insights are dismissed — the user has cleared the queue and
+     *       would see nothing on the next app start without a new one (per-insight
+     *       dismissal: dismissing one insight should not mute banners for 7 days).
+     * </ol>
      */
     @Transactional(readOnly = true)
     public boolean shouldTriggerStartup(Long householdId) {
         Optional<Insight> last = insightRepository.findFirstByHouseholdIdOrderByCreatedAtDesc(householdId);
         if (last.isEmpty()) return true;
-        return last.get().getCreatedAt().isBefore(Instant.now().minus(7, ChronoUnit.DAYS));
+        // If the most-recent insight is older than 7 days, always generate a fresh one
+        if (last.get().getCreatedAt().isBefore(Instant.now().minus(7, ChronoUnit.DAYS))) return true;
+        // If all insights are dismissed (queue is empty), generate a new one so the
+        // next app start shows a banner — dismissal is per-insight, not a 7-day snooze.
+        Optional<Insight> undismissed =
+                insightRepository.findFirstByHouseholdIdAndDismissedFalseOrderByCreatedAtAsc(householdId);
+        return undismissed.isEmpty();
     }
 
     // ── private helpers ────────────────────────────────────────────────────────

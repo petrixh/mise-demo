@@ -1,6 +1,6 @@
 /* Mise application styles — master file.
  * Per-view styles live in mise-<view>.css and are pulled in below.
- * (touch: force bundler rebuild — C-V-02 chat history opaque bg) */
+ * (touch: force bundler rebuild — fix/issue-14 insight banner theming) */
 @import "mise-dark.css";
 @import "mise-onboarding.css";
 @import "mise-main-layout.css";

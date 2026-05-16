@@ -260,6 +260,26 @@ class InsightServiceTest {
         assertThat(result).isFalse(); // just created < 7 days
     }
 
+    @Test
+    void shouldTriggerStartup_withAllDismissed_returnsTrue() {
+        // A recent insight exists but it is already dismissed — queue is empty.
+        // Per-insight dismissal must not act as a 7-day global snooze:
+        // the startup trigger should generate a new insight so the banner
+        // reappears on the next app start (Fix #14: sticky dismissal).
+        persistInsight("Already dismissed", true);
+
+        assertThat(insightService.shouldTriggerStartup(household.getId())).isTrue();
+    }
+
+    @Test
+    void shouldTriggerStartup_withMixedDismissed_returnsFalse() {
+        // One dismissed + one still-undismissed: queue is not empty, no new insight needed
+        persistInsight("Dismissed one", true);
+        persistInsight("Still visible", false);
+
+        assertThat(insightService.shouldTriggerStartup(household.getId())).isFalse();
+    }
+
     // ── Household.insightsMuted defaults to false ─────────────────────────────
 
     @Test
