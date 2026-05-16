@@ -2,6 +2,8 @@ package com.example.mise.ui.reports;
 
 import com.example.mise.domain.household.Household;
 import com.example.mise.domain.household.HouseholdService;
+import com.example.mise.domain.insights.Insight;
+import com.example.mise.domain.insights.InsightService;
 import com.example.mise.domain.preferences.ViewPreference;
 import com.example.mise.domain.preferences.ViewPreferenceService;
 import com.example.mise.domain.reports.*;
@@ -65,6 +67,7 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
     private final ReportService reportService;
     private final ViewPreferenceService viewPreferenceService;
     private final ReportsRefreshBroadcaster refreshBroadcaster;
+    private final InsightService insightService;
 
     /** Main content area — cleared and rebuilt on each refresh. */
     private final Div contentArea = new Div();
@@ -75,11 +78,13 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
     public ReportsView(HouseholdService householdService,
                        ReportService reportService,
                        ViewPreferenceService viewPreferenceService,
-                       ReportsRefreshBroadcaster refreshBroadcaster) {
+                       ReportsRefreshBroadcaster refreshBroadcaster,
+                       InsightService insightService) {
         this.householdService = householdService;
         this.reportService = reportService;
         this.viewPreferenceService = viewPreferenceService;
         this.refreshBroadcaster = refreshBroadcaster;
+        this.insightService = insightService;
 
         setId("mise-reports-view");
         getElement().setAttribute("data-testid", "reports-view");
@@ -140,6 +145,9 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         contentArea.removeAll();
         contentArea.addClassName("mise-reports-content-grid");
 
+        // ── R-F-01: AI insights block (non-dismissable) ───────────────────
+        contentArea.add(buildInsightsBlock(hh.getId()));
+
         // ── 0. KPI strip (M-5) ────────────────────────────────────────────
         WeeklyCostTrend trend = reportService.computeCostTrend(hh.getId());
         contentArea.add(buildKpiStrip(hh, trend));
@@ -162,6 +170,54 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         boolean includeKcalPerEuro = extraColumns.contains("kcalPerEuro");
         List<LeaderboardEntry> leaderboard = reportService.computeLeaderboard(hh.getId(), includeKcalPerEuro);
         contentArea.add(buildLeaderboardWidget(leaderboard, extraColumns, hh.getId(), highlight));
+    }
+
+    // ── R-F-01: AI insights block ──────────────────────────────────────────────
+
+    /**
+     * R-F-01: Builds a non-dismissable AI insights paragraph at the top of Reports.
+     * Shows the most recent undismissed insight; if none, shows the most recent
+     * insight regardless of dismissed state (for historical context). Falls back to
+     * a quiet placeholder when no insights have been generated yet.
+     *
+     * <p>Unlike the Plan insight banner (which is dismissable per P-F-01), this block
+     * has no dismiss button. Reports is the natural surface for summaries.
+     */
+    private Div buildInsightsBlock(Long householdId) {
+        var block = new Div();
+        block.setId("mise-reports-insights-block");
+        block.addClassName("mise-reports-insights-block");
+        block.getElement().setAttribute("data-testid", "reports-insights-block");
+
+        // Prefer the current undismissed insight; fall back to most recent overall
+        Insight insight = insightService.currentInsight(householdId)
+                .orElseGet(() -> {
+                    var all = insightService.allInsights(householdId);
+                    return all.isEmpty() ? null : all.get(0);
+                });
+
+        var bulbIcon = VaadinIcon.LIGHTBULB.create();
+        bulbIcon.addClassName("mise-reports-insights-icon");
+
+        var labelSpan = new Span("AI insight");
+        labelSpan.addClassName("mise-reports-insights-label");
+
+        var headerRow = new Div(bulbIcon, labelSpan);
+        headerRow.addClassName("mise-reports-insights-header");
+
+        var bodySpan = new Span();
+        bodySpan.addClassName("mise-reports-insights-body");
+        bodySpan.getElement().setAttribute("data-testid", "reports-insights-body");
+
+        if (insight != null) {
+            bodySpan.setText(insight.getBody());
+        } else {
+            bodySpan.setText("No insights yet — complete a few weeks of planning to see AI-generated summaries here.");
+            block.addClassName("mise-reports-insights-empty");
+        }
+
+        block.add(headerRow, bodySpan);
+        return block;
     }
 
     // ── KPI strip (M-5) ───────────────────────────────────────────────────────
