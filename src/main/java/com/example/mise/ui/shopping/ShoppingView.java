@@ -124,37 +124,34 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         var content = new Div();
         content.addClassName("mise-shopping-layout");
 
-        // ── Header strip (store badge + total cost; slim at desktop) ──────────
+        // ── Recommendation panel — always at the top of the view ─────────────
+        // Design puts "Best store this week" as the leading element so users
+        // immediately see which store to shop and the total cost before the list.
+        content.add(buildRecommendationPanel(householdId, list));
+
+        // ── Header strip (mobile-only: mode toggle fallback) ──────────────────
+        // On desktop the panel above covers store identity; strip is hidden via CSS.
         content.add(buildHeaderStrip(householdId, list));
 
-        // ── Two-column grid wrapper ────────────────────────────────────────────
-        var grid = new Div();
-        grid.addClassName("mise-shopping-grid");
-
-        // Left column: pantry + aisle groups
-        var leftCol = new Div();
-        leftCol.addClassName("mise-shopping-left-col");
+        // ── Shopping list column ───────────────────────────────────────────────
+        var listCol = new Div();
+        listCol.addClassName("mise-shopping-list-col");
 
         // ── Pantry "You already have" section ─────────────────────────────────
-        leftCol.add(buildPantrySection(list.pantrySection()));
+        listCol.add(buildPantrySection(list.pantrySection()));
 
         // ── Aisle groups ──────────────────────────────────────────────────────
         if (list.aisleGroups().isEmpty()) {
             var empty = new Paragraph("Your shopping list is empty — pantry covers everything.");
             empty.addClassName("mise-shopping-empty");
-            leftCol.add(empty);
+            listCol.add(empty);
         } else {
             for (var group : list.aisleGroups()) {
-                leftCol.add(buildAisleGroup(householdId, group, list));
+                listCol.add(buildAisleGroup(householdId, group, list));
             }
         }
 
-        grid.add(leftCol);
-
-        // Right column: recommendation panel (desktop) / stacks on mobile
-        grid.add(buildRecommendationPanel(householdId, list));
-
-        content.add(grid);
+        content.add(listCol);
 
         add(content);
         expand(content);
@@ -336,8 +333,8 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
             panel.add(breakdownDiv);
         }
 
-        // Mode toggle (desktop version — hidden on mobile)
-        panel.add(buildModeControl(householdId, null, "mise-shopping-mode-control-desktop"));
+        // Mode toggle — always visible in the panel (panel is now top-of-view on all breakpoints)
+        panel.add(buildModeControl(householdId, null, "mise-shopping-mode-control-panel"));
 
         return panel;
     }
