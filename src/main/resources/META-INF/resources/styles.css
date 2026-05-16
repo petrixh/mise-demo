@@ -1,5 +1,6 @@
 /* Mise application styles — master file.
- * Per-view styles live in mise-<view>.css and are pulled in below. */
+ * Per-view styles live in mise-<view>.css and are pulled in below.
+ */
 @import "mise-dark.css";
 @import "mise-onboarding.css";
 @import "mise-main-layout.css";

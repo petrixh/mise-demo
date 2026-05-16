@@ -132,17 +132,19 @@ public class MainLayout extends VerticalLayout
         setSpacing(false);
         addClassName("mise-shell");
 
-        // Header
-        add(buildHeader(householdService, planService));
-
-        // Tabs
+        // Tabs (constructed before header so the header can include them on desktop)
         planTab = makeTab("Plan", "plan");
         shoppingTab = makeTab("Shopping", "shopping");
         reportsTab = makeTab("Reports", "reports");
 
         var tabsBar = new Div(planTab, shoppingTab, reportsTab);
         tabsBar.addClassName("mise-tabs");
-        add(tabsBar);
+
+        // Header — tabs live inside it so desktop renders one row (brand · week · budget · nav).
+        // On mobile the .mise-tabs child wraps to a second row via flex-wrap (see CSS).
+        Div header = buildHeader(householdService, planService);
+        header.add(tabsBar);
+        add(header);
 
         // UC-009: insight banner — sits between the tabs and the view outlet.
         // Populated/hidden in afterNavigation.
