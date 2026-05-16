@@ -95,6 +95,9 @@ public class PlanView extends VerticalLayout
         var household = householdService.findHousehold().orElseThrow();
         activePlan = planService.findActivePlan(household.getId()).orElse(null);
         buildUI();
+        // Clear any undo strip that persisted from a previous AI swap in this session.
+        // The strip re-appears only after the AI makes a new swap (via aiRefresh).
+        getMainLayout().ifPresent(MainLayout::hideChatUndoStrip);
     }
 
     @Override
