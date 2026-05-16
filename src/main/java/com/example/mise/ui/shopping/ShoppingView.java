@@ -137,6 +137,16 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         var listCol = new Div();
         listCol.addClassName("mise-shopping-list-col");
 
+        // ── "This week" section heading with AI-generated indicator ──────────
+        var weekHeading = new Div();
+        weekHeading.addClassName("mise-shopping-week-heading");
+        weekHeading.getElement().setAttribute("title", "This list is AI-generated from your weekly plan");
+
+        var wandIcon = VaadinIcon.MAGIC.create();
+        wandIcon.addClassName("mise-shopping-ai-wand");
+        weekHeading.add(wandIcon, new Span("This week"));
+        listCol.add(weekHeading);
+
         // ── Pantry "You already have" section ─────────────────────────────────
         listCol.add(buildPantrySection(list.pantrySection()));
 
