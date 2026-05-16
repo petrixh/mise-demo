@@ -220,7 +220,11 @@
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
-  background: transparent;
+  /* C-V-02: explicit background so the message list is opaque when expanded.
+   * The vaadin-message-list shadow host is transparent by default; without this
+   * the underlying view bleeds through the expanded dock, making text illegible
+   * especially on mobile where the dock overlays the meal grid. */
+  background: var(--vaadin-background-container);
   transition: max-height 180ms cubic-bezier(0.2, 0, 0, 1),
               opacity 140ms ease-out;
 }
@@ -233,6 +237,15 @@
   /* C-V-01: single separator between history and input — no double dividers */
   border-bottom: 0.5px solid rgba(255,255,255,0.07);
   margin-bottom: 10px;
+}
+
+@media (max-width: 639px) {
+  /* C-V-02 mobile: taller message area so conversation is readable without
+   * excessive scrolling on small screens; the dock already covers the view
+   * via fixed positioning + opaque background. */
+  .mise-chat-dock:focus-within .mise-chat-history {
+    max-height: 320px;
+  }
 }
 
 /* ── C-L-01: user messages right-aligned ─────────────────────────────────── */
