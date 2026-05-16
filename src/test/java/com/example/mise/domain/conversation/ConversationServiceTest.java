@@ -159,6 +159,61 @@ class ConversationServiceTest {
         assertThat(repository.count()).isEqualTo(1);
     }
 
+    /**
+     * Issue #6 regression guard: when {@code syncFromOrchestrator} is called with a
+     * history that's smaller than what's already persisted (the symptom that would
+     * cause chat history to "roll back" to an earlier state), it must NOT delete or
+     * mutate the existing rows — only append is allowed. Verified live in browser
+     * across two consecutive AI tool turns (2026-05-16); this test pins the
+     * invariant so a future refactor can't reintroduce the rollback class of bug.
+     */
+    @Test
+    void syncFromOrchestrator_shorterHistoryDoesNotDeleteRows() {
+        var full = List.of(
+                new ChatMessage(ChatMessage.Role.USER, "first", "id-1", null),
+                new ChatMessage(ChatMessage.Role.ASSISTANT, "reply-1", null, null),
+                new ChatMessage(ChatMessage.Role.USER, "second", "id-2", null),
+                new ChatMessage(ChatMessage.Role.ASSISTANT, "reply-2", null, null)
+        );
+        conversationService.syncFromOrchestrator(full, ConversationMessage.ViewContext.PLAN);
+        assertThat(repository.count()).isEqualTo(4);
+
+        var shorter = full.subList(0, 2);
+        conversationService.syncFromOrchestrator(shorter, ConversationMessage.ViewContext.PLAN);
+
+        assertThat(repository.count()).as("sync must not delete rows").isEqualTo(4);
+        var rows = repository.findAllByOrderByCreatedAtAscIdAsc();
+        assertThat(rows).extracting(ConversationMessage::getContent)
+                .containsExactly("first", "reply-1", "second", "reply-2");
+    }
+
+    /**
+     * Issue #6 regression guard: multiple back-to-back sync calls — modelling the
+     * pattern where the orchestrator fires {@code responseComplete} more than once
+     * per AI turn (e.g. after a tool call and again after the final assistant
+     * message) — must append monotonically. The persisted history must always
+     * equal max(orchestratorHistorySeen) ∪ existing rows, never shrink.
+     */
+    @Test
+    void syncFromOrchestrator_repeatedCallsAppendMonotonically() {
+        var afterToolCall = List.of(
+                new ChatMessage(ChatMessage.Role.USER, "make chart bar", "id-1", null),
+                new ChatMessage(ChatMessage.Role.ASSISTANT, "(tool result)", null, null)
+        );
+        conversationService.syncFromOrchestrator(afterToolCall, ConversationMessage.ViewContext.REPORTS);
+        assertThat(repository.count()).isEqualTo(2);
+
+        var afterFinalReply = new java.util.ArrayList<>(afterToolCall);
+        afterFinalReply.add(new ChatMessage(ChatMessage.Role.ASSISTANT, "Done — bar chart.", null, null));
+
+        conversationService.syncFromOrchestrator(afterFinalReply, ConversationMessage.ViewContext.REPORTS);
+
+        assertThat(repository.count()).isEqualTo(3);
+        var rows = repository.findAllByOrderByCreatedAtAscIdAsc();
+        assertThat(rows).extracting(ConversationMessage::getContent)
+                .containsExactly("make chart bar", "(tool result)", "Done — bar chart.");
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /** Seeds {@code count} USER messages with content "msg-0", "msg-1", … into the DB. */
