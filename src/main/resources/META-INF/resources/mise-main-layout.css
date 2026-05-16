@@ -377,10 +377,18 @@
 
   /* X-L-01: tabs wrap to a full-width second row on mobile.
    * The border-bottom returns so the tabs row visually separates from the view. */
+  /* X-E-01: no side padding — tabs must reach viewport edges to fill 100%. */
   .mise-tabs {
     flex-basis: 100%;
     border-bottom: 0.5px solid rgba(255,255,255,0.08);
-    padding: 0 16px;
+    padding: 0;
     align-self: auto;
+  }
+
+  /* X-E-01: equal thirds — each tab takes one-third, text centered, underline fills full third. */
+  .mise-tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
   }
 }
