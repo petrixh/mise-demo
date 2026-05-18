@@ -31,8 +31,6 @@ import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.RouterLayout;
 
-import java.math.BigDecimal;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -224,30 +222,16 @@ public class MainLayout extends VerticalLayout
         var weekNav = new Div(prevBtn, weekBadge, nextBtn);
         weekNav.addClassName("mise-header-week-nav");
 
-        // ── Budget pill (right) ──────────────────────────────────────────────
-        var budgetBadge = new Span(buildBudgetLabel(householdService));
-        budgetBadge.addClassName("mise-header-budget-badge");
-        budgetBadge.getElement().setAttribute("data-testid", "app-header-budget");
-
         // ── Assemble full-width header bar ───────────────────────────────────
-        var header = new Div(brand, weekNav, budgetBadge);
+        // Mockup desktop layout: brand · week-nav (left group) · tabs (right group).
+        // The budget pill that previously sat between week-nav and tabs is dropped —
+        // it isn't in the mockup and householdService is unused after that removal,
+        // but kept on the signature for now since other callers may still inject it.
+        var header = new Div(brand, weekNav);
         header.setId("mise-app-header");
         header.getElement().setAttribute("data-testid", "app-header");
         header.addClassName("mise-header");
         return header;
-    }
-
-    private String buildBudgetLabel(HouseholdService householdService) {
-        try {
-            if (householdService.exists()) {
-                var hh = householdService.findHousehold().orElse(null);
-                if (hh != null && hh.getWeeklyBudget() != null) {
-                    BigDecimal budget = hh.getWeeklyBudget();
-                    return "€" + String.format("%.0f", budget) + " budget";
-                }
-            }
-        } catch (Exception ignored) {}
-        return "";
     }
 
     private String buildWeekLabel(HouseholdService householdService, PlanService planService) {

@@ -33,12 +33,14 @@
 }
 
 /* ── Week navigator: prev arrow + badge + next arrow ────────────────────── */
+/* Desktop placement: sits next to the brand on the left side of the header.
+ * The auto margin-right pushes the tab group to the right edge.
+ * Mobile resets these in the <640px block where the nav lives on its own row. */
 .mise-header-week-nav {
   display: flex;
   align-items: center;
   gap: 4px;
-  /* Push to center by auto margins on both sides */
-  margin-left: auto;
+  margin-left: 14px;
   margin-right: auto;
 }
 
@@ -67,46 +69,31 @@
   white-space: nowrap;
 }
 
-/* ── Budget pill (right) ──────────────────────────────────────────────── */
-.mise-header-budget-badge {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--vaadin-secondary-text-color);
-  padding: 3px 10px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 12px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* Hide budget badge when empty (no household yet / onboarding) */
-.mise-header-budget-badge:empty {
-  display: none;
-}
-
+/* ── Tabs ──────────────────────────────────────────────────────────────── */
+/* Desktop: tabs are a compact group on the right side of the header. The
+ * active tab is an outline pill (0.5px border, panel-bg fill, weight 500) per
+ * the mockup at mise_meal_planner_plan_view.html — not the underline style
+ * used previously. Mobile still uses the underline pattern (see <640px below)
+ * because it matches the mobile mockup's 3-column equal-thirds tab row. */
 .mise-tabs {
   display: flex;
   flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
   background: var(--mise-chrome-bg);
-  /* X-L-01: inside the header on desktop, tabs sit flush against its right edge.
-   * height matches the header so the active-tab underline aligns with the
-   * header border-bottom (no double border). */
-  align-self: stretch;
-  align-items: stretch;
 }
 
 .mise-tab {
   font-size: 13px;
-  padding: 10px 16px;
+  padding: 5px 11px;
   cursor: pointer;
-  border: none;
   background: transparent;
   color: var(--vaadin-secondary-text-color);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  border: 0.5px solid transparent;
+  border-radius: 8px;
   font-family: inherit;
   font-weight: 400;
-  transition: color 0.15s;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 
 .mise-tab:hover {
@@ -116,7 +103,8 @@
 .mise-tab[active] {
   color: var(--vaadin-body-text-color);
   font-weight: 500;
-  border-bottom-color: var(--vaadin-body-text-color);
+  background: var(--mise-panel-bg);
+  border-color: var(--mise-panel-border);
 }
 
 .mise-shell {
@@ -424,27 +412,30 @@ vaadin-message:not(.current-user) {
 
 /* ── C-3: mobile header collapse (< 640px) ──────────────────────────────── */
 /*
- * On mobile: compact single row — wordmark + week badge inline.
- * Week nav arrows hidden; budget badge hidden (saves space).
- * Week badge resets its pill style to plain secondary text.
+ * On mobile: header wraps to two rows — brand+week row, then tabs row.
+ * Week nav is centered on mobile (mockup mise_mobile_plan_view.html).
+ * Active tab uses the underline pattern on mobile instead of the desktop
+ * outline pill, matching the mobile mockup's full-width tab row.
  */
 @media (max-width: 639px) {
   .mise-header {
-    /* X-L-01: header wraps to two rows on mobile — brand+week row, then tabs row.
-     * Auto height accommodates the wrapped child; padding moves to the inner row. */
+    /* X-L-01: header wraps to two rows on mobile — brand+week row, then tabs row. */
     height: auto;
     padding: 0;
     gap: 6px;
   }
 
-  /* The brand+week+budget row gets its own padding via a synthetic flex slot */
   .mise-header > .mise-brand,
-  .mise-header > .mise-header-week-nav,
-  .mise-header > .mise-header-budget-badge {
+  .mise-header > .mise-header-week-nav {
     padding-block: 8px;
   }
   .mise-header > .mise-brand { padding-left: 14px; }
-  .mise-header > .mise-header-budget-badge { margin-right: 14px; }
+
+  /* Mobile: week nav centers between brand and right padding */
+  .mise-header-week-nav {
+    margin-left: auto;
+    margin-right: 14px;
+  }
 
   .mise-brand {
     font-size: 16px;
@@ -464,25 +455,33 @@ vaadin-message:not(.current-user) {
     color: var(--vaadin-secondary-text-color);
   }
 
-  /* Budget pill dropped on mobile to save space */
-  .mise-header-budget-badge {
-    display: none;
-  }
-
-  /* X-L-01: tabs wrap to a full-width second row on mobile.
-   * The border-bottom returns so the tabs row visually separates from the view. */
-  /* X-E-01: no side padding — tabs must reach viewport edges to fill 100%. */
+  /* X-L-01: tabs wrap to a full-width second row on mobile, separated from the
+   * view by a border-bottom. Equal-thirds; each tab takes a third and centers. */
   .mise-tabs {
     flex-basis: 100%;
-    border-bottom: 0.5px solid rgba(255,255,255,0.08);
+    border-bottom: 0.5px solid var(--mise-panel-border);
     padding: 0;
+    gap: 0;
     align-self: auto;
   }
 
-  /* X-E-01: equal thirds — each tab takes one-third, text centered, underline fills full third. */
   .mise-tab {
     flex: 1;
     text-align: center;
     padding: 10px 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  /* Mobile active tab: underline only, no outline-pill (per mobile mockup) */
+  .mise-tab[active] {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    border-bottom: 2px solid var(--vaadin-body-text-color);
   }
 }
