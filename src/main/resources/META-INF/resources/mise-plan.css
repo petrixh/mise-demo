@@ -384,11 +384,14 @@
     padding: 12px 14px;
   }
 
-  /* M-8 fix: compact single-row meal item at mobile (grid: chip + info + pin) */
+  /* M-8 fix: compact single-row meal item at mobile.
+   * Grid: chip + info + tags + pin. The tags column is `auto`-sized and
+   * sits between meal-info (which ellipsis-truncates) and the pin button.
+   * Why?/undo inline buttons stay hidden — too wide for mobile rows. */
   .mise-meal-row {
     display: grid;
-    grid-template-columns: 32px 1fr 32px;
-    grid-template-areas: "chip info pin";
+    grid-template-columns: 28px minmax(0, 1fr) auto 32px;
+    grid-template-areas: "chip info tags pin";
     align-items: center;
     padding: 9px 10px;
     gap: 8px;
@@ -425,8 +428,19 @@
     max-width: 100%;
   }
 
+  /* Tags stay visible on mobile but compact: smaller pill, tighter gap.
+   * The why?/undo buttons inside this container are hidden separately below
+   * so only the real tag pills (veg / fish / edited) render here. */
   .mise-meal-tags {
-    display: none;
+    grid-area: tags;
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .mise-meal-tags .mise-tag {
+    font-size: 9px;
+    padding: 1px 6px;
   }
 
   .mise-row-actions {
@@ -444,8 +458,11 @@
     display: inline-flex;
   }
 
+  /* Why?/undo inline buttons (hosted inside .mise-meal-tags) — hide them on
+   * mobile so only the small status pills show next to the pin. */
   .mise-row-why-btn,
-  .mise-row-undo-btn {
+  .mise-row-undo-btn,
+  .mise-meal-tags vaadin-button {
     display: none !important;
   }
 }
