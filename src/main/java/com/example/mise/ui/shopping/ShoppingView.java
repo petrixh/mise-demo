@@ -506,8 +506,10 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
 
         row.add(info);
 
-        // Price display
-        if (item.recommendedPrice() != null && item.recommendedPrice().compareTo(BigDecimal.ZERO) > 0) {
+        // Price display — show whenever a price is set (priceItems always picks
+        // the cheapest available across stores, so a non-null price is always
+        // meaningful regardless of the One-Store / Cheapest-Mix toggle).
+        if (item.recommendedPrice() != null) {
             var priceSpan = new Span("€" + item.recommendedPrice().toPlainString());
             priceSpan.addClassName("mise-shopping-item-price");
             row.add(priceSpan);

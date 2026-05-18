@@ -237,12 +237,28 @@ public class ShoppingService {
 
         if (storeMode == StoreMode.CHEAPEST_MIX) return defaultStore;
 
-        // ONE_STORE: pick the store with the lowest total cost
+        // ONE_STORE: pick the store that covers the most items first, then breaks ties
+        // by lowest total cost across the items it covers. The old version summed
+        // findPriceInStore(...).orElse(0.0), which let a store with sparse coverage
+        // win because its missing items counted as €0 — so a stub store like
+        // "Local Market" (6 ingredients) beat the well-stocked Prima (53). The
+        // coverage-first scoring matches the design intent: "best single store to
+        // shop at" is the one that actually carries the week's list.
         Store best = defaultStore;
-        double bestTotal = computeStoreTotalCost(items, defaultStore);
+        int bestCovered = -1;
+        double bestTotal = Double.MAX_VALUE;
         for (var store : allStores) {
-            double total = computeStoreTotalCost(items, store);
-            if (total < bestTotal) {
+            int covered = 0;
+            double total = 0;
+            for (var item : items) {
+                var priceOpt = findPriceInStore(store, item.ingredientName());
+                if (priceOpt.isPresent()) {
+                    covered++;
+                    total += priceOpt.get();
+                }
+            }
+            if (covered > bestCovered || (covered == bestCovered && total < bestTotal)) {
+                bestCovered = covered;
                 bestTotal = total;
                 best = store;
             }
@@ -250,74 +266,71 @@ public class ShoppingService {
         return best;
     }
 
-    private double computeStoreTotalCost(List<ShoppingItem> items, Store store) {
-        if (store.getCatalog() == null) return Double.MAX_VALUE;
-        double total = 0;
-        for (var item : items) {
-            var priceOpt = findPriceInStore(store, item.ingredientName());
-            total += priceOpt.orElse(0.0);
-        }
-        return total;
-    }
-
     /**
-     * Populates price fields on each {@link ShoppingItem} (mutates items in the list via
-     * replacement — ShoppingItem is a record, so we rebuild the list).
+     * Populates price fields on each {@link ShoppingItem} (mutates the list via
+     * replacement — ShoppingItem is a record). Pricing is independent of the
+     * store-mode toggle: every item gets the cheapest available price across all
+     * stores, along with that store's id. The toggle in the UI now only controls
+     * whether the per-item store pill is shown, so users always see real numbers
+     * regardless of which mode they're in.
+     *
+     * Items with no price in any store still get a null price — the view hides
+     * the price cell for those rows rather than rendering "€0.00".
+     *
+     * For the ONE_STORE "save elsewhere" hint (BR-06) we additionally record a
+     * meaningfully-cheaper alternative *vs the recommended store* so the amber
+     * "saves €X at Y" strip can still surface a useful next stop.
      */
     void priceItems(List<ShoppingItem> items, List<Store> allStores, Store recommendedStore, StoreMode storeMode) {
         for (int i = 0; i < items.size(); i++) {
             var item = items.get(i);
-            String storeId = recommendedStore != null ? recommendedStore.getId() : null;
-            double price = 0;
-            String cheapestAltStoreId = null;
-            double cheapestAltPrice = Double.MAX_VALUE;
 
-            if (storeMode == StoreMode.CHEAPEST_MIX) {
-                // Pick cheapest per-item across all stores
-                for (var store : allStores) {
-                    var p = findPriceInStore(store, item.ingredientName());
-                    if (p.isPresent() && p.get() < cheapestAltPrice) {
-                        cheapestAltPrice = p.get();
-                        storeId = store.getId();
-                    }
+            // ── Canonical pricing: cheapest across all stores that carry it ──
+            String cheapestStoreId = null;
+            Double cheapestPrice = null;
+            for (var store : allStores) {
+                var p = findPriceInStore(store, item.ingredientName());
+                if (p.isEmpty()) continue;
+                if (cheapestPrice == null || p.get() < cheapestPrice) {
+                    cheapestPrice = p.get();
+                    cheapestStoreId = store.getId();
                 }
-                price = cheapestAltPrice == Double.MAX_VALUE ? 0 : cheapestAltPrice;
-                cheapestAltStoreId = null; // no "alt" when we already picked cheapest
-            } else {
-                // ONE_STORE: price from the recommended store
-                if (recommendedStore != null) {
-                    price = findPriceInStore(recommendedStore, item.ingredientName()).orElse(0.0);
-                }
-                // Check if any other store has a meaningfully cheaper price (BR-06)
-                for (var store : allStores) {
-                    if (recommendedStore != null && store.getId().equals(recommendedStore.getId())) continue;
-                    var p = findPriceInStore(store, item.ingredientName());
-                    if (p.isPresent() && p.get() < price - CHEAPEST_ALT_THRESHOLD) {
-                        if (p.get() < cheapestAltPrice) {
-                            cheapestAltPrice = p.get();
-                            cheapestAltStoreId = store.getId();
+            }
+
+            BigDecimal price = cheapestPrice == null
+                    ? null
+                    : BigDecimal.valueOf(cheapestPrice).setScale(2, RoundingMode.HALF_UP);
+
+            // ── ONE_STORE-only save-elsewhere hint: cheaper *vs the recommended
+            // store's price*, not vs the global cheapest. ──
+            ShoppingItem.CheapestAlternative cheapestAlt = null;
+            if (storeMode == StoreMode.ONE_STORE && recommendedStore != null) {
+                var recPriceOpt = findPriceInStore(recommendedStore, item.ingredientName());
+                if (recPriceOpt.isPresent()) {
+                    double recPrice = recPriceOpt.get();
+                    String altId = null;
+                    double altPrice = Double.MAX_VALUE;
+                    for (var store : allStores) {
+                        if (store.getId().equals(recommendedStore.getId())) continue;
+                        var p = findPriceInStore(store, item.ingredientName());
+                        if (p.isPresent() && p.get() < recPrice - CHEAPEST_ALT_THRESHOLD
+                                && p.get() < altPrice) {
+                            altPrice = p.get();
+                            altId = store.getId();
                         }
                     }
+                    if (altId != null) {
+                        final String fAltId = altId;
+                        String altName = allStores.stream()
+                                .filter(s -> s.getId().equals(fAltId))
+                                .map(Store::getName).findFirst().orElse(fAltId);
+                        cheapestAlt = new ShoppingItem.CheapestAlternative(fAltId, altName,
+                                BigDecimal.valueOf(altPrice).setScale(2, RoundingMode.HALF_UP));
+                    }
                 }
             }
 
-            // Build CheapestAlternative if applicable
-            ShoppingItem.CheapestAlternative cheapestAlt = null;
-            if (cheapestAltStoreId != null && cheapestAltPrice < Double.MAX_VALUE) {
-                final String altId = cheapestAltStoreId;
-                String altName = allStores.stream()
-                        .filter(s -> s.getId().equals(altId))
-                        .map(Store::getName)
-                        .findFirst()
-                        .orElse(altId);
-                cheapestAlt = new ShoppingItem.CheapestAlternative(altId, altName,
-                        BigDecimal.valueOf(cheapestAltPrice).setScale(2, RoundingMode.HALF_UP));
-            }
-
-            items.set(i, item.withPricing(storeId,
-                    BigDecimal.valueOf(price).setScale(2, RoundingMode.HALF_UP),
-                    cheapestAlt,
-                    storeMode));
+            items.set(i, item.withPricing(cheapestStoreId, price, cheapestAlt, storeMode));
         }
     }
 
@@ -341,19 +354,17 @@ public class ShoppingService {
     }
 
     BigDecimal computeTotalCost(List<ShoppingItem> items, Store recommendedStore, List<Store> allStores, StoreMode storeMode) {
+        // Total mirrors what the user sees in the list: sum of each item's
+        // displayed price (set by priceItems above — already the cheapest
+        // available, or null when no store has it). Skipping nulls is what
+        // makes the total non-zero on a partially-priced catalog — the old
+        // CHEAPEST_MIX branch took min() across `orElse(0.0)`, so any item
+        // missing from any store dragged the cheapest down to €0 and the
+        // total to €0.
         BigDecimal total = BigDecimal.ZERO;
         for (var item : items) {
-            if (storeMode == StoreMode.CHEAPEST_MIX) {
-                // Sum cheapest per-item prices
-                double cheapest = allStores.stream()
-                        .mapToDouble(s -> findPriceInStore(s, item.ingredientName()).orElse(0.0))
-                        .min()
-                        .orElse(0.0);
-                total = total.add(BigDecimal.valueOf(cheapest).setScale(2, RoundingMode.HALF_UP));
-            } else {
-                if (item.recommendedPrice() != null) {
-                    total = total.add(item.recommendedPrice());
-                }
+            if (item.recommendedPrice() != null) {
+                total = total.add(item.recommendedPrice());
             }
         }
         return total.setScale(2, RoundingMode.HALF_UP);
