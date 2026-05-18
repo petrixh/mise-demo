@@ -5,6 +5,7 @@ import com.example.mise.capabilities.pricing.PriceCatalog;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
 import com.example.mise.domain.conversation.ConversationService;
 import com.example.mise.domain.household.HouseholdService;
+import com.example.mise.domain.insights.InsightService;
 import com.example.mise.domain.plan.Meal;
 import com.example.mise.domain.plan.MealCostCalculator;
 import com.example.mise.domain.plan.PinnedMealException;
@@ -42,6 +43,7 @@ public class PlanView extends VerticalLayout
     private final PriceCatalog priceCatalog;
     private final MealCostCalculator mealCostCalculator;
     private final PlanRefreshBroadcaster refreshBroadcaster;
+    private final InsightService insightService;
 
     private static final DateTimeFormatter FULL_DAY_FMT = DateTimeFormatter.ofPattern("EEEE");
 
@@ -58,13 +60,15 @@ public class PlanView extends VerticalLayout
                     MealCostCalculator mealCostCalculator,
                     ConversationService conversationService,
                     PlanTools planTools,
-                    PlanRefreshBroadcaster refreshBroadcaster) {
+                    PlanRefreshBroadcaster refreshBroadcaster,
+                    InsightService insightService) {
         this.householdService = householdService;
         this.planService = planService;
         this.recipeCatalog = recipeCatalog;
         this.priceCatalog = priceCatalog;
         this.mealCostCalculator = mealCostCalculator;
         this.refreshBroadcaster = refreshBroadcaster;
+        this.insightService = insightService;
         // conversationService and planTools are wired in MainLayout; kept as params for Spring DI
 
         setSizeFull();
@@ -141,7 +145,10 @@ public class PlanView extends VerticalLayout
 
         var sidebar = new Div();
         sidebar.addClassName("mise-plan-sidebar");
-        sidebar.add(new CostByCategoryPanel(activePlan, planService, recipeCatalog, priceCatalog));
+        Long householdId = householdService.findHousehold().map(h -> h.getId()).orElse(null);
+        sidebar.add(new CostByCategoryPanel(
+                activePlan, planService, recipeCatalog, priceCatalog,
+                insightService, householdId, this::handleSubmitChatMessage));
         body.add(sidebar);
 
         panel.add(body);

@@ -1,6 +1,6 @@
 /* Mise application styles — master file.
  * Per-view styles live in mise-<view>.css and are pulled in below.
- * (touch: force bundler rebuild — header polish + outline tabs) */
+ * (touch: force bundler rebuild — sidebar insight + mobile header fixes) */
 @import "mise-dark.css";
 @import "mise-onboarding.css";
 @import "mise-main-layout.css";

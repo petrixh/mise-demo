@@ -2,9 +2,12 @@ package com.example.mise.ui.plan;
 
 import com.example.mise.capabilities.pricing.PriceCatalog;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
+import com.example.mise.domain.insights.Insight;
+import com.example.mise.domain.insights.InsightService;
 import com.example.mise.domain.plan.Meal;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
@@ -14,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Cost-by-category panel: horizontal bars with category colors.
@@ -47,7 +51,10 @@ public class CostByCategoryPanel extends Div {
     public CostByCategoryPanel(Plan plan,
                                 PlanService planService,
                                 RecipeCatalog recipeCatalog,
-                                PriceCatalog priceCatalog) {
+                                PriceCatalog priceCatalog,
+                                InsightService insightService,
+                                Long householdId,
+                                Consumer<String> onSubmitChat) {
         addClassName("mise-category-panel");
         getElement().setAttribute("data-testid", "cost-by-category-panel");
 
@@ -88,20 +95,34 @@ public class CostByCategoryPanel extends Div {
             add(note);
         }
 
-        // AI insight paragraph — mockup §"Salmon Friday accounts for 35% of protein cost…".
-        // Computed locally from the cost-by-category totals: picks the dominant category
-        // and the meal that contributes the most to it.
-        // TODO(UC-008): replace with a model-generated insight via InsightService once the
-        // Plan-specific generator lands; this placeholder uses simple arithmetic instead.
+        // AI insights section — two stacked lines under the cost bars:
+        //   1) Local cost insight (mockup §"Salmon Friday accounts for 35% of protein cost…"),
+        //      computed from the cost-by-category totals: picks the dominant category and the
+        //      meal that contributes the most to it.
+        //   2) The cross-view Mise insight from InsightService (formerly rendered as a top
+        //      banner). Dismissable + actionable via the chat — same data flow as the banner,
+        //      just rendered inline so the Plan view has one coherent "AI insights" area
+        //      instead of a top banner plus a sidebar note.
+        // TODO(UC-008): replace (1) with a model-generated insight via InsightService once a
+        // Plan-specific generator lands; today (1) uses simple arithmetic.
         if (!noPriceData) {
             String insightText = buildInsightText(meals, costs, recipeCatalog, priceCatalog);
             if (insightText != null) {
-                add(buildInsight(insightText));
+                add(buildLocalInsight(insightText));
+            }
+        }
+
+        if (insightService != null && householdId != null) {
+            try {
+                insightService.currentInsight(householdId).ifPresent(insight ->
+                        add(buildMiseInsight(insight, insightService, onSubmitChat)));
+            } catch (Exception ignored) {
+                // Never break the sidebar for insight rendering.
             }
         }
     }
 
-    private Div buildInsight(String text) {
+    private Div buildLocalInsight(String text) {
         var box = new Div();
         box.addClassName("mise-ai-insight");
         box.getElement().setAttribute("data-testid", "plan-ai-insight");
@@ -112,6 +133,63 @@ public class CostByCategoryPanel extends Div {
         var body = new Span(text);
         box.add(icon, body);
         return box;
+    }
+
+    /**
+     * Renders the cross-view "Mise insight" from {@link InsightService} as a second line
+     * in the AI insights section. Matches the local-insight visual but adds inline
+     * "Act on it" + dismiss controls — the same affordances the top banner used to carry.
+     */
+    private Div buildMiseInsight(Insight insight, InsightService insightService,
+                                 Consumer<String> onSubmitChat) {
+        var box = new Div();
+        box.addClassName("mise-ai-insight");
+        box.addClassName("mise-ai-insight-actionable");
+        box.getElement().setAttribute("data-testid", "insight-banner");
+
+        var icon = VaadinIcon.LIGHTBULB.create();
+        icon.addClassName("mise-ai-insight-icon");
+
+        var body = new Span(insight.getBody());
+        body.addClassName("mise-ai-insight-body");
+        body.getElement().setAttribute("data-testid", "insight-banner-body");
+
+        String actPhrase = deriveActPhrase(insight.getBody());
+        var actBtn = new Button("Act on it");
+        actBtn.addClassName("mise-ai-insight-act");
+        actBtn.getElement().setAttribute("data-testid", "insight-banner-act");
+        actBtn.getElement().setAttribute("aria-label", "Act on this insight");
+        actBtn.addClickListener(e -> {
+            if (onSubmitChat != null) onSubmitChat.accept(actPhrase);
+        });
+
+        var dismissBtn = new Button("×");
+        dismissBtn.addClassName("mise-ai-insight-dismiss");
+        dismissBtn.getElement().setAttribute("data-testid", "insight-banner-dismiss");
+        dismissBtn.getElement().setAttribute("aria-label", "Dismiss insight");
+        dismissBtn.addClickListener(e -> {
+            try {
+                insightService.dismiss(insight.getId());
+            } catch (Exception ignored) {
+                // banner disappears regardless
+            }
+            box.setVisible(false);
+        });
+
+        box.add(icon, body, actBtn, dismissBtn);
+        return box;
+    }
+
+    /**
+     * Mirrors MainLayout's previous deriveActPhrase: pre-fills a plan-lock for the
+     * canonical "vegetarian dinners" insight, otherwise passes the body verbatim
+     * to the model.
+     */
+    private static String deriveActPhrase(String body) {
+        if (body != null && body.toLowerCase().contains("vegetarian")) {
+            return "lock in 3 vegetarian dinners this week";
+        }
+        return body;
     }
 
     /**

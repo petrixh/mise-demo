@@ -243,7 +243,12 @@
 }
 
 /* AI insight paragraph — hairline-separated note below the bars, matching the
-   mockup at mise_meal_planner_plan_view.html:142-145. Not a filled callout. */
+   mockup at mise_meal_planner_plan_view.html:142-145. Not a filled callout.
+   Two flavours stack inside this section:
+     1) plain `.mise-ai-insight` — read-only local note (no buttons)
+     2) `.mise-ai-insight.mise-ai-insight-actionable` — the cross-view Mise insight
+        formerly rendered as a top banner: same shape + bulb icon + body, plus
+        inline Act-on-it and dismiss buttons. */
 .mise-ai-insight {
   margin-top: 16px;
   padding-top: 12px;
@@ -258,6 +263,13 @@
   line-height: 1.5;
 }
 
+.mise-ai-insight + .mise-ai-insight {
+  /* Stack a second line under the first, separated by a hairline, with less
+     air than the first (which is offset from the bars above). */
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
 .mise-ai-insight-icon {
   font-size: 13px;
   width: 13px !important;
@@ -265,6 +277,78 @@
   flex-shrink: 0;
   margin-top: 2px;
   opacity: 0.85;
+}
+
+.mise-ai-insight-actionable .mise-ai-insight-icon {
+  color: var(--mise-info, hsl(200, 60%, 50%));
+  opacity: 0.95;
+}
+
+.mise-ai-insight-body {
+  flex: 1;
+  min-width: 0;
+  color: var(--vaadin-body-text-color);
+}
+
+/* Actionable insight: stack icon+body on row 1, action buttons right-aligned
+   on row 2. Keeps the sidebar (220px wide) legible — squeezing all four into
+   one row leaves the body with only ~70px and wraps to 5 lines. */
+.mise-ai-insight-actionable {
+  display: grid;
+  grid-template-columns: 13px 1fr auto auto;
+  grid-template-areas:
+    "icon body body body"
+    ".    .    act  dismiss";
+  align-items: start;
+  column-gap: 6px;
+  row-gap: 8px;
+}
+
+.mise-ai-insight-actionable .mise-ai-insight-icon  { grid-area: icon; }
+.mise-ai-insight-actionable .mise-ai-insight-body  { grid-area: body; }
+.mise-ai-insight-actionable .mise-ai-insight-act   { grid-area: act; }
+.mise-ai-insight-actionable .mise-ai-insight-dismiss { grid-area: dismiss; }
+
+/* Inline "Act on it" pill — info-blue accent so it reads as an AI affordance. */
+.mise-ai-insight vaadin-button.mise-ai-insight-act {
+  font-size: 10px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  padding: 0 9px !important;
+  border-radius: 10px !important;
+  background: rgba(100, 170, 220, 0.12) !important;
+  color: var(--vaadin-body-text-color) !important;
+  border: 1px solid rgba(100, 170, 220, 0.30) !important;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.mise-ai-insight vaadin-button.mise-ai-insight-act:hover {
+  background: rgba(100, 170, 220, 0.22) !important;
+}
+
+.mise-ai-insight vaadin-button.mise-ai-insight-dismiss {
+  font-size: 14px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  border: none !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.mise-ai-insight vaadin-button.mise-ai-insight-dismiss:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* ── Responsive overrides ────────────────────────────────────────────────── */

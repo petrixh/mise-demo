@@ -412,14 +412,19 @@ vaadin-message:not(.current-user) {
 
 /* ── C-3: mobile header collapse (< 640px) ──────────────────────────────── */
 /*
- * On mobile: header wraps to two rows — brand+week row, then tabs row.
- * Week nav is centered on mobile (mockup mise_mobile_plan_view.html).
- * Active tab uses the underline pattern on mobile instead of the desktop
- * outline pill, matching the mobile mockup's full-width tab row.
+ * On mobile: header wraps to two rows — brand · week-nav (centered with arrows
+ * intact) on row 1, then full-width tabs on row 2. Active tab uses an underline
+ * (2px bottom border) instead of the desktop outline pill, matching the mobile
+ * mockup at mise_mobile_plan_view.html.
+ *
+ * Tab border longhands are spelled out (border-bottom-color, etc.) and use
+ * currentColor for the active underline so the value cannot fail to resolve.
+ * An earlier version used `border: none; border-bottom: 2px solid var(--…)`
+ * which, when the custom property was empty, fell back to the initial value
+ * and the underline disappeared.
  */
 @media (max-width: 639px) {
   .mise-header {
-    /* X-L-01: header wraps to two rows on mobile — brand+week row, then tabs row. */
     height: auto;
     padding: 0;
     gap: 6px;
@@ -431,32 +436,26 @@ vaadin-message:not(.current-user) {
   }
   .mise-header > .mise-brand { padding-left: 14px; }
 
-  /* Mobile: week nav centers between brand and right padding */
+  /* Mobile: week nav stays centered between brand and right padding, with
+   * prev/next arrow buttons intact (same shape as the desktop selector). */
   .mise-header-week-nav {
     margin-left: auto;
-    margin-right: 14px;
+    margin-right: auto;
+    padding-right: 14px;
   }
 
   .mise-brand {
     font-size: 16px;
   }
 
-  /* On mobile the week nav arrow buttons are hidden — too cramped */
-  .mise-header-week-nav-btn {
-    display: none !important;
-  }
-
-  /* Week badge becomes plain secondary-text on mobile, no pill background */
+  /* Week badge stays as a small pill on mobile so it reads as a tappable label,
+   * matching the desktop selector's affordance. */
   .mise-week-badge {
-    font-size: 11px;
-    font-weight: 400;
-    background: transparent;
-    padding: 0;
-    color: var(--vaadin-secondary-text-color);
+    font-size: 12px;
   }
 
-  /* X-L-01: tabs wrap to a full-width second row on mobile, separated from the
-   * view by a border-bottom. Equal-thirds; each tab takes a third and centers. */
+  /* Tabs wrap to a full-width second row, separated from the view by a
+   * hairline border-bottom. Equal-thirds; each tab takes a third and centers. */
   .mise-tabs {
     flex-basis: 100%;
     border-bottom: 0.5px solid var(--mise-panel-border);
@@ -469,19 +468,30 @@ vaadin-message:not(.current-user) {
     flex: 1;
     text-align: center;
     padding: 10px 0;
-    border: none;
-    border-radius: 0;
     background: transparent;
-    border-bottom: 2px solid transparent;
+    border-top: none;
+    border-right: none;
+    border-left: none;
+    border-radius: 0;
+    border-bottom-style: solid;
+    border-bottom-width: 2px;
+    border-bottom-color: transparent;
     margin-bottom: -1px;
-    transition: color 0.15s, border-color 0.15s;
+    transition: color 0.15s, border-bottom-color 0.15s;
   }
 
-  /* Mobile active tab: underline only, no outline-pill (per mobile mockup) */
+  /* Mobile active tab: underline only (no outline pill / no fill).
+   * currentColor follows the explicit color set above so the underline
+   * always inherits the active text color. */
   .mise-tab[active] {
+    color: var(--vaadin-body-text-color);
     background: transparent;
-    border: none;
+    border-top: none;
+    border-right: none;
+    border-left: none;
     border-radius: 0;
-    border-bottom: 2px solid var(--vaadin-body-text-color);
+    border-bottom-style: solid;
+    border-bottom-width: 2px;
+    border-bottom-color: currentColor;
   }
 }
