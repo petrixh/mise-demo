@@ -15,7 +15,7 @@
 
 ### Default
 - I navigate to `/reports`.
-- I see a Vaadin **Dashboard** with three default widgets: a **weekly cost trend** line chart, a **cost-by-category** chart (donut by default), and a **per-meal leaderboard** grid (rank, meal name, frequency, average cost, average kcal).
+- I see one **Reports panel** (single-panel pattern, per the design system) containing, top to bottom: a 4-cell KPI strip; a chart row with a **weekly cost trend** line chart and a **cost-by-category** chart (donut by default) side by side; a **per-meal leaderboard** grid (rank, meal name, frequency, average cost, average kcal); and a non-dismissable AI insight callout beneath the leaderboard.
 - Data spans my seeded + accumulated plan history.
 
 ### Ask "why?"
@@ -61,9 +61,10 @@
 
 ## UI / Routes
 
-- Vaadin `Dashboard` with three default widgets. Each widget has a chat icon (per the AI-dashboard reference example) — but in our app the **shared chat** is also always available, and either entry point uses the same orchestrator.
-- "Edited" highlighting on freshly transformed widgets fades over a few seconds.
-- Reset-to-defaults: a small icon button in the widget header plus an in-chat capability.
+- One single-panel layout (per the design system's "View panel" section): KPI strip → chart row (`1fr 1fr` on desktop, stacked below 1024px) → leaderboard → AI insight, all hairline-separated inside one filled `.mise-reports-panel`. No per-widget cards or gaps.
+- Chart canvas + plot area are transparent so the panel background reads through. Series colors come from `--mise-category-*` per data point; axis lines, ticks, grid lines, and label text use the panel's hairline/secondary tokens. See "Charts (Reports)" in the design system.
+- "Edited" highlighting on freshly transformed widgets fades over a few seconds. Highlight uses an inset shadow so the panel's section background stays consistent.
+- Reset-to-defaults: a small icon button at the right of each widget's title row plus an in-chat capability.
 
 | Route | Access | Notes |
 |-------|--------|-------|
@@ -84,7 +85,8 @@
 
 #### Visual
 
-- [ ] Vaadin `Dashboard` with three widgets; chat icon on each widget
+- [ ] One single-panel Reports view with KPI strip, chart row, leaderboard, and in-panel AI insight, separated by hairlines
+- [ ] Chart backgrounds transparent against the panel; donut renders a vertical right-side legend with category colors
 - [ ] Transform highlight fades over a few seconds
 
 #### AI

@@ -133,7 +133,9 @@ These aren't strict rules, but they're the values used across the mockups and wo
 
 Desktop uses a `1fr 220px` split for the Plan view (meal list + side panel), and `1fr 1fr` for the Reports view's chart row. The split lives **inside** the view panel — the two columns share the panel's background and are separated only by a `border-right` hairline on the left column, not by a gap.
 
-Mobile uses single column for everything except the KPI strip, which becomes `1fr 1fr` (2x2 grid). This is the only place where mobile makes a layout decision that's specifically a *responsive* choice rather than just stacking what desktop had. On mobile the right-side sidebar from desktop stacks below the main list — still inside the same panel, separated by a hairline rather than a gap.
+Between ~640px and ~1023px the desktop split collapses to a single column inside the same panel, with the column hairline moving from right to bottom of the upper section. This is the tablet midpoint; the panel itself stays edge-to-edge.
+
+Below 640px the KPI strip becomes a `1fr 1fr` 2x2 grid (the only layout that explicitly reshapes for responsive rather than just stacking). The right-side sidebar from desktop stacks below the main list, still inside the same panel and still separated by a hairline rather than a gap.
 
 ## Recurring component patterns
 
@@ -141,11 +143,18 @@ These are the patterns that show up across views and should be reused rather tha
 
 ### View panel
 
-Every primary view (Plan, Shopping, Reports) is rendered as **one filled panel** on the panel surface, with internal sections separated only by 0.5px hairlines and no gaps. The panel is the only rounded/bordered container; the sections inside it (KPI strip, list, sidebar) have transparent backgrounds. The persistent chat dock sits below the panel on the chrome surface, visually distinct.
+Every primary view (Plan, Shopping, Reports) is rendered as **one filled panel** on the panel surface, with internal sections separated only by 0.5px hairlines and no gaps. The panel is the only rounded/bordered container; the sections inside it (KPI strip, list, sidebar, chart, leaderboard) have transparent backgrounds. The persistent chat dock sits below the panel on the chrome surface, visually distinct.
 
-This is a deliberate departure from a "stack of cards" layout. Three separate cards with gaps between them implies three loosely-related things; one panel with internal dividers implies one coherent dataset (the week) viewed through several lenses. The mockups consistently use the single-panel approach — see `mise_meal_planner_plan_view.html` — and it's what gives each view its "single object" feel.
+This is a deliberate departure from a "stack of cards" layout. Three separate cards with gaps between them implies three loosely-related things; one panel with internal dividers implies one coherent dataset (the week / the time window / the shopping list) viewed through several lenses. The mockups consistently use the single-panel approach — see `mise_meal_planner_plan_view.html` and `mise_meal_planner_reports_view.html` — and it's what gives each view its "single object" feel.
 
-On desktop the panel hosts a header strip (KPI / summary row), a body grid (`1fr 220px` for Plan, `1fr 1fr` for Reports chart row), and content sections divided by hairlines. On mobile the panel takes full width, the body collapses to one column, the KPI strip becomes a 2×2 internal grid, and side content stacks below the main list — all inside the same panel.
+Section ordering inside the panel, top to bottom:
+
+1. **KPI strip** — four cells across with vertical hairlines (2×2 with internal hairlines on mobile). Bottom hairline closes the strip off from the body.
+2. **Body** — the largest content region. Plan uses a `1fr 220px` split (meal list + cost-by-category sidebar) with a vertical hairline between columns. Reports uses a `1fr 1fr` split (cost trend + cost-by-category donut). Shopping uses a single column. Below ~1023px the split collapses and the column hairline moves to the bottom of the upper section.
+3. **Secondary content** — Reports' per-meal leaderboard is a full-width row beneath the chart row, separated by a horizontal hairline.
+4. **AI insights** — non-dismissable in-context insight at the bottom of the panel, hairline-separated from the content above. See "AI insight callout" below.
+
+Mobile keeps the same vertical order but everything stacks into one column inside the same panel.
 
 ### KPI card
 
@@ -171,14 +180,27 @@ Reserved for one specific use: the AI's recommended choice on the Shopping view.
 
 ### AI insight callout
 
-There are two variants of the AI insight, each with a different shape and a different scope:
+Insights have one canonical home: **inside the view panel that produced them**, at the bottom of the relevant section. There are two flavours that can coexist:
 
-1. **Banner variant** — top of the view outlet, between tabs and the panel. A pale info-blue surface with a bulb icon, a short observation, an "Act on it" button, and a dismiss `×`. Used for cross-view, user-actionable insights ("Your cheaper weeks all had three vegetarian dinners. Worth locking in?"). One banner at a time, dismissable.
-2. **Inline paragraph variant** — non-dismissable, hairline-separated note inside an existing panel section. No filled background, no buttons — just an `info-circle` icon and one sentence in secondary text, with a `border-top` separator above it. Used to surface a contextual observation about whatever the section already shows ("Salmon Friday accounts for 35% of protein cost. Swap to mackerel saves €4.80." beneath the cost-by-category bars on Plan; the same shape appears below the Reports cost trend chart).
+1. **Quiet annotation** — non-dismissable, no buttons. A `ti-info-circle` icon and one sentence of secondary text, separated from the content above by a `border-top` hairline. Used to surface a contextual observation about what the section already shows ("Tuna Pasta Bake on Tuesday accounts for 20% of pantry cost. Ask Mise for a cheaper swap." beneath the cost-by-category bars on Plan).
+2. **Actionable suggestion** — same shape (icon + body, hairline above), plus inline `Act on it` pill and `×` dismiss. Layout uses a small grid: icon + body on row 1, action buttons right-aligned on row 2, so a narrow sidebar (Plan's 220px right column) stays legible. The bulb icon (`ti-bulb`) signals "Mise is suggesting", not just "Mise noticed". Used for cross-view recommendations like "Your cheaper weeks all had three vegetarian dinners — worth locking in?".
 
-The two variants share the same icon family, the same info-blue accent, and the same "noticing, not instructing" tone — but they differ in scope. The banner is the AI starting a conversation; the inline paragraph is the AI annotating a chart. Don't use a filled callout for an inline annotation, and don't use a hairline-only note for a top-level recommendation.
+Both flavours share the same info-blue accent on the icon and the "noticing, not instructing" tone. Quiet annotations precede actionable suggestions when both appear; only one actionable suggestion shows per view at a time.
 
-Insights should never stack within the same scope: one banner at a time, one inline paragraph per panel section.
+The **Reports view** places its insight (currently the quiet annotation flavour, with the `ti-bulb` icon and an "AI INSIGHT" uppercase label preceding the body) at the very bottom of the panel, beneath the leaderboard, hairline-separated. This sits where the eye naturally lands after reading the table — *"and here's what stands out in this data"* — so don't move it back to the top.
+
+The global top-of-view banner that older mockups showed between tabs and the panel has been retired in favor of these in-panel insights. The only view that still uses the legacy top-banner is Shopping, until it grows its own bottom-of-panel insights area. New views should ship with the in-panel pattern from the start.
+
+### Charts (Reports)
+
+Two charts live in the Reports panel: a weekly cost trend (line) and a cost-by-category breakdown (donut, with bar/column variants the AI can switch into via tools). Theming rules that apply to every chart:
+
+- **Canvas background is transparent** so the panel surface reads through. Charts must not paint their own surface — that produces a darker rectangle inside the panel that breaks the "single object" illusion.
+- **Series colors come from data**, not chart order. For the cost-by-category donut/bar, each slice/bar takes its category's `--mise-category-*` color (per-item override). The trend line picks a single brand-aligned hue (Protein purple) since it's a single series. Don't let Highcharts cycle through its default palette.
+- **Axis chrome uses panel-border + secondary text colors.** Axis lines, tick marks, and grid lines all use the same `0.5px`-style hairline tone as the panel's internal dividers. Tick labels and titles use the panel's secondary text color at `10–11px` — readable without competing with the data.
+- **Legend over data labels** for the donut. Connector-line callouts crowd the chart and clip on narrow viewports. A vertical legend on the right side (`{name} {percentage}%` per row) is more compact and matches the mockup. Pie series in Highcharts default to `showInLegend: false` — flip it explicitly.
+
+These rules belong in **one place** (a single chart-theme helper), not per-chart. That way a new chart added later inherits the look without re-deriving it.
 
 ### Chat dock
 
@@ -198,9 +220,19 @@ The chat dock is identical between desktop and mobile. This is deliberate — it
 
 A segmented control on a secondary-surface track. Active segment gets a white fill, `0.5px` border, weight 500; inactive segments are secondary-color text only. Used for the `One store / Cheapest mix` decision on Shopping; could appear elsewhere when there's a binary view choice that's part of state (e.g. `Bar / Donut` for the category chart in Reports).
 
+### Header (brand · week nav · tabs)
+
+The app header is one chrome-surface row with three groups:
+
+- **Brand** (left) — the Tabler `ti-tools-kitchen-2` icon and the "Mise" wordmark, side by side. The icon's stroke is `currentColor`, so it follows the wordmark color in any theme — inline the SVG, do not use `<img>`. Brand sits flush against the left padding.
+- **Week navigator** (left-aligned next to the brand on desktop) — `‹ Week of <date> ›` as a small pill. On mobile, the nav stays on the same row but centers between the brand and the right padding. Prev/next chevrons are always visible (even when disabled) since they communicate that weeks are scrollable.
+- **Tabs** (right) — three labels (Plan, Shopping, Reports). The active tab has an outline-pill on desktop (`0.5px` border + panel-bg fill + weight 500) and a `2px` underline on mobile, where the tabs wrap to a full-width second row with equal thirds. Inactive tabs are secondary-color text. Tabs are top-anchored on both viewports — explicitly *not* a bottom tab bar — because the chat dock owns the bottom of the screen.
+
+There is **no budget pill or other right-hand accessory** in the header. Anything that needs to appear there (settings, household switcher) belongs in a menu inside the brand cluster, not inline next to the tabs.
+
 ### Tabs
 
-Top of every view: three equal-width segments (Plan, Shopping, Reports). Active tab has a `2px` bottom border in primary text color and weight 500; inactive tabs are secondary color and no border. Tabs are top-anchored on both mobile and desktop — explicitly *not* a bottom tab bar — because the chat dock owns the bottom of the screen.
+See "Header" above for placement and active-state styling.
 
 ## Iconography
 
@@ -210,8 +242,14 @@ All icons in the mockups are from the Tabler icon set (outline style only, no fi
 - Section markers (chart-type indicators in panel labels): `14px`
 - AI sparkle icon (the recurring "this is from the AI" marker): `13-14px` inline, in secondary color
 - Navigation icons (top bar, chevrons): `16-20px`
+- Brand logo (`ti-tools-kitchen-2` in the header next to the "Mise" wordmark): `20px` desktop / `18px` mobile
 
-The sparkle icon (`ti-sparkles`) is the AI marker. It appears on the chat dock above the input, in the recommendation card label, in the AI insight callout, and on the "Mise added..." inline note in Reports. Reserve it for genuinely AI-generated content. Don't sprinkle it decoratively.
+Two icons carry semantic weight and should not be reused decoratively:
+
+- **`ti-sparkles`** is the AI marker. It appears on the chat dock above the input, in the recommendation card label, and on the "Mise added…" inline note in Reports. Reserve it for genuinely AI-generated content.
+- **`ti-bulb`** marks AI *insights* specifically (vs. AI *actions*). It sits at the start of the AI insight callouts described above.
+
+The brand logo SVG must be **inlined** (not loaded via `<img>`) so its `stroke="currentColor"` follows the wordmark text color across themes. A copy of the SVG also lives at `/icons/tools-kitchen-2.svg` for any external reference (favicons, social cards, etc.).
 
 ## Responsive
 
