@@ -24,12 +24,36 @@
   row-gap: 0;
 }
 
+/* Brand cluster: logo SVG + "Mise" wordmark side by side. The container is the
+ * flex parent that lines them up; the wordmark H1 carries the type styling. */
 .mise-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  color: var(--vaadin-body-text-color);
+}
+
+.mise-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  /* currentColor in the inlined SVG inherits this — so the logo follows the
+   * wordmark color in any theme without explicit fill/stroke overrides. */
+  color: inherit;
+}
+
+.mise-brand-logo svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.mise-brand-wordmark {
   font-size: 18px;
   font-weight: 600;
   margin: 0;
   letter-spacing: 0.02em;
-  flex-shrink: 0;
+  line-height: 1;
 }
 
 /* ── Week navigator: prev arrow + badge + next arrow ────────────────────── */
@@ -470,8 +494,12 @@ vaadin-message:not(.current-user) {
     padding-right: 14px;
   }
 
-  .mise-brand {
+  .mise-brand-wordmark {
     font-size: 16px;
+  }
+  .mise-brand-logo svg {
+    width: 18px;
+    height: 18px;
   }
 
   /* Week badge stays as a small pill on mobile so it reads as a tappable label,

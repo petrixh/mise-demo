@@ -45,6 +45,20 @@ public class MainLayout extends VerticalLayout
 
     private static final DateTimeFormatter WEEK_FMT = DateTimeFormatter.ofPattern("MMM d");
 
+    /**
+     * Tabler ti-tools-kitchen-2 icon, copied verbatim from
+     * ai-meal-planner/mise/html-mockups-initial/tools-kitchen-2.svg so the
+     * stroke="currentColor" path inherits the brand text color when inlined.
+     * Same markup lives at /icons/tools-kitchen-2.svg for external references.
+     */
+    private static final String MISE_LOGO_SVG =
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" "
+            + "fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" "
+            + "stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"
+            + "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\"/>"
+            + "<path d=\"M19 3v12h-5c-.023 -3.681 .184 -7.406 5 -12m0 12v6h-1v-3m-10 -14v17m-3 -17v3a3 3 0 1 0 6 0v-3\"/>"
+            + "</svg>";
+
     private final HouseholdOrchestrator household;
     private final MessageList messageList;
     private final Span lastAiMessageText;
@@ -196,8 +210,19 @@ public class MainLayout extends VerticalLayout
     // The VerticalLayout's last "expand" slot holds the route content.
 
     private Div buildHeader(HouseholdService householdService, PlanService planService) {
-        // ── Wordmark (left) ──────────────────────────────────────────────────
-        var brand = new H1("Mise");
+        // ── Logo + wordmark (left) ───────────────────────────────────────────
+        // Tabler ti-tools-kitchen-2 icon next to the "Mise" text, per the mockup.
+        // Inlined (not via <img>) so stroke="currentColor" picks up the brand's
+        // text color and the logo stays in sync with the header in any theme.
+        var logo = new Span();
+        logo.addClassName("mise-brand-logo");
+        logo.getElement().setAttribute("aria-hidden", "true");
+        logo.getElement().setProperty("innerHTML", MISE_LOGO_SVG);
+
+        var wordmark = new H1("Mise");
+        wordmark.addClassName("mise-brand-wordmark");
+
+        var brand = new Div(logo, wordmark);
         brand.addClassName("mise-brand");
         brand.getElement().setAttribute("data-testid", "app-header-wordmark");
 
