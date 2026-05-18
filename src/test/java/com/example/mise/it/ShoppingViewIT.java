@@ -316,8 +316,18 @@ class ShoppingViewIT extends MisePlaywrightIT {
     @Test
     void alreadyHaveButtonRemovesRowAndCreatesPantryItem() {
         Locator rows = page.getByTestId("shopping-row");
-        // Capture before-count
-        int before = rows.count();
+        // Wait for the list to settle before snapshotting the count. Without this
+        // the test flakes: rows.count() returns mid-render (e.g. 33 of 34 visible),
+        // we click delete, and the final 34th row arrives and is then removed,
+        // landing on 32 instead of before-1 = 33. Two consecutive snapshots with
+        // a brief delay between them is enough to gate the click on a stable list.
+        assertThat(rows.first()).isVisible();
+        int before;
+        while (true) {
+            int sample = rows.count();
+            page.waitForTimeout(150);
+            if (sample == rows.count()) { before = sample; break; }
+        }
         Assertions.assertThat(before)
                 .as("Precondition: shopping list must have at least one row to test AC #5")
                 .isGreaterThanOrEqualTo(1);

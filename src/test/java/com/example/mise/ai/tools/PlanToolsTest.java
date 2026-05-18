@@ -21,8 +21,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Optional;
 
@@ -58,8 +60,17 @@ class PlanToolsTest {
     @MockitoBean
     private MealCostCalculator mealCostCalculator;
 
-    // week of 2026-05-11 (Monday)
-    private static final LocalDate WEEK_START = LocalDate.of(2026, 5, 11);
+    /**
+     * The seeded plan is anchored to the current week so day-name resolution
+     * lines up. {@link PlanTools#resolveDate(String)} interprets weekday strings
+     * ("Thursday", "Monday") relative to {@code LocalDate.now()} — it has no
+     * way to know about this plan's {@code weekStartDate}. Pinning a fixed
+     * past date here makes tests pass on the day it was written and quietly
+     * rot afterwards as "Thursday" starts resolving to a date outside the
+     * seeded week.
+     */
+    private static final LocalDate WEEK_START =
+            LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
     private Household savedHousehold;
     private Plan savedPlan;
