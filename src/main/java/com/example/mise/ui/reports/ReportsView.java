@@ -656,10 +656,14 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         header.setAlignItems(Alignment.CENTER);
 
         if (hasReset) {
-            var resetBtn = new Button(VaadinIcon.CLOSE_CIRCLE_O.create());
+            // Revert icon (rotate-left) — same affordance MealGrid uses for
+            // "undo last AI change". The previous × (close-circle-o) read as
+            // "remove this widget" rather than "undo my customizations".
+            var resetBtn = new Button(VaadinIcon.ROTATE_LEFT.create());
             resetBtn.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             resetBtn.getElement().setAttribute("data-testid", "report-reset-" + widgetKey);
-            resetBtn.getElement().setAttribute("aria-label", "Reset " + title);
+            resetBtn.getElement().setAttribute("aria-label", "Revert " + title + " to defaults");
+            resetBtn.getElement().setAttribute("title", "Revert to defaults");
             resetBtn.addClassName("mise-reports-reset-btn");
             resetBtn.addClickListener(e -> {
                 viewPreferenceService.deleteSettings(householdId, ViewPreference.View.REPORTS, widgetKey);

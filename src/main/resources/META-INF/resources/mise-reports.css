@@ -167,6 +167,37 @@
   font-size: 13px;
 }
 
+/* Vaadin Grid renders on its own surface by default — a dark slab inside the
+ * lighter Reports panel. Transparent host + ::part overrides let the panel
+ * background read through both the header and the rows, matching the mobile
+ * card list and the design-system "View panel" rule (sections are transparent;
+ * the panel owns the canvas color). Hairline row dividers use --mise-panel-border
+ * so they line up with the rest of the panel's internal separators. */
+.mise-reports-leaderboard,
+vaadin-grid.mise-reports-leaderboard {
+  background: transparent;
+  border: none;
+  color: var(--vaadin-body-text-color);
+  --vaadin-grid-background-color: transparent;
+  --lumo-base-color: transparent;
+}
+
+.mise-reports-leaderboard::part(row),
+.mise-reports-leaderboard::part(header-cell),
+.mise-reports-leaderboard::part(body-cell),
+.mise-reports-leaderboard::part(footer-cell) {
+  background: transparent;
+  color: var(--vaadin-body-text-color);
+  border-color: var(--mise-panel-border);
+}
+
+.mise-reports-leaderboard::part(header-cell) {
+  color: var(--vaadin-secondary-text-color);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
 .mise-reports-extra-col {
   font-weight: 600;
   color: var(--vaadin-body-text-color);
