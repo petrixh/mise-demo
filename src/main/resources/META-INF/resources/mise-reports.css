@@ -1,6 +1,11 @@
 /* mise-reports.css — styles for UC-007 Reports view.
  * Per the project CSS convention: all Reports-view selectors live here.
  * Imported from styles.css via @import "mise-reports.css";
+ *
+ * Layout matches the mockup at
+ *   ai-meal-planner/mise/html-mockups-initial/mise_meal_planner_reports_view.html
+ * One filled panel wraps KPI strip → chart row (trend + breakdown) → leaderboard
+ * → AI insights, with 0.5px hairlines between sections and no internal gaps.
  */
 
 /* ── View shell ─────────────────────────────────────────────────────────── */
@@ -9,30 +14,25 @@
 }
 
 .mise-reports-content {
-  padding: 16px;
+  /* Container holds the single panel; no padding so the panel hugs the shell edges. */
   box-sizing: border-box;
 }
 
-.mise-reports-content-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
-  align-items: start;
+/* ── Single panel ──────────────────────────────────────────────────────── */
+.mise-reports-panel {
+  background: var(--mise-panel-bg);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  border-top: 0.5px solid var(--mise-panel-border);
+  border-bottom: 0.5px solid var(--mise-panel-border);
 }
 
-/* R-F-01: insights block spans full grid width, above KPI strip */
-#mise-reports-insights-block {
-  grid-column: 1 / -1;
-}
-
-/* M-5: KPI strip spans full grid width */
-#mise-reports-kpi-strip {
-  grid-column: 1 / -1;
-}
-
-/* R-L-01: leaderboard is full-width on its own row below the two chart widgets */
-#mise-reports-widget-leaderboard {
-  grid-column: 1 / -1;
+/* KPI strip — uses the global .mise-kpi-strip rules from mise-plan.css for the
+ * cell layout. Just need a bottom hairline so it separates from the chart row. */
+.mise-reports-panel > .mise-kpi-strip {
+  border-bottom: 0.5px solid var(--mise-panel-border);
 }
 
 /* M-5: over-budget KPI value in warning amber */
@@ -40,57 +40,24 @@
   color: var(--mise-edited-text, #633806) !important;
 }
 
-/* ── R-F-01: AI insights block ──────────────────────────────────────────── */
-.mise-reports-insights-block {
-  background: var(--vaadin-background-container);
-  border-left: 3px solid hsl(200, 60%, 50%);
-  border-radius: var(--vaadin-radius-m, 8px);
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+/* ── Chart row: cost trend (left) + category breakdown (right) ──────────── */
+.mise-reports-chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 0.5px solid var(--mise-panel-border);
 }
 
-.mise-reports-insights-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.mise-reports-chart-row > .mise-reports-widget:first-child {
+  border-right: 0.5px solid var(--mise-panel-border);
 }
 
-.mise-reports-insights-icon {
-  color: hsl(200, 60%, 50%);
-  flex-shrink: 0;
-  width: 14px !important;
-  height: 14px !important;
-  opacity: 0.9;
-}
-
-.mise-reports-insights-label {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: hsl(200, 60%, 50%);
-  opacity: 0.85;
-}
-
-.mise-reports-insights-body {
-  font-size: 13px;
-  color: var(--vaadin-body-text-color);
-  line-height: 1.5;
-}
-
-.mise-reports-insights-empty .mise-reports-insights-body {
-  color: var(--vaadin-secondary-text-color);
-  font-style: italic;
-}
-
-/* ── Widget card ────────────────────────────────────────────────────────── */
+/* ── Widget block (transparent inside the panel, hairline-separated) ───── */
 .mise-reports-widget {
-  background: var(--vaadin-background-container);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: var(--vaadin-radius-m, 8px);
-  padding: 16px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 12px 14px 14px;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -119,19 +86,80 @@
   min-height: 80px;
 }
 
+/* Leaderboard widget: full-width below the chart row, hairline above. */
+#mise-reports-widget-leaderboard {
+  border-bottom: 0.5px solid var(--mise-panel-border);
+}
+
 /* ── Edited highlight — fades out after ~4 s ────────────────────────────── */
 @keyframes mise-edited-fade {
-  0%   { box-shadow: 0 0 0 2px rgba(43, 154, 243, 0.45); background: rgba(43, 154, 243, 0.10); }
-  100% { box-shadow: none; background: var(--vaadin-background-container); }
+  0%   { box-shadow: inset 0 0 0 2px rgba(43, 154, 243, 0.45); background: rgba(43, 154, 243, 0.08); }
+  100% { box-shadow: none; background: transparent; }
 }
 
 .mise-reports-widget-edited {
   animation: mise-edited-fade 4s ease-out forwards;
 }
 
-/* ── Chart container ────────────────────────────────────────────────────── */
+/* ── Chart container + chart canvas theming ─────────────────────────────── */
 .mise-reports-chart-container {
   width: 100%;
+}
+
+/* Vaadin Charts in the Reports panel: blend in with the panel canvas. The
+ * chart background and plot background are set transparent in Java via
+ * Configuration.getChart().setBackgroundColor/setPlotBackgroundColor. These
+ * CSS overrides handle the host element + the SVG host so nothing reverts
+ * to the chart component's default white surface on the dark panel. */
+.mise-reports-panel vaadin-chart,
+.mise-reports-panel vaadin-chart::part(chart) {
+  background: transparent !important;
+}
+
+/* ── R-F-01: AI insights block (bottom of panel, beneath leaderboard) ──── */
+.mise-reports-insights-block {
+  background: transparent;
+  border-left: none;
+  border-top: 0.5px solid var(--mise-panel-border);
+  border-radius: 0;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mise-reports-insights-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mise-reports-insights-icon {
+  color: var(--mise-info, hsl(200, 60%, 50%));
+  flex-shrink: 0;
+  width: 14px !important;
+  height: 14px !important;
+  opacity: 0.9;
+}
+
+.mise-reports-insights-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--mise-info, hsl(200, 60%, 50%));
+  opacity: 0.85;
+}
+
+.mise-reports-insights-body {
+  font-size: 13px;
+  color: var(--vaadin-body-text-color);
+  line-height: 1.5;
+}
+
+.mise-reports-insights-empty .mise-reports-insights-body {
+  color: var(--vaadin-secondary-text-color);
+  font-style: italic;
 }
 
 /* ── Leaderboard grid ───────────────────────────────────────────────────── */
@@ -154,13 +182,20 @@
   display: block;
 }
 
-/* ── Mobile overrides ───────────────────────────────────────────────────── */
-@media (max-width: 639px) {
-  /* KPI strip: 2x2 grid on mobile */
-  #mise-reports-kpi-strip.mise-kpi-strip {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+/* ── Mobile / tablet overrides ──────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  /* Chart row stacks below 1024px; the divider moves from right to bottom. */
+  .mise-reports-chart-row {
+    grid-template-columns: 1fr;
   }
+  .mise-reports-chart-row > .mise-reports-widget:first-child {
+    border-right: none;
+    border-bottom: 0.5px solid var(--mise-panel-border);
+  }
+}
+
+@media (max-width: 639px) {
+  /* KPI strip already collapses to 2x2 in mise-plan.css. Nothing extra here. */
 }
 
 /* ── Mobile leaderboard card layout ────────────────────────────────────── */

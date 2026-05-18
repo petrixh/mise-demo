@@ -371,11 +371,15 @@ public class MainLayout extends VerticalLayout
         household.setCurrentView(viewContext);
 
         // UC-009: update insight banner — skip on the onboarding/welcome route
-        // *and* on /plan (the Plan view renders its own inline insight in the
-        // cost-by-category sidebar, so the global banner here would duplicate it).
+        // *and* on /plan (Plan renders its own inline insight in the cost-by-category
+        // sidebar) *and* on /reports (Reports renders its own non-dismissable
+        // insight block at the bottom of the panel, beneath the leaderboard).
+        // Shopping is the only remaining view that still relies on the top banner
+        // until it grows its own in-context insight area.
         boolean isWelcome = location.startsWith("welcome") || location.startsWith("onboarding");
         boolean isPlan = location.startsWith("plan") || location.isEmpty();
-        updateInsightBanner(isWelcome || isPlan);
+        boolean isReports = location.startsWith("reports");
+        updateInsightBanner(isWelcome || isPlan || isReports);
     }
 
     /**
