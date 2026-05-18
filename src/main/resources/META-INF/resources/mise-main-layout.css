@@ -12,7 +12,7 @@
   padding: 0 20px;
   height: 52px;
   border-bottom: 0.5px solid rgba(255,255,255,0.08);
-  background: var(--vaadin-background);
+  background: var(--mise-chrome-bg);
   flex-shrink: 0;
   /* Ensure full viewport width regardless of any ancestor constraints */
   width: 100%;
@@ -87,7 +87,7 @@
 .mise-tabs {
   display: flex;
   flex-shrink: 0;
-  background: var(--vaadin-background);
+  background: var(--mise-chrome-bg);
   /* X-L-01: inside the header on desktop, tabs sit flush against its right edge.
    * height matches the header so the active-tab underline aligns with the
    * header border-bottom (no double border). */
@@ -124,7 +124,7 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: var(--vaadin-background);
+  background: var(--mise-chrome-bg);
 }
 
 /*
@@ -179,7 +179,16 @@
   left: 0;
   right: 0;
   z-index: 100;
-  background: var(--vaadin-background-container);
+  /* Mockup: header + chat use --vaadin-background (slightly darker than the
+   * view panel which uses --vaadin-background-container). Using the panel
+   * color here makes the dock blend into the Plan panel and reads as if it
+   * were transparent. The opaque solid color + top hairline + shadow now give
+   * the dock a clear visual edge. isolation:isolate creates a fresh stacking
+   * context so the shadow can't accidentally let underlying content bleed
+   * through any future filter / mix-blend-mode rules. */
+  background: var(--mise-chrome-bg);
+  isolation: isolate;
+  border-top: 0.5px solid var(--mise-panel-border);
   border-radius: 14px 14px 0 0;
   box-shadow: 0 -1px 0 rgba(255,255,255,0.09), 0 -8px 24px rgba(0,0,0,0.35);
   padding: 12px 16px 10px;
@@ -220,11 +229,11 @@
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
-  /* C-V-02: explicit background so the message list is opaque when expanded.
-   * The vaadin-message-list shadow host is transparent by default; without this
-   * the underlying view bleeds through the expanded dock, making text illegible
-   * especially on mobile where the dock overlays the meal grid. */
-  background: var(--vaadin-background-container);
+  /* Match the dock's own background so the message list is fully opaque when
+   * expanded. The vaadin-message-list shadow host is transparent by default;
+   * without this the underlying view bleeds through the expanded dock, making
+   * text illegible especially on mobile where the dock overlays the meal grid. */
+  background: var(--mise-chrome-bg);
   transition: max-height 180ms cubic-bezier(0.2, 0, 0, 1),
               opacity 140ms ease-out;
 }
@@ -260,19 +269,36 @@
 /* ── C-L-01: user messages right-aligned ─────────────────────────────────── */
 /*
  * The MutationObserver in MainLayout adds .current-user to vaadin-message
- * elements whose avatar name != "Mise". The host element is in the light DOM
- * so external CSS with class specificity overrides shadow :host flex-direction.
+ * elements whose userName != "Mise". row-reverse alone only flips avatar/text
+ * order — the message still spans full width; max-width + margin-left:auto
+ * actually pushes the bubble to the right edge. ::part selectors style the
+ * shadow content. Default (Mise) messages stay left-aligned.
  */
 vaadin-message.current-user {
   flex-direction: row-reverse;
+  justify-content: flex-end;
+  max-width: 85%;
+  margin-left: auto;
+  margin-right: 0;
+  text-align: right;
 }
 
 vaadin-message.current-user::part(content) {
   align-items: flex-end;
+  text-align: right;
 }
 
 vaadin-message.current-user::part(header) {
   flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+
+/* Mise messages keep their natural left-aligned width — explicit for clarity
+ * so right-aligning user bubbles doesn't accidentally affect them. */
+vaadin-message:not(.current-user) {
+  margin-right: auto;
+  margin-left: 0;
+  max-width: 85%;
 }
 
 /* When expanded, the single-line "latest reply" hint is redundant — hide it. */
@@ -308,6 +334,27 @@ vaadin-message.current-user::part(header) {
 .mise-chat-dock.ai-working .mise-chat-history vaadin-message:last-of-type vaadin-avatar[slot="avatar"] {
   border-radius: 50%;
   animation: mise-avatar-glow 1.2s ease-in-out infinite;
+}
+
+/* ── AI error indicator ──────────────────────────────────────────────────
+ * Set by MainLayout when the orchestrator's response-error callback fires
+ * (LLM unreachable, empty response). Mirrors the .ai-working visual language
+ * but uses --mise-error red. Cleared by the next submit (back to .ai-working).
+ */
+@keyframes mise-avatar-glow-error {
+  0%, 100% { box-shadow: 0 0 0 2px var(--mise-error, hsl(0, 70%, 58%)); }
+  50%      { box-shadow: 0 0 0 4px var(--mise-error, hsl(0, 70%, 58%)),
+                          0 0 10px 2px var(--mise-error, hsl(0, 70%, 58%)); }
+}
+
+.mise-chat-dock.ai-error .mise-last-ai-message .sparkle {
+  color: var(--mise-error, hsl(0, 70%, 58%));
+  opacity: 1;
+}
+
+.mise-chat-dock.ai-error .mise-chat-history vaadin-message:last-of-type vaadin-avatar[slot="avatar"] {
+  border-radius: 50%;
+  animation: mise-avatar-glow-error 1.6s ease-in-out infinite;
 }
 
 /* ── UC-004: chat-reply undo strip ─────────────────────────────────────── */

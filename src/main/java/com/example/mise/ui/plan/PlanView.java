@@ -115,20 +115,21 @@ public class PlanView extends VerticalLayout
             return;
         }
 
-        // ── Three-column responsive layout ──────────────────────────────────
-        // desktop: KPI+grid in main, category panel in sidebar
-        // tablet/mobile: sidebar hidden via CSS
+        // ── Single-panel layout (matches mockup mise_meal_planner_plan_view.html) ──
+        // One filled panel wraps KPI strip + body (meal grid + cost-by-category).
+        // Sections are separated only by 0.5px hairlines defined in mise-plan.css.
+        // Tablet/mobile: the cost sidebar stacks below the meal grid inside the same panel.
 
-        var planLayout = new Div();
-        planLayout.addClassName("mise-plan-layout");
-        planLayout.setSizeFull();
+        var panel = new Div();
+        panel.addClassName("mise-plan-panel");
+        panel.getElement().setAttribute("data-testid", "plan-panel");
 
-        // Main column: KPI strip + meal grid
-        var main = new Div();
-        main.addClassName("mise-plan-main");
+        // KPI strip across the top
+        panel.add(new WeeklyStatsBar(activePlan, planService, recipeCatalog, mealCostCalculator));
 
-        var kpiStrip = new WeeklyStatsBar(activePlan, planService, recipeCatalog, mealCostCalculator);
-        main.add(kpiStrip);
+        // Body: meal grid (left) + cost-by-category sidebar (right)
+        var body = new Div();
+        body.addClassName("mise-plan-body");
 
         var mealGrid = new MealGrid(
                 activePlan, planService, recipeCatalog, mealCostCalculator,
@@ -136,18 +137,17 @@ public class PlanView extends VerticalLayout
                 this::handleUndo,
                 this::handleSubmitChatMessage
         );
-        main.add(mealGrid);
+        body.add(mealGrid);
 
-        planLayout.add(main);
-
-        // Sidebar: cost by category
         var sidebar = new Div();
         sidebar.addClassName("mise-plan-sidebar");
         sidebar.add(new CostByCategoryPanel(activePlan, planService, recipeCatalog, priceCatalog));
-        planLayout.add(sidebar);
+        body.add(sidebar);
 
-        add(planLayout);
-        expand(planLayout);
+        panel.add(body);
+
+        add(panel);
+        expand(panel);
     }
 
     // ── Meal action handlers ──────────────────────────────────────────────

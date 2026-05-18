@@ -1,6 +1,6 @@
 /* Mise application styles — master file.
  * Per-view styles live in mise-<view>.css and are pulled in below.
- * (touch: force bundler rebuild — fix/issue-27 reports AI insights) */
+ * (touch: force bundler rebuild — opaque chrome / panel tokens) */
 @import "mise-dark.css";
 @import "mise-onboarding.css";
 @import "mise-main-layout.css";
@@ -9,8 +9,23 @@
 @import "mise-reports.css";
 @import "mise-insights.css";
 
-/* ── Mise category colors (app-level custom properties) ─────────────────── */
+/* ── Mise shared design tokens (app-level custom properties) ────────────── */
 html {
+  /* Hairline separator used inside view panels (Plan, Shopping, Reports). */
+  --mise-panel-border: rgba(255, 255, 255, 0.08);
+  /* Error / info tokens for chat indicator + notifications. */
+  --mise-info:  hsl(200, 60%, 50%);
+  --mise-error: hsl(0, 70%, 58%);
+
+  /* Opaque chrome / panel backgrounds. Aura's --vaadin-background-container is
+   * a translucent overlay (~4% tint on top of the page), which means panels
+   * and the fixed chat dock end up transparent when stacked over a view that
+   * also uses it — the dock then "blends" with the panel underneath.
+   * These two tokens are fully opaque so the chat dock visually separates
+   * from the view panel and the meal grid does not bleed through it. */
+  --mise-chrome-bg: light-dark(#f4f4f5, #18181b);
+  --mise-panel-bg:  light-dark(#ffffff, #1f1f23);
+
   --mise-category-protein:        #7F77DD;
   --mise-category-protein-strong: #534AB7;
   --mise-category-protein-text:   #26215C;

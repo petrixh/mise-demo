@@ -94,8 +94,13 @@ public class MainLayout extends VerticalLayout
         // complete callback below). Set on submit, cleared when streaming finishes.
         // chatDock is assigned later in buildChatDock(); null-check guards the
         // (impossible-in-practice) case where a submit fires before that runs.
+        // Also clears any prior .ai-error class so the indicator returns to blue
+        // for each new attempt (a successful turn afterwards keeps it cleared).
         messageInput.addSubmitListener(e -> {
-            if (chatDock != null) chatDock.addClassName("ai-working");
+            if (chatDock != null) {
+                chatDock.removeClassName("ai-error");
+                chatDock.addClassName("ai-working");
+            }
         });
 
         // Capture UI reference (on UI thread) for use in the response-complete
@@ -125,6 +130,20 @@ public class MainLayout extends VerticalLayout
                     reportsRefreshBroadcaster.fireRefresh();
                 },
                 planTools, shoppingTools, reportsTools, navigationTools, insightTools);
+
+        // Error path: LLM unreachable / empty response → red indicator + toast.
+        // Runs on the background streaming thread; UI mutations need ui.access().
+        this.household.setResponseErrorCallback(errorText -> {
+            if (ui == null || ui.isClosing()) return;
+            ui.access(() -> {
+                if (chatDock != null) {
+                    chatDock.removeClassName("ai-working");
+                    chatDock.addClassName("ai-error");
+                }
+                var n = Notification.show(errorText, 4000, Notification.Position.BOTTOM_CENTER);
+                n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            });
+        });
 
         // ── Shell layout ─────────────────────────────────────────────────
         setSizeFull();
@@ -282,20 +301,39 @@ public class MainLayout extends VerticalLayout
         messageList.getElement().setAttribute("data-testid", "chat-message-list");
 
         // C-L-01: right-align user messages. AIOrchestrator doesn't expose per-item
-        // theming hooks, so a MutationObserver tags each vaadin-message where the
-        // avatar name is not "Mise" (i.e. the user's own turn) with .current-user.
-        // CSS then reverses the flex direction on the host element.
+        // theming hooks, so a MutationObserver tags non-Mise messages with .current-user.
+        // Detection is brittle because vaadin-message sets userName as a property and
+        // vaadin-avatar's name is reflected via the inner shadow DOM — checking only the
+        // host's getAttribute('name') silently mis-classifies every turn (resolves to null,
+        // null !== 'Mise' tags everything). We probe both the property and the attribute
+        // on the message host AND the rendered avatar, and only tag once we have a
+        // resolved name (otherwise the observer re-runs on the next hydration mutation).
         messageList.getElement().executeJs("""
+            const ASSISTANT = 'Mise';
+            const resolveName = (msg) => {
+              const av = msg.querySelector('vaadin-avatar');
+              return msg.userName
+                || msg.getAttribute('user-name')
+                || (av && (av.name || av.getAttribute('name')))
+                || '';
+            };
             const mark = () => {
-              this.querySelectorAll('vaadin-message:not([data-aligned])').forEach(msg => {
-                msg.setAttribute('data-aligned', '');
-                const av = msg.querySelector('vaadin-avatar');
-                if (av && av.getAttribute('name') !== 'Mise') {
+              this.querySelectorAll('vaadin-message').forEach(msg => {
+                const name = resolveName(msg);
+                if (!name) return;                          // not hydrated yet
+                if (msg.dataset.aligned === '1') return;    // already classified
+                msg.dataset.aligned = '1';
+                if (name !== ASSISTANT) {
                   msg.classList.add('current-user');
                 }
               });
             };
-            new MutationObserver(mark).observe(this, { childList: true, subtree: true });
+            new MutationObserver(mark).observe(this, {
+              childList: true,
+              subtree: true,
+              attributes: true,
+              attributeFilter: ['user-name', 'name']
+            });
             mark();
             """);
 

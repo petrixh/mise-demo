@@ -8,8 +8,9 @@ import com.example.mise.domain.plan.PlanService;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 
-import java.util.ArrayList;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,11 +81,85 @@ public class CostByCategoryPanel extends Div {
         }
 
         // If everything is zero (no price data), show a note
-        if (costs.values().stream().allMatch(v -> v <= 0)) {
+        boolean noPriceData = costs.values().stream().allMatch(v -> v <= 0);
+        if (noPriceData) {
             var note = new Paragraph("No price data available.");
             note.addClassName("mise-plan-no-data-note");
             add(note);
         }
+
+        // AI insight paragraph — mockup §"Salmon Friday accounts for 35% of protein cost…".
+        // Computed locally from the cost-by-category totals: picks the dominant category
+        // and the meal that contributes the most to it.
+        // TODO(UC-008): replace with a model-generated insight via InsightService once the
+        // Plan-specific generator lands; this placeholder uses simple arithmetic instead.
+        if (!noPriceData) {
+            String insightText = buildInsightText(meals, costs, recipeCatalog, priceCatalog);
+            if (insightText != null) {
+                add(buildInsight(insightText));
+            }
+        }
+    }
+
+    private Div buildInsight(String text) {
+        var box = new Div();
+        box.addClassName("mise-ai-insight");
+        box.getElement().setAttribute("data-testid", "plan-ai-insight");
+
+        var icon = VaadinIcon.INFO_CIRCLE_O.create();
+        icon.addClassName("mise-ai-insight-icon");
+
+        var body = new Span(text);
+        box.add(icon, body);
+        return box;
+    }
+
+    /**
+     * Builds the insight line shown beneath the cost-by-category bars.
+     * Identifies the dominant category and the single meal contributing the most cost
+     * to it, formats it as "<MealName> on <Day> accounts for <pct>% of <category> cost."
+     * Returns null when there's not enough signal (no priced meals, ties only, etc.).
+     */
+    private static final DateTimeFormatter INSIGHT_DAY_FMT = DateTimeFormatter.ofPattern("EEEE");
+
+    private String buildInsightText(List<Meal> meals, Map<String, Double> categoryTotals,
+                                    RecipeCatalog recipeCatalog, PriceCatalog priceCatalog) {
+        String topCategory = null;
+        double topCategoryCost = 0;
+        for (var e : categoryTotals.entrySet()) {
+            if (e.getValue() > topCategoryCost) {
+                topCategory = e.getKey();
+                topCategoryCost = e.getValue();
+            }
+        }
+        if (topCategory == null || topCategoryCost <= 0) return null;
+
+        Meal topMeal = null;
+        double topMealCost = 0;
+        for (var meal : meals) {
+            var recipe = recipeCatalog.findById(meal.getRecipeRef()).orElse(null);
+            if (recipe == null || recipe.getIngredients() == null) continue;
+            double mealCatCost = 0;
+            for (var ing : recipe.getIngredients()) {
+                if (ing.isOptional()) continue;
+                if (topCategory.equals(aisleToCategory(ing.getAisle()))) {
+                    mealCatCost += priceCatalog.findPrice(ing.getName()).orElse(0.0);
+                }
+            }
+            if (mealCatCost > topMealCost) {
+                topMealCost = mealCatCost;
+                topMeal = meal;
+            }
+        }
+        if (topMeal == null || topMealCost <= 0) return null;
+
+        var recipe = recipeCatalog.findById(topMeal.getRecipeRef()).orElse(null);
+        String mealName = recipe != null ? recipe.getName() : topMeal.getRecipeRef();
+        String day = topMeal.getDate().format(INSIGHT_DAY_FMT);
+        int pct = (int) Math.round((topMealCost / topCategoryCost) * 100.0);
+
+        return String.format("%s on %s accounts for %d%% of %s cost. Ask Mise for a cheaper swap.",
+                mealName, day, pct, topCategory.toLowerCase());
     }
 
     private Div buildRow(String category, double cost, double maxCost) {

@@ -105,6 +105,9 @@ public class HouseholdOrchestrator {
     private final AIOrchestrator orchestrator;
     private final ConversationService conversationService;
     private final Consumer<String> responseCompleteCallback;
+    /** Called when an AI turn ends with a null/blank response, typically because
+     *  the underlying LLM endpoint is unreachable or returned an error. Optional. */
+    private Consumer<String> responseErrorCallback;
 
     /**
      * UC-008: The view the user is currently on, used to stamp new conversation rows.
@@ -156,6 +159,15 @@ public class HouseholdOrchestrator {
     }
 
     /**
+     * Registers a callback invoked when an AI turn fails (empty / null response,
+     * typically because the LLM endpoint is unreachable). The callback runs on the
+     * background streaming thread; UI updates must be wrapped in {@code ui.access(...)}.
+     */
+    public void setResponseErrorCallback(Consumer<String> errorCallback) {
+        this.responseErrorCallback = errorCallback;
+    }
+
+    /**
      * UC-008 (BR-03): Sets the view context that will be stamped on conversation rows
      * produced from this point forward. Called from {@code MainLayout.afterNavigation}.
      *
@@ -184,11 +196,16 @@ public class HouseholdOrchestrator {
 
         // Notify MainLayout (or any other caller) with the latest assistant text.
         // Runs on the background streaming thread; callers must wrap UI updates in ui.access().
-        if (responseCompleteCallback != null) {
-            String response = event.getResponse();
-            if (response != null && !response.isBlank()) {
+        // A null/blank response signals failure (Spring AI's OpenAiChatModel silently returns
+        // null when the endpoint is unreachable — see memory:project_spring_ai_base_url_no_v1).
+        String response = event.getResponse();
+        boolean hasResponse = response != null && !response.isBlank();
+        if (hasResponse) {
+            if (responseCompleteCallback != null) {
                 responseCompleteCallback.accept(response);
             }
+        } else if (responseErrorCallback != null) {
+            responseErrorCallback.accept("Mise couldn't reach the assistant. Check your connection and try again.");
         }
     }
 }
