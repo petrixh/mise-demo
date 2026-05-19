@@ -194,12 +194,59 @@
 }
 
 .mise-category-panel-title {
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vaadin-body-text-color);
+  margin: 0 0 12px 0;
+}
+
+/* Two-line row per category: name + value on top, progress bar below. */
+.mise-category-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "label amount"
+    "bar   bar";
+  column-gap: 8px;
+  row-gap: 4px;
+  margin-bottom: 12px;
+}
+
+.mise-category-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.mise-category-label {
+  grid-area: label;
+  font-size: 12px;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  color: var(--vaadin-body-text-color);
+}
+
+.mise-category-amount {
+  grid-area: amount;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   color: var(--vaadin-secondary-text-color);
-  margin: 0 0 10px 0;
+  text-align: right;
+}
+
+.mise-category-bar-track {
+  grid-area: bar;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mise-category-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  /* width % + background colour are set inline per row from data. */
+  min-width: 0;
+  transition: width 0.3s ease;
 }
 
 /* AI insight paragraph — hairline-separated note below the bars, matching the

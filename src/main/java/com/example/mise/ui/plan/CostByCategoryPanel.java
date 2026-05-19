@@ -8,11 +8,7 @@ import com.example.mise.domain.plan.Meal;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
 import com.example.mise.ui.shared.CategoryColors;
-import com.example.mise.ui.shared.MiseChart;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.charts.model.*;
-import com.vaadin.flow.component.charts.model.style.SolidColor;
-import com.vaadin.flow.component.charts.model.style.Style;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
@@ -47,7 +43,7 @@ public class CostByCategoryPanel extends Div {
         addClassName("mise-category-panel");
         getElement().setAttribute("data-testid", "cost-by-category-panel");
 
-        var title = new Paragraph("COST BY CATEGORY");
+        var title = new Paragraph("Cost by category");
         title.addClassName("mise-category-panel-title");
         add(title);
 
@@ -67,14 +63,21 @@ public class CostByCategoryPanel extends Div {
             }
         }
 
-        // If everything is zero (no price data), show a note
+        double maxCost = costs.values().stream().mapToDouble(d -> d).max().orElse(1.0);
+        if (maxCost <= 0) maxCost = 1.0;
+
+        for (String cat : CategoryColors.ORDER) {
+            double cost = costs.get(cat);
+            if (cost <= 0) continue;
+            add(buildRow(cat, cost, maxCost));
+        }
+
+        // If everything is zero (no price data), show a note.
         boolean noPriceData = costs.values().stream().allMatch(v -> v <= 0);
         if (noPriceData) {
             var note = new Paragraph("No price data available.");
             note.addClassName("mise-plan-no-data-note");
             add(note);
-        } else {
-            add(buildCategoryChart(costs));
         }
 
         // AI insights section — two stacked lines under the cost bars:
@@ -222,79 +225,42 @@ public class CostByCategoryPanel extends Div {
                 mealName, day, pct, topCategory.toLowerCase());
     }
 
-    private MiseChart buildCategoryChart(Map<String, Double> costs) {
-        List<String> activeCats = CategoryColors.ORDER.stream()
-                .filter(cat -> costs.getOrDefault(cat, 0.0) > 0)
-                .toList();
+    /**
+     * Builds one two-line row per category:
+     *   line 1: category name (left)              €value (right)
+     *   line 2: proportional progress bar in the category's brand colour
+     *
+     * Matches the design at ai-meal-planner/mise/Plan-desktop.png. Previously this
+     * panel rendered the bars as a Vaadin Chart (BAR), but Highcharts' axis labels
+     * never emit visible text in this version (see plan-chart-issue.md), so the
+     * panel stays on plain DOM until that is resolved.
+     */
+    private Div buildRow(String category, double cost, double maxCost) {
+        var row = new Div();
+        row.addClassName("mise-category-row");
 
-        MiseChart chart = new MiseChart(ChartType.BAR);
-        Configuration conf = chart.getConfiguration();
-        conf.setTitle("");
+        var label = new Span(category);
+        label.addClassName("mise-category-label");
+        row.add(label);
 
-        // Three-column row layout matching the mockup:
-        //   left gutter:  category name (X-axis label, right-aligned)
-        //   middle:       thin bar (pointWidth = 8px)
-        //   right gutter: €value (data label, outside the bar's right end)
-        conf.getChart().setMarginTop(4);
-        conf.getChart().setMarginBottom(4);
-        conf.getChart().setMarginLeft(64);   // fits "Protein"/"Produce" right-aligned
-        conf.getChart().setMarginRight(52);  // fits "€XX.XX" with padding
+        var amount = new Span(String.format("€%.2f", cost));
+        amount.addClassName("mise-category-amount");
+        row.add(amount);
 
-        XAxis x = new XAxis();
-        x.setCategories(activeCats.toArray(String[]::new));
-        x.setLineWidth(0);
-        x.setTickWidth(0);
-        Labels xLabels = new Labels();
-        Style xLabelStyle = new Style();
-        xLabelStyle.setFontSize("10px");
-        xLabelStyle.setColor(MiseChart.LABEL);
-        xLabels.setStyle(xLabelStyle);
-        x.setLabels(xLabels);
-        conf.addxAxis(x);
+        var track = new Div();
+        track.addClassName("mise-category-bar-track");
+        var fill = new Div();
+        fill.addClassName("mise-category-bar-fill");
+        // Dynamic per-row: width is the cost's share of the largest category;
+        // background is the category's brand colour from CategoryColors.HEX.
+        double pct = Math.min(100.0, (cost / maxCost) * 100.0);
+        fill.getStyle()
+                .set("width", String.format("%.1f%%", pct))
+                .set("background", CategoryColors.HEX.getOrDefault(category, "var(--mise-category-other)"));
+        track.add(fill);
+        row.add(track);
 
-        // Value axis: hide entirely — amounts are shown by the data labels.
-        YAxis y = new YAxis();
-        y.setTitle(new AxisTitle(""));
-        Labels yLabels = new Labels();
-        yLabels.setEnabled(false);
-        y.setLabels(yLabels);
-        y.setGridLineWidth(0);
-        conf.addyAxis(y);
-
-        conf.setLegend(new Legend(false));
-
-        PlotOptionsBar barOpts = new PlotOptionsBar();
-        barOpts.setBorderWidth(0);
-        barOpts.setBorderRadius(2);
-        barOpts.setPointWidth(8);          // thin bars per the mockup
-        barOpts.setMinPointLength(6);      // tiny values still get a visible nub
-        DataLabels dl = new DataLabels();
-        dl.setEnabled(true);
-        dl.setFormat("€{y:.2f}");
-        dl.setInside(false);               // render past the right end of the bar
-        dl.setCrop(false);
-        dl.setOverflow("allow");
-        Style dlStyle = new Style();
-        dlStyle.setColor(MiseChart.LABEL); // matches the panel text tone
-        dlStyle.setFontSize("10px");
-        dl.setStyle(dlStyle);
-        barOpts.setDataLabels(dl);
-        conf.setPlotOptions(barOpts);
-
-        DataSeries series = new DataSeries();
-        for (String cat : activeCats) {
-            DataSeriesItem item = new DataSeriesItem(cat, costs.get(cat));
-            String hex = CategoryColors.HEX.get(cat);
-            if (hex != null) item.setColor(new SolidColor(hex));
-            series.add(item);
-        }
-        conf.addSeries(series);
-
-        chart.applyTheme();
-        chart.setWidthFull();
-        // 24px per row: 8px bar centred with ~8px above/below for breathing room.
-        chart.setHeight((activeCats.size() * 24 + 8) + "px");
-        return chart;
+        return row;
     }
 
 }
