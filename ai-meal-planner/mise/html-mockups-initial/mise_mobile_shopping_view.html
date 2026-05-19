@@ -1,0 +1,224 @@
+<style>
+.mockup-screen { background: var(--color-background-primary); border-radius: var(--border-radius-lg); overflow: hidden; border: 0.5px solid var(--color-border-secondary); font-size: 14px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 0.5px solid var(--color-border-tertiary); }
+.tab { padding: 11px 0 9px; text-align: center; font-size: 13px; color: var(--color-text-secondary); }
+.tab.active { color: var(--color-text-primary); font-weight: 500; border-bottom: 2px solid var(--color-text-primary); border-radius: 0; }
+.week-nav { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 9px 14px; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 12px; color: var(--color-text-secondary); }
+.recommend-card { margin: 12px 14px; padding: 14px; border: 2px solid var(--color-border-info); border-radius: var(--border-radius-lg); }
+.recommend-label { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--color-text-info); font-weight: 500; letter-spacing: 0.04em; margin-bottom: 9px; }
+.toggle-track { display: flex; padding: 3px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); gap: 3px; }
+.toggle-btn { flex: 1; padding: 7px 8px; border-radius: 6px; font-size: 12px; text-align: center; }
+.toggle-btn.active { background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); font-weight: 500; }
+.toggle-btn.inactive { color: var(--color-text-secondary); }
+.aisle-header { font-size: 10px; color: var(--color-text-secondary); font-weight: 500; letter-spacing: 0.08em; padding: 14px 14px 4px; }
+.shop-row { display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.shop-row:last-child { border-bottom: 0; }
+.shop-name { font-size: 14px; line-height: 1.3; }
+.shop-meta { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+.shop-price-store { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.shop-price { font-size: 13px; }
+.store-chip { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; background: var(--color-background-info); color: var(--color-text-info); letter-spacing: 0.02em; }
+.checkbox-cell { width: 18px; height: 18px; border: 0.5px solid var(--color-border-secondary); border-radius: 4px; }
+.save-hint-row { padding: 0 14px 10px 48px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.save-hint { font-size: 11px; color: #633806; background: #FAEEDA; padding: 4px 9px; border-radius: var(--border-radius-md); display: inline-flex; align-items: center; gap: 6px; }
+.chat-dock { border-top: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); padding: 10px 12px; }
+.chat-input-pill { display: flex; gap: 8px; align-items: center; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 20px; padding: 8px 12px; }
+</style>
+
+<div style="background: var(--color-background-secondary); padding: 12px; border-radius: var(--border-radius-lg);">
+
+  <div class="mockup-screen">
+
+    <div class="topbar">
+      <i class="ti ti-menu-2" aria-hidden="true" style="font-size: 20px; color: var(--color-text-secondary);"></i>
+      <div style="display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 15px;">
+        <i class="ti ti-tools-kitchen-2" aria-hidden="true" style="font-size: 18px;"></i> Mise
+      </div>
+      <i class="ti ti-user-circle" aria-hidden="true" style="font-size: 20px; color: var(--color-text-secondary);"></i>
+    </div>
+
+    <div class="tabs">
+      <div class="tab">Plan</div>
+      <div class="tab active">Shopping</div>
+      <div class="tab">Reports</div>
+    </div>
+
+    <div class="week-nav">
+      <i class="ti ti-chevron-left" aria-hidden="true"></i>
+      Week of Nov 17
+      <i class="ti ti-chevron-right" aria-hidden="true"></i>
+    </div>
+
+    <div class="recommend-card">
+      <div class="recommend-label">
+        <i class="ti ti-sparkles" aria-hidden="true" style="font-size: 13px;"></i>
+        BEST STORE THIS WEEK
+      </div>
+
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 9px;">
+        <div style="font-size: 22px; font-weight: 500;">Prima</div>
+        <div style="font-size: 13px; color: var(--color-text-secondary); text-align: right;">€87.40<br><span style="font-size: 11px;">13 items · 1 stop</span></div>
+      </div>
+
+      <div style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 12px;">
+        Compared 3 stores. Lidl has salmon €3 cheaper — only worth it if you're already passing.
+      </div>
+
+      <div class="toggle-track">
+        <span class="toggle-btn active">One store</span>
+        <span class="toggle-btn inactive">Cheapest mix · €84.40</span>
+      </div>
+    </div>
+
+    <div class="aisle-header">PRODUCE</div>
+
+    <div class="shop-row">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Lemons</div>
+        <div class="shop-meta">3 whole</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€1.20</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+
+    <div class="shop-row">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Yellow onions</div>
+        <div class="shop-meta">4 whole</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€1.60</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+
+    <div class="shop-row">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Mushrooms, mixed</div>
+        <div class="shop-meta">300 g</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€2.40</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+
+    <div class="aisle-header">PROTEIN</div>
+
+    <div class="shop-row">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Chicken thighs</div>
+        <div class="shop-meta">800 g · Mon + Thu broth</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€6.40</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+
+    <div class="shop-row" style="border-bottom: 0; padding-bottom: 4px;">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Salmon fillets</div>
+        <div class="shop-meta">2 × 150 g</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€11.40</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+    <div class="save-hint-row">
+      <span class="save-hint">
+        <i class="ti ti-tag" aria-hidden="true" style="font-size: 11px;"></i>
+        Save €3 at Lidl · on sale through Sun
+      </span>
+    </div>
+
+    <div class="shop-row">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Beef chuck</div>
+        <div class="shop-meta">500 g · for ragu</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€7.20</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+
+    <div class="aisle-header">DAIRY &amp; EGGS</div>
+
+    <div class="shop-row">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Eggs</div>
+        <div class="shop-meta">6 large</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€2.40</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+
+    <div class="shop-row">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Parmesan</div>
+        <div class="shop-meta">100 g</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€4.50</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+
+    <div class="aisle-header">PANTRY</div>
+
+    <div class="shop-row">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Pappardelle</div>
+        <div class="shop-meta">350 g</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€2.80</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+
+    <div class="shop-row">
+      <div class="checkbox-cell"></div>
+      <div>
+        <div class="shop-name">Crushed tomatoes</div>
+        <div class="shop-meta">2 cans, 400 g</div>
+      </div>
+      <div class="shop-price-store">
+        <div class="shop-price">€1.80</div>
+        <span class="store-chip">Prima</span>
+      </div>
+    </div>
+
+    <div class="chat-dock">
+      <div style="display: flex; gap: 8px; margin-bottom: 9px; align-items: flex-start;">
+        <i class="ti ti-sparkles" aria-hidden="true" style="font-size: 14px; color: var(--color-text-secondary); margin-top: 2px;"></i>
+        <div style="flex: 1; font-size: 12px; color: var(--color-text-secondary); line-height: 1.45;">
+          Skip Lidl — €3 isn't worth the trip. Want me to swap salmon for trout instead?
+        </div>
+      </div>
+      <div class="chat-input-pill">
+        <i class="ti ti-plus" aria-hidden="true" style="color: var(--color-text-secondary); font-size: 16px;"></i>
+        <span style="flex: 1; font-size: 13px; color: var(--color-text-tertiary);">Ask about prices, alternatives…</span>
+        <i class="ti ti-microphone" aria-hidden="true" style="color: var(--color-text-secondary); font-size: 16px;"></i>
+        <i class="ti ti-arrow-up" aria-hidden="true" style="color: var(--color-text-secondary); font-size: 18px;"></i>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,196 @@
+<style>
+.panel-label { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; letter-spacing: 0.02em; }
+.kpi-cell { padding: 10px 14px; border-right: 0.5px solid var(--color-border-tertiary); }
+.kpi-cell:last-child { border-right: 0; }
+.kpi-label { font-size: 11px; color: var(--color-text-secondary); }
+.kpi-value { font-size: 18px; font-weight: 500; }
+.delta-down { font-size: 11px; color: #27500A; margin-left: 6px; }
+.report-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.report-table th { text-align: left; font-weight: 500; padding: 7px 10px; color: var(--color-text-secondary); font-size: 11px; border-bottom: 0.5px solid var(--color-border-tertiary); letter-spacing: 0.02em; }
+.report-table td { padding: 7px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.report-table tr:last-child td { border-bottom: 0; }
+.report-table th.numeric, .report-table td.numeric { text-align: right; }
+.col-new { background: rgba(250, 238, 218, 0.4); }
+.legend-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+</style>
+
+<div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; font-size: 13px;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary);">
+    <div style="display: flex; align-items: center; gap: 18px;">
+      <div style="display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 14px;">
+        <i class="ti ti-tools-kitchen-2" aria-hidden="true" style="font-size: 18px;"></i> Mise
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-secondary);">
+        <i class="ti ti-chevron-left" aria-hidden="true"></i>
+        4 weeks · Oct 27 – Nov 23
+        <i class="ti ti-chevron-right" aria-hidden="true"></i>
+      </div>
+    </div>
+    <div style="display: flex; gap: 2px; font-size: 12px;">
+      <span style="padding: 5px 11px; color: var(--color-text-secondary);">Plan</span>
+      <span style="padding: 5px 11px; color: var(--color-text-secondary);">Shopping</span>
+      <span style="padding: 5px 11px; border-radius: var(--border-radius-md); background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); font-weight: 500;">Reports</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 0.5px solid var(--color-border-tertiary);">
+    <div class="kpi-cell">
+      <div class="kpi-label">4-week avg</div>
+      <div class="kpi-value">€91.20</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-label">This week</div>
+      <div class="kpi-value">€87.40<span class="delta-down">−4.2%</span></div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-label">Avg / meal</div>
+      <div class="kpi-value">€6.24</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kpi-label">Vs target</div>
+      <div class="kpi-value">€100 cap</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; border-bottom: 0.5px solid var(--color-border-tertiary);">
+
+    <div style="padding: 12px 14px 14px; border-right: 0.5px solid var(--color-border-tertiary);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div class="panel-label">Weekly cost trend</div>
+        <i class="ti ti-line-scan" aria-hidden="true" style="font-size: 14px; color: var(--color-text-tertiary);"></i>
+      </div>
+      <svg viewBox="0 0 330 130" width="100%" style="display: block;" aria-label="Weekly cost trend, four weeks">
+        <line x1="40" y1="30" x2="320" y2="30" stroke="var(--color-border-tertiary)" stroke-width="0.5" />
+        <line x1="40" y1="65" x2="320" y2="65" stroke="var(--color-border-tertiary)" stroke-width="0.5" />
+        <line x1="40" y1="100" x2="320" y2="100" stroke="var(--color-border-tertiary)" stroke-width="0.5" />
+
+        <text x="33" y="34" font-size="11" fill="var(--color-text-tertiary)" text-anchor="end">€100</text>
+        <text x="33" y="69" font-size="11" fill="var(--color-text-tertiary)" text-anchor="end">€92</text>
+        <text x="33" y="104" font-size="11" fill="var(--color-text-tertiary)" text-anchor="end">€85</text>
+
+        <path d="M 65,37 L 150,67 L 235,89 L 320,88 L 320,100 L 65,100 Z" fill="#7F77DD" opacity="0.12" />
+        <path d="M 65,37 L 150,67 L 235,89 L 320,88" fill="none" stroke="#534AB7" stroke-width="1.5" />
+
+        <circle cx="65" cy="37" r="2.5" fill="#534AB7" />
+        <circle cx="150" cy="67" r="2.5" fill="#534AB7" />
+        <circle cx="235" cy="89" r="2.5" fill="#534AB7" />
+        <circle cx="320" cy="88" r="3.5" fill="#534AB7" stroke="var(--color-background-primary)" stroke-width="1.5" />
+
+        <text x="65" y="120" font-size="11" fill="var(--color-text-tertiary)" text-anchor="middle">Oct 27</text>
+        <text x="150" y="120" font-size="11" fill="var(--color-text-tertiary)" text-anchor="middle">Nov 3</text>
+        <text x="235" y="120" font-size="11" fill="var(--color-text-tertiary)" text-anchor="middle">Nov 10</text>
+        <text x="320" y="120" font-size="11" fill="var(--color-text-tertiary)" text-anchor="middle">Nov 17</text>
+      </svg>
+    </div>
+
+    <div style="padding: 12px 14px 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div class="panel-label">Cost by category · this week</div>
+        <i class="ti ti-chart-donut" aria-hidden="true" style="font-size: 14px; color: var(--color-text-tertiary);"></i>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <svg viewBox="0 0 100 100" width="96" height="96" style="flex-shrink: 0;" aria-label="Cost by category donut chart">
+          <g transform="rotate(-90 50 50)">
+            <circle cx="50" cy="50" r="35" fill="none" stroke="#7F77DD" stroke-width="14" stroke-dasharray="80.4 139.5" />
+            <circle cx="50" cy="50" r="35" fill="none" stroke="#1D9E75" stroke-width="14" stroke-dasharray="56.2 163.7" stroke-dashoffset="-81.4" />
+            <circle cx="50" cy="50" r="35" fill="none" stroke="#D85A30" stroke-width="14" stroke-dasharray="45.2 174.7" stroke-dashoffset="-138.6" />
+            <circle cx="50" cy="50" r="35" fill="none" stroke="#D4537E" stroke-width="14" stroke-dasharray="23.2 196.7" stroke-dashoffset="-184.8" />
+            <circle cx="50" cy="50" r="35" fill="none" stroke="#B4B2A9" stroke-width="14" stroke-dasharray="10.0 209.9" stroke-dashoffset="-209.0" />
+          </g>
+        </svg>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+          <div class="legend-row"><span class="legend-dot" style="background:#7F77DD;"></span><span>Protein</span><span style="margin-left:auto;color:var(--color-text-secondary);">37%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#1D9E75;"></span><span>Produce</span><span style="margin-left:auto;color:var(--color-text-secondary);">26%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#D85A30;"></span><span>Pantry</span><span style="margin-left:auto;color:var(--color-text-secondary);">21%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#D4537E;"></span><span>Dairy</span><span style="margin-left:auto;color:var(--color-text-secondary);">11%</span></div>
+          <div class="legend-row"><span class="legend-dot" style="background:#B4B2A9;"></span><span>Other</span><span style="margin-left:auto;color:var(--color-text-secondary);">5%</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="padding: 12px 14px 4px;">
+    <div class="panel-label">Most expensive meals · last 4 weeks</div>
+  </div>
+
+  <div style="padding: 0 6px 8px;">
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th>Meal</th>
+          <th>Week</th>
+          <th class="numeric">Cost / serving</th>
+          <th class="numeric">Calories</th>
+          <th class="numeric col-new">kcal / € <span style="background: #FAEEDA; color: #633806; font-size: 9px; padding: 1px 6px; border-radius: 8px; font-weight: 500; margin-left: 4px;">new</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Pan-seared salmon, roasted veg</td>
+          <td style="color: var(--color-text-secondary);">Nov 17</td>
+          <td class="numeric">€5.70</td>
+          <td class="numeric">610</td>
+          <td class="numeric col-new">107</td>
+        </tr>
+        <tr>
+          <td>Wagyu burgers (date night)</td>
+          <td style="color: var(--color-text-secondary);">Oct 27</td>
+          <td class="numeric">€4.80</td>
+          <td class="numeric">720</td>
+          <td class="numeric col-new">150</td>
+        </tr>
+        <tr>
+          <td>Roasted lamb shanks</td>
+          <td style="color: var(--color-text-secondary);">Nov 10</td>
+          <td class="numeric">€4.10</td>
+          <td class="numeric">690</td>
+          <td class="numeric col-new">168</td>
+        </tr>
+        <tr>
+          <td>Spaghetti carbonara</td>
+          <td style="color: var(--color-text-secondary);">Nov 17</td>
+          <td class="numeric">€2.55</td>
+          <td class="numeric">720</td>
+          <td class="numeric col-new">282</td>
+        </tr>
+        <tr>
+          <td>Slow-cooked beef ragu</td>
+          <td style="color: var(--color-text-secondary);">Nov 17</td>
+          <td class="numeric">€2.30</td>
+          <td class="numeric">780</td>
+          <td class="numeric col-new">339</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin: 0 14px 12px; padding: 10px 12px; background: var(--color-background-info); border-radius: var(--border-radius-md); display: flex; gap: 10px; align-items: flex-start;">
+    <i class="ti ti-bulb" aria-hidden="true" style="font-size: 16px; color: var(--color-text-info); flex-shrink: 0; margin-top: 1px;"></i>
+    <div style="color: var(--color-text-info); line-height: 1.5; font-size: 12px;">
+      Your cheaper weeks all had at least three vegetarian dinners. The two priciest weeks both featured fish twice. Worth locking in as a pattern?
+    </div>
+  </div>
+
+  <div style="border-top: 0.5px solid var(--color-border-tertiary); padding: 12px 14px; background: var(--color-background-secondary);">
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+      <div style="align-self: flex-end; max-width: 75%; padding: 8px 12px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); font-size: 13px;">
+        Add a kcal-per-euro column to the leaderboard
+      </div>
+      <div style="align-self: flex-start; max-width: 80%; padding: 4px 4px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.55;">
+        Added. Best value of the four weeks: beef ragu at 339 kcal/€. Want me to sort by it instead, or flip the donut to a horizontal bar so categories are easier to compare?
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; align-items: center; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 7px 12px;">
+      <i class="ti ti-sparkles" aria-hidden="true" style="color: var(--color-text-secondary); font-size: 16px;"></i>
+      <span style="flex: 1; font-size: 13px; color: var(--color-text-tertiary);">Add a column, change a chart, ask why something moved…</span>
+      <i class="ti ti-microphone" aria-hidden="true" style="color: var(--color-text-secondary); font-size: 16px;"></i>
+      <i class="ti ti-arrow-up" aria-hidden="true" style="font-size: 16px; color: var(--color-text-secondary);"></i>
+    </div>
+  </div>
+
+</div>

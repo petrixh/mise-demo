@@ -1,0 +1,169 @@
+<style>
+.meal-row { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 12px; padding: 9px 10px; border-radius: var(--border-radius-md); border-bottom: 0.5px solid var(--color-border-tertiary); }
+.meal-row:last-child { border-bottom: 0; }
+.day-chip { font-size: 11px; color: var(--color-text-secondary); font-weight: 500; letter-spacing: 0.04em; }
+.tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 500; letter-spacing: 0.02em; }
+</style>
+
+<div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; font-size: 13px;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary);">
+    <div style="display: flex; align-items: center; gap: 18px;">
+      <div style="display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 14px;">
+        <i class="ti ti-tools-kitchen-2" aria-hidden="true" style="font-size: 18px;"></i> Mise
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-secondary);">
+        <i class="ti ti-chevron-left" aria-hidden="true"></i>
+        Week of Nov 17
+        <i class="ti ti-chevron-right" aria-hidden="true"></i>
+      </div>
+    </div>
+    <div style="display: flex; gap: 2px; font-size: 12px;">
+      <span style="padding: 5px 11px; border-radius: var(--border-radius-md); background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); font-weight: 500;">Plan</span>
+      <span style="padding: 5px 11px; color: var(--color-text-secondary);">Shopping</span>
+      <span style="padding: 5px 11px; color: var(--color-text-secondary);">Reports</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 0.5px solid var(--color-border-tertiary);">
+    <div style="padding: 10px 14px; border-right: 0.5px solid var(--color-border-tertiary);">
+      <div style="font-size: 11px; color: var(--color-text-secondary);">Weekly cost</div>
+      <div style="font-size: 18px; font-weight: 500;">€87.40</div>
+    </div>
+    <div style="padding: 10px 14px; border-right: 0.5px solid var(--color-border-tertiary);">
+      <div style="font-size: 11px; color: var(--color-text-secondary);">Avg / meal</div>
+      <div style="font-size: 18px; font-weight: 500;">€6.24</div>
+    </div>
+    <div style="padding: 10px 14px; border-right: 0.5px solid var(--color-border-tertiary);">
+      <div style="font-size: 11px; color: var(--color-text-secondary);">Total prep</div>
+      <div style="font-size: 18px; font-weight: 500;">4h 35m</div>
+    </div>
+    <div style="padding: 10px 14px;">
+      <div style="font-size: 11px; color: var(--color-text-secondary);">Avg kcal</div>
+      <div style="font-size: 18px; font-weight: 500;">620</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 220px;">
+
+    <div style="padding: 4px 8px; border-right: 0.5px solid var(--color-border-tertiary);">
+
+      <div class="meal-row">
+        <div class="day-chip">MON</div>
+        <div>
+          <div style="font-size: 13px;">Lemon herb chicken with quinoa</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 1px;">30 min · €6.20 · 540 kcal</div>
+        </div>
+        <span></span>
+      </div>
+
+      <div class="meal-row">
+        <div class="day-chip">TUE</div>
+        <div>
+          <div style="font-size: 13px;">Black bean &amp; corn soup</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 1px;">25 min · €4.80 · 480 kcal</div>
+        </div>
+        <span class="tag" style="background: #EAF3DE; color: #27500A;">veg</span>
+      </div>
+
+      <div class="meal-row">
+        <div class="day-chip">WED</div>
+        <div>
+          <div style="font-size: 13px;">Spaghetti carbonara</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 1px;">20 min · €5.10 · 720 kcal</div>
+        </div>
+        <span></span>
+      </div>
+
+      <div class="meal-row" style="background: #FAEEDA33;">
+        <div class="day-chip">THU</div>
+        <div>
+          <div style="font-size: 13px;">Crispy tofu stir-fry, rice noodles</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 1px;">35 min · €5.80 · 590 kcal</div>
+        </div>
+        <span class="tag" style="background: #FAEEDA; color: #633806;">edited</span>
+      </div>
+
+      <div class="meal-row">
+        <div class="day-chip">FRI</div>
+        <div>
+          <div style="font-size: 13px;">Pan-seared salmon, roasted veg</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 1px;">30 min · €11.40 · 610 kcal</div>
+        </div>
+        <span class="tag" style="background: #E6F1FB; color: #0C447C;">fish</span>
+      </div>
+
+      <div class="meal-row">
+        <div class="day-chip">SAT</div>
+        <div>
+          <div style="font-size: 13px;">Slow-cooked beef ragu, pappardelle</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 1px;">2h 10m · €9.20 · 780 kcal</div>
+        </div>
+        <span></span>
+      </div>
+
+      <div class="meal-row">
+        <div class="day-chip">SUN</div>
+        <div>
+          <div style="font-size: 13px;">Mushroom &amp; barley risotto</div>
+          <div style="font-size: 11px; color: var(--color-text-secondary); margin-top: 1px;">45 min · €4.90 · 560 kcal</div>
+        </div>
+        <span class="tag" style="background: #EAF3DE; color: #27500A;">veg</span>
+      </div>
+
+    </div>
+
+    <div style="padding: 14px;">
+      <div style="font-size: 11px; color: var(--color-text-secondary); margin-bottom: 12px; font-weight: 500;">Cost by category</div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; font-size: 11px;">
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;"><span>Protein</span><span style="color: var(--color-text-secondary);">€32.10</span></div>
+          <div style="height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden;"><div style="width: 78%; height: 100%; background: #7F77DD;"></div></div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;"><span>Produce</span><span style="color: var(--color-text-secondary);">€22.80</span></div>
+          <div style="height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden;"><div style="width: 55%; height: 100%; background: #1D9E75;"></div></div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;"><span>Pantry</span><span style="color: var(--color-text-secondary);">€18.20</span></div>
+          <div style="height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden;"><div style="width: 44%; height: 100%; background: #D85A30;"></div></div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;"><span>Dairy</span><span style="color: var(--color-text-secondary);">€9.40</span></div>
+          <div style="height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden;"><div style="width: 23%; height: 100%; background: #D4537E;"></div></div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;"><span>Other</span><span style="color: var(--color-text-secondary);">€4.90</span></div>
+          <div style="height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden;"><div style="width: 12%; height: 100%; background: #B4B2A9;"></div></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px; padding-top: 12px; border-top: 0.5px solid var(--color-border-tertiary); font-size: 11px; color: var(--color-text-secondary); line-height: 1.5;">
+        <i class="ti ti-info-circle" aria-hidden="true" style="font-size: 13px; vertical-align: -2px;"></i>
+        Salmon Friday accounts for 35% of protein cost. Swap to mackerel saves €4.80.
+      </div>
+    </div>
+
+  </div>
+
+  <div style="border-top: 0.5px solid var(--color-border-tertiary); padding: 12px 14px; background: var(--color-background-secondary);">
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+      <div style="align-self: flex-end; max-width: 75%; padding: 8px 12px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); font-size: 13px;">
+        Make Thursday vegetarian, kid is having a friend over
+      </div>
+      <div style="align-self: flex-start; max-width: 80%; padding: 4px 4px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.55;">
+        Swapped pork stir-fry for crispy tofu version, kept the noodles since kids usually like them. Saved €1.40 and 90 kcal. Want me to flag anything else for the sleepover?
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; align-items: center; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 7px 12px;">
+      <i class="ti ti-sparkles" aria-hidden="true" style="color: var(--color-text-secondary); font-size: 16px;"></i>
+      <span style="flex: 1; font-size: 13px; color: var(--color-text-tertiary);">Ask Mise to change something…</span>
+      <i class="ti ti-microphone" aria-hidden="true" style="color: var(--color-text-secondary); font-size: 16px;"></i>
+      <i class="ti ti-arrow-up" aria-hidden="true" style="font-size: 16px; color: var(--color-text-secondary);"></i>
+    </div>
+  </div>
+
+</div>
