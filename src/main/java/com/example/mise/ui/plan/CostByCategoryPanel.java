@@ -7,6 +7,7 @@ import com.example.mise.domain.insights.InsightService;
 import com.example.mise.domain.plan.Meal;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
+import com.example.mise.ui.shared.CategoryColors;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Paragraph;
@@ -32,22 +33,6 @@ import java.util.function.Consumer;
  */
 public class CostByCategoryPanel extends Div {
 
-    private record CategoryStats(double cost) {}
-
-    // Category display order and colors (CSS custom properties)
-    private static final List<String> CATEGORY_ORDER = List.of(
-            "Protein", "Produce", "Pantry", "Dairy", "Other");
-
-    // Hex fallbacks used in inline styles so they resolve even outside Shadow DOM scope.
-    // Values must match --mise-category-* in styles.css.
-    private static final Map<String, String> CATEGORY_FILL = Map.of(
-            "Protein", "#7F77DD",
-            "Produce", "#1D9E75",
-            "Pantry",  "#D85A30",
-            "Dairy",   "#D4537E",
-            "Other",   "#B4B2A9"
-    );
-
     public CostByCategoryPanel(Plan plan,
                                 PlanService planService,
                                 RecipeCatalog recipeCatalog,
@@ -64,7 +49,7 @@ public class CostByCategoryPanel extends Div {
 
         // Accumulate costs per category
         Map<String, Double> costs = new LinkedHashMap<>();
-        for (String cat : CATEGORY_ORDER) costs.put(cat, 0.0);
+        for (String cat : CategoryColors.ORDER) costs.put(cat, 0.0);
 
         List<Meal> meals = planService.findMeals(plan.getId());
         for (var meal : meals) {
@@ -72,7 +57,7 @@ public class CostByCategoryPanel extends Div {
             if (recipe == null || recipe.getIngredients() == null) continue;
             for (var ing : recipe.getIngredients()) {
                 if (ing.isOptional()) continue;
-                String category = aisleToCategory(ing.getAisle());
+                String category = CategoryColors.aisleToCategory(ing.getAisle());
                 double price = priceCatalog.findPrice(ing.getName()).orElse(0.0);
                 costs.merge(category, price, Double::sum);
             }
@@ -81,7 +66,7 @@ public class CostByCategoryPanel extends Div {
         double maxCost = costs.values().stream().mapToDouble(d -> d).max().orElse(1.0);
         if (maxCost <= 0) maxCost = 1.0;
 
-        for (String cat : CATEGORY_ORDER) {
+        for (String cat : CategoryColors.ORDER) {
             double cost = costs.get(cat);
             if (cost <= 0) continue;  // skip empty categories
             add(buildRow(cat, cost, maxCost));
@@ -220,7 +205,7 @@ public class CostByCategoryPanel extends Div {
             double mealCatCost = 0;
             for (var ing : recipe.getIngredients()) {
                 if (ing.isOptional()) continue;
-                if (topCategory.equals(aisleToCategory(ing.getAisle()))) {
+                if (topCategory.equals(CategoryColors.aisleToCategory(ing.getAisle()))) {
                     mealCatCost += priceCatalog.findPrice(ing.getName()).orElse(0.0);
                 }
             }
@@ -258,7 +243,7 @@ public class CostByCategoryPanel extends Div {
         //   width % comes from cost / maxCost; background picked from CATEGORY_FILL by category name.
         barFill.getStyle()
                 .set("width", String.format("%.1f%%", pct))
-                .set("background", CATEGORY_FILL.getOrDefault(category, "var(--mise-category-other)"));
+                .set("background", CategoryColors.HEX.getOrDefault(category, "var(--mise-category-other)"));
         barTrack.add(barFill);
         row.add(barTrack);
 
@@ -269,19 +254,4 @@ public class CostByCategoryPanel extends Div {
         return row;
     }
 
-    /**
-     * Maps a recipe ingredient aisle value to one of the five canonical categories.
-     */
-    static String aisleToCategory(String aisle) {
-        if (aisle == null) return "Other";
-        String lower = aisle.toLowerCase();
-        return switch (lower) {
-            case "meat", "fish", "seafood", "poultry", "protein" -> "Protein";
-            case "produce", "vegetables", "fruit", "veg" -> "Produce";
-            case "dry-goods", "pantry", "canned", "oil", "condiments", "spices",
-                 "dry goods", "grains", "pasta", "bakery" -> "Pantry";
-            case "dairy", "eggs", "cheese", "dairy & eggs" -> "Dairy";
-            default -> "Other";
-        };
-    }
 }
