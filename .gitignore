@@ -28,3 +28,7 @@ vite.generated.ts
 /docs/progress/
 images/
 Mise-review-1/
+
+# Temporary reference checkout of the Vaadin AI dashboard example — used while
+# specifying UC-012; will be removed once the patterns are absorbed into Mise.
+/vaadin-ai-ref/
