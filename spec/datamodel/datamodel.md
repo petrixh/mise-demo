@@ -16,7 +16,7 @@ Editing seed files and restarting must visibly change AI reasoning. Keeping them
 | Entity | Key fields | Relationships |
 |--------|-----------|---------------|
 | **Household** | `id` (PK), `name`, `size`, `currency` (EUR), `weeklyBudget` (decimal), `dietaryConstraints` (JSON: list), `allergies` (JSON: list), `hatedFoods` (JSON: list), `lovedFoods` (JSON: list), `cuisinePrefs` (JSON: list), `hostingPattern` (JSON: free-form notes), `insightsMuted` (bool), `insightFrequency` (enum), `createdAt`, `updatedAt` | Has many `Plan`, `PantryItem`, `ConversationMessage`, `ViewPreference`, `Insight` |
-| **Plan** | `id` (PK), `householdId` (FK), `weekStartDate` (Monday), `status` (`ACTIVE` \| `HISTORICAL`), `notes` (text), `createdAt`, `updatedAt` | Belongs to `Household`. Has many `Meal`. |
+| **Plan** | `id` (PK), `householdId` (FK), `weekStartDate` (Monday), `status` (`ACTIVE` \| `HISTORICAL` \| `PLANNED`), `notes` (text), `createdAt`, `updatedAt` | Belongs to `Household`. Has many `Meal`. |
 | **Meal** | `id` (PK), `planId` (FK), `date`, `slot` (`DINNER` for demo), `recipeRef` (string — external ID from `RecipeCatalog`), `servings` (int), `status` (`PLANNED` \| `EDITED` \| `COOKED` \| `SKIPPED`), `pinned` (bool), `note` (text), `lastEditedAt`, `lastEditedBy` (`USER` \| `AI`) | Belongs to `Plan`. References a `Recipe` by `recipeRef` (no FK — recipes live outside H2). |
 | **MealEdit** | `id` (PK), `mealId` (FK), `previousRecipeRef`, `previousServings`, `previousStatus`, `changedAt`, `changedBy` (`USER` \| `AI`), `reason` (text — AI-supplied justification) | Belongs to `Meal`. Powers undo and the "why did you swap that?" answer. |
 | **PantryItem** | `id` (PK), `householdId` (FK), `ingredientName`, `quantity` (decimal, nullable), `unit` (string, nullable), `isStaple` (bool — "default staples" survive shopping-list generation), `updatedAt` | Belongs to `Household`. |
@@ -33,7 +33,8 @@ Editing seed files and restarting must visibly change AI reasoning. Keeping them
 
 ### Lifecycle notes
 
-- **One active plan per household at a time** (`status = ACTIVE`). When a new week begins, the prior `ACTIVE` plan transitions to `HISTORICAL` (used by Reports).
+- **One active plan per household at a time** (`status = ACTIVE`). When a new week begins, the prior `ACTIVE` plan transitions to `HISTORICAL` (used by Reports). If a `PLANNED` plan exists for the new current week (UC-011), it is promoted to `ACTIVE` in the same transaction — preserving the single-`ACTIVE`-plan invariant.
+- **Planned future weeks** (`status = PLANNED`) are produced by UC-011 ahead of the real-world date and are navigable via UC-010. They are excluded from default historical reports (UC-007 BR-01). A `PLANNED` plan is otherwise structurally identical to an `ACTIVE` plan — same 7 `Meal` rows, same eligibility filters from `Household`.
 - **Undo scope.** `MealEdit` rows are retained indefinitely in the demo (small data). Undo affordances target the most recent `MealEdit` per meal.
 - **Conversation rolling window.** All messages are persisted, but only the most recent N (configurable, default 50) are passed to the orchestrator on rehydration to bound context size. The full history remains queryable for "why?" questions.
 
@@ -117,3 +118,5 @@ This will be filled in as use cases are written; it is the cross-check `spec-val
 | UC-007 Reports — defaults & AI transforms | `Plan` (history), `Meal`, `Recipe`, `PriceCatalog` | `ViewPreference` (Reports widgets), `ConversationMessage` |
 | UC-008 Cross-view chat | (any) | `ConversationMessage` (with `viewContext`) |
 | UC-009 Insights | `Plan` (history), `Meal` | `Insight`, `Household` (mute / frequency), `ConversationMessage` |
+| UC-010 Week navigation | `Plan` (all statuses), `Meal`, `Household` | `ConversationMessage` (if chat answers about the viewed week) |
+| UC-011 Generate future weeks | `Household`, `Recipe`, `PriceCatalog` | `Plan` (`status = PLANNED`), `Meal`, `ConversationMessage` |
