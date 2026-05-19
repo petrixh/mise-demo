@@ -25,7 +25,7 @@
 
 | ID | Rule |
 |----|------|
-| BR-01 | Exactly one `Plan` row with `status = ACTIVE` exists per household at any time. The Plan view always renders this plan. |
+| BR-01 | Exactly one `Plan` row with `status = ACTIVE` exists per household at any time. The Plan view renders this plan by default; UC-010 lets the user navigate to other `Plan` rows (`HISTORICAL` or `PLANNED`) via the header — navigation does **not** change `Plan.status`. |
 | BR-02 | The grid has 7 rows; if `Meal` rows are missing for any date, the grid shows an "empty slot" placeholder that is recoverable through chat ("fill the gaps"), not a generation form. |
 | BR-03 | Weekly stats are computed from the meals currently shown, the recipes they reference, and the **current** price catalog. They update whenever a meal changes. |
 | BR-04 | The "edited" pill is shown on any `Meal` with `lastEditedBy = AI` and `lastEditedAt` within the last 60 seconds *or* within the current chat session, whichever is longer. |

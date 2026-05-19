@@ -127,6 +127,7 @@ com.example.mise/
   ai/
     HouseholdOrchestrator.java           — per-UI wrapper around AIOrchestrator
     OrchestratorFactory.java             — builds orchestrator from history + current view tools  [planned]
+    MiseDatabaseProvider.java            — DatabaseProvider impl over the curated reporting schema (UC-012)  [planned]
     tools/
       PlanTools.java                     — @Tool methods: swapMeal, pinMeal, regenerateWeek, ...
       ShoppingTools.java                 — @Tool methods: markPantry, switchMode, evaluateDetour, ...
@@ -149,6 +150,7 @@ com.example.mise/
       PantryService.java + impl
     reports/
       ReportService.java + impl
+      ReportSnapshotService.java + impl  — maintains denormalized H2 reporting tables (UC-012)  [planned]
       ViewPreference.java                — JPA entity (chart shape, added columns)
       ViewPreferenceService.java + impl
     conversation/

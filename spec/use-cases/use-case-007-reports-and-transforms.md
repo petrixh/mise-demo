@@ -37,8 +37,8 @@
 
 | ID | Rule |
 |----|------|
-| BR-01 | Default reports are computed from all `Plan` rows where `status` is `ACTIVE` **or** `HISTORICAL`. The current week is included. |
-| BR-02 | The set of "transforms" the assistant can apply per widget is bounded by what `GridAIController` / `ChartAIController` expose. The orchestrator's system prompt for the Reports view enumerates these. |
+| BR-01 | Default reports are computed from all `Plan` rows where `status` is `ACTIVE` **or** `HISTORICAL`. The current week is included. `PLANNED` plans (UC-011) are **excluded** from default reports — they are projections, not history. |
+| BR-02 | The set of "transforms" the assistant can apply per widget is bounded by what `GridAIController` / `ChartAIController` expose. The orchestrator's system prompt for the Reports view enumerates these. (The **data-query surface** that drives those transforms — i.e., what data the AI can pull into a widget — is bounded separately by the curated reporting schema; see UC-012 BR-02 / BR-03.) |
 | BR-03 | Adding a derived column requires the underlying values to be derivable from existing data (meal cost, kcal, etc.). If the user asks for a column that cannot be derived (e.g., "carbon footprint"), the assistant explicitly says so. |
 | BR-04 | View transforms persist as `ViewPreference` rows keyed by `(householdId, view, widgetKey)`. Reopening Reports shows the transformed widget, not the default. |
 | BR-05 | A "reset to defaults" affordance exists per widget and in chat ("reset the leaderboard"). Reset removes the corresponding `ViewPreference`. |
