@@ -231,20 +231,24 @@ public class CostByCategoryPanel extends Div {
         Configuration conf = chart.getConfiguration();
         conf.setTitle("");
 
-        // Bars use the full panel width — no left gutter for category labels. The
-        // category NAME and VALUE both render as one left-aligned data label inside
-        // the bar, so the bar fill is the canvas and the axis costs zero pixels.
+        // Three-column row layout matching the mockup:
+        //   left gutter:  category name (X-axis label, right-aligned)
+        //   middle:       thin bar (pointWidth = 8px)
+        //   right gutter: €value (data label, outside the bar's right end)
         conf.getChart().setMarginTop(4);
         conf.getChart().setMarginBottom(4);
-        conf.getChart().setMarginLeft(4);
-        conf.getChart().setMarginRight(6);
+        conf.getChart().setMarginLeft(64);   // fits "Protein"/"Produce" right-aligned
+        conf.getChart().setMarginRight(52);  // fits "€XX.XX" with padding
 
         XAxis x = new XAxis();
         x.setCategories(activeCats.toArray(String[]::new));
         x.setLineWidth(0);
         x.setTickWidth(0);
         Labels xLabels = new Labels();
-        xLabels.setEnabled(false);
+        Style xLabelStyle = new Style();
+        xLabelStyle.setFontSize("10px");
+        xLabelStyle.setColor(MiseChart.LABEL);
+        xLabels.setStyle(xLabelStyle);
         x.setLabels(xLabels);
         conf.addxAxis(x);
 
@@ -261,27 +265,17 @@ public class CostByCategoryPanel extends Div {
 
         PlotOptionsBar barOpts = new PlotOptionsBar();
         barOpts.setBorderWidth(0);
-        // Bar height is locked so the 4 categories fill the chart neatly even when
-        // costs are very uneven. Without this the largest bar takes most of the
-        // height and the small ones become slivers.
-        barOpts.setPointPadding(0.15);
-        barOpts.setGroupPadding(0.05);
-        barOpts.setMinPointLength(80); // every bar wide enough to host "Category €X.XX"
+        barOpts.setBorderRadius(2);
+        barOpts.setPointWidth(8);          // thin bars per the mockup
+        barOpts.setMinPointLength(6);      // tiny values still get a visible nub
         DataLabels dl = new DataLabels();
         dl.setEnabled(true);
-        // Single inside-bar label: "Category   €Value". JS formatter (not setFormat)
-        // because setFormat's {point.name} resolves to empty for category-axis bars
-        // in this Vaadin/Highcharts version. The formatter pulls the category from
-        // the X-axis categories array.
-        dl.setFormatter("function() { "
-                + "return this.point.category + '   €' + this.y.toFixed(2); "
-                + "}");
-        dl.setInside(true);
+        dl.setFormat("€{y:.2f}");
+        dl.setInside(false);               // render past the right end of the bar
         dl.setCrop(false);
         dl.setOverflow("allow");
-        dl.setAlign(HorizontalAlign.LEFT);
         Style dlStyle = new Style();
-        dlStyle.setColor(SolidColor.WHITE);
+        dlStyle.setColor(MiseChart.LABEL); // matches the panel text tone
         dlStyle.setFontSize("10px");
         dl.setStyle(dlStyle);
         barOpts.setDataLabels(dl);
@@ -298,8 +292,8 @@ public class CostByCategoryPanel extends Div {
 
         chart.applyTheme();
         chart.setWidthFull();
-        // ~36px per row gives each bar a comfortable height for the in-bar label.
-        chart.setHeight((activeCats.size() * 36 + 8) + "px");
+        // 24px per row: 8px bar centred with ~8px above/below for breathing room.
+        chart.setHeight((activeCats.size() * 24 + 8) + "px");
         return chart;
     }
 
