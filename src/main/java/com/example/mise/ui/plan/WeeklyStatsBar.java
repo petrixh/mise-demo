@@ -5,9 +5,8 @@ import com.example.mise.domain.plan.Meal;
 import com.example.mise.domain.plan.MealCostCalculator;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
+import com.example.mise.ui.shared.KpiCard;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Paragraph;
-import com.vaadin.flow.component.html.Span;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -65,24 +64,9 @@ public class WeeklyStatsBar extends Div {
                 ? prepHours + "h " + (prepMins > 0 ? prepMins + "m" : "")
                 : prepMins + "m";
 
-        add(kpiCard("WEEKLY COST", String.format("€%.2f", totalCost), "kpi-card-weekly-cost"));
-        add(kpiCard("AVG / MEAL", String.format("€%.2f", avgMeal), "kpi-card-avg-meal"));
-        add(kpiCard("TOTAL PREP", prepStr.trim(), "kpi-card-total-prep"));
-        add(kpiCard("AVG KCAL", String.format("%.0f", avgKcal), "kpi-card-avg-kcal"));
-    }
-
-    private Div kpiCard(String label, String value, String testId) {
-        var card = new Div();
-        card.addClassName("mise-kpi-card");
-        card.getElement().setAttribute("data-testid", testId);
-
-        var lbl = new Paragraph(label);
-        lbl.addClassName("mise-kpi-label");
-
-        var val = new Span(value);
-        val.addClassName("mise-kpi-value");
-
-        card.add(lbl, val);
-        return card;
+        add(new KpiCard("WEEKLY COST", String.format("€%.2f", totalCost), false, "kpi-card-weekly-cost"));
+        add(new KpiCard("AVG / MEAL",  String.format("€%.2f", avgMeal),   false, "kpi-card-avg-meal"));
+        add(new KpiCard("TOTAL PREP",  prepStr.trim(),                     false, "kpi-card-total-prep"));
+        add(new KpiCard("AVG KCAL",    String.format("%.0f", avgKcal),     false, "kpi-card-avg-kcal"));
     }
 }

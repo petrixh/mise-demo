@@ -7,6 +7,7 @@ import com.example.mise.domain.insights.InsightService;
 import com.example.mise.domain.plan.Meal;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
+import com.example.mise.ui.shared.CategoryColors;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Paragraph;
@@ -32,22 +33,6 @@ import java.util.function.Consumer;
  */
 public class CostByCategoryPanel extends Div {
 
-    private record CategoryStats(double cost) {}
-
-    // Category display order and colors (CSS custom properties)
-    private static final List<String> CATEGORY_ORDER = List.of(
-            "Protein", "Produce", "Pantry", "Dairy", "Other");
-
-    // Hex fallbacks used in inline styles so they resolve even outside Shadow DOM scope.
-    // Values must match --mise-category-* in styles.css.
-    private static final Map<String, String> CATEGORY_FILL = Map.of(
-            "Protein", "#7F77DD",
-            "Produce", "#1D9E75",
-            "Pantry",  "#D85A30",
-            "Dairy",   "#D4537E",
-            "Other",   "#B4B2A9"
-    );
-
     public CostByCategoryPanel(Plan plan,
                                 PlanService planService,
                                 RecipeCatalog recipeCatalog,
@@ -58,13 +43,13 @@ public class CostByCategoryPanel extends Div {
         addClassName("mise-category-panel");
         getElement().setAttribute("data-testid", "cost-by-category-panel");
 
-        var title = new Paragraph("COST BY CATEGORY");
+        var title = new Paragraph("Cost by category");
         title.addClassName("mise-category-panel-title");
         add(title);
 
         // Accumulate costs per category
         Map<String, Double> costs = new LinkedHashMap<>();
-        for (String cat : CATEGORY_ORDER) costs.put(cat, 0.0);
+        for (String cat : CategoryColors.ORDER) costs.put(cat, 0.0);
 
         List<Meal> meals = planService.findMeals(plan.getId());
         for (var meal : meals) {
@@ -72,7 +57,7 @@ public class CostByCategoryPanel extends Div {
             if (recipe == null || recipe.getIngredients() == null) continue;
             for (var ing : recipe.getIngredients()) {
                 if (ing.isOptional()) continue;
-                String category = aisleToCategory(ing.getAisle());
+                String category = CategoryColors.aisleToCategory(ing.getAisle());
                 double price = priceCatalog.findPrice(ing.getName()).orElse(0.0);
                 costs.merge(category, price, Double::sum);
             }
@@ -81,13 +66,13 @@ public class CostByCategoryPanel extends Div {
         double maxCost = costs.values().stream().mapToDouble(d -> d).max().orElse(1.0);
         if (maxCost <= 0) maxCost = 1.0;
 
-        for (String cat : CATEGORY_ORDER) {
+        for (String cat : CategoryColors.ORDER) {
             double cost = costs.get(cat);
-            if (cost <= 0) continue;  // skip empty categories
+            if (cost <= 0) continue;
             add(buildRow(cat, cost, maxCost));
         }
 
-        // If everything is zero (no price data), show a note
+        // If everything is zero (no price data), show a note.
         boolean noPriceData = costs.values().stream().allMatch(v -> v <= 0);
         if (noPriceData) {
             var note = new Paragraph("No price data available.");
@@ -220,7 +205,7 @@ public class CostByCategoryPanel extends Div {
             double mealCatCost = 0;
             for (var ing : recipe.getIngredients()) {
                 if (ing.isOptional()) continue;
-                if (topCategory.equals(aisleToCategory(ing.getAisle()))) {
+                if (topCategory.equals(CategoryColors.aisleToCategory(ing.getAisle()))) {
                     mealCatCost += priceCatalog.findPrice(ing.getName()).orElse(0.0);
                 }
             }
@@ -240,6 +225,16 @@ public class CostByCategoryPanel extends Div {
                 mealName, day, pct, topCategory.toLowerCase());
     }
 
+    /**
+     * Builds one two-line row per category:
+     *   line 1: category name (left)              €value (right)
+     *   line 2: proportional progress bar in the category's brand colour
+     *
+     * Matches the design at ai-meal-planner/mise/Plan-desktop.png. Previously this
+     * panel rendered the bars as a Vaadin Chart (BAR), but Highcharts' axis labels
+     * never emit visible text in this version (see plan-chart-issue.md), so the
+     * panel stays on plain DOM until that is resolved.
+     */
     private Div buildRow(String category, double cost, double maxCost) {
         var row = new Div();
         row.addClassName("mise-category-row");
@@ -248,40 +243,24 @@ public class CostByCategoryPanel extends Div {
         label.addClassName("mise-category-label");
         row.add(label);
 
-        var barTrack = new Div();
-        barTrack.addClassName("mise-category-bar-track");
-
-        var barFill = new Div();
-        barFill.addClassName("mise-category-bar-fill");
-        double pct = Math.min(100.0, (cost / maxCost) * 100.0);
-        // Inline styles below are runtime-computed per instance:
-        //   width % comes from cost / maxCost; background picked from CATEGORY_FILL by category name.
-        barFill.getStyle()
-                .set("width", String.format("%.1f%%", pct))
-                .set("background", CATEGORY_FILL.getOrDefault(category, "var(--mise-category-other)"));
-        barTrack.add(barFill);
-        row.add(barTrack);
-
         var amount = new Span(String.format("€%.2f", cost));
         amount.addClassName("mise-category-amount");
         row.add(amount);
 
+        var track = new Div();
+        track.addClassName("mise-category-bar-track");
+        var fill = new Div();
+        fill.addClassName("mise-category-bar-fill");
+        // Dynamic per-row: width is the cost's share of the largest category;
+        // background is the category's brand colour from CategoryColors.HEX.
+        double pct = Math.min(100.0, (cost / maxCost) * 100.0);
+        fill.getStyle()
+                .set("width", String.format("%.1f%%", pct))
+                .set("background", CategoryColors.HEX.getOrDefault(category, "var(--mise-category-other)"));
+        track.add(fill);
+        row.add(track);
+
         return row;
     }
 
-    /**
-     * Maps a recipe ingredient aisle value to one of the five canonical categories.
-     */
-    static String aisleToCategory(String aisle) {
-        if (aisle == null) return "Other";
-        String lower = aisle.toLowerCase();
-        return switch (lower) {
-            case "meat", "fish", "seafood", "poultry", "protein" -> "Protein";
-            case "produce", "vegetables", "fruit", "veg" -> "Produce";
-            case "dry-goods", "pantry", "canned", "oil", "condiments", "spices",
-                 "dry goods", "grains", "pasta", "bakery" -> "Pantry";
-            case "dairy", "eggs", "cheese", "dairy & eggs" -> "Dairy";
-            default -> "Other";
-        };
-    }
 }
