@@ -202,46 +202,6 @@
   margin: 0 0 10px 0;
 }
 
-.mise-category-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-rows: auto auto;
-  grid-template-areas: "label amount" "bar bar";
-  gap: 3px 6px;
-  margin-bottom: 10px;
-}
-
-.mise-category-label {
-  grid-area: label;
-  font-size: 11px;
-  color: var(--vaadin-secondary-text-color);
-}
-
-.mise-category-bar-track {
-  grid-area: bar;
-  height: 6px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.mise-category-bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-  /* width is set via inline style (runtime-computed per category) */
-  min-width: 0;
-  transition: width 0.3s ease;
-}
-
-.mise-category-amount {
-  grid-area: amount;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  color: var(--vaadin-secondary-text-color);
-  text-align: right;
-}
-
 /* AI insight paragraph — hairline-separated note below the bars, matching the
    mockup at mise_meal_planner_plan_view.html:142-145. Not a filled callout.
    Two flavours stack inside this section:

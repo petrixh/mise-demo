@@ -8,7 +8,11 @@ import com.example.mise.domain.plan.Meal;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
 import com.example.mise.ui.shared.CategoryColors;
+import com.example.mise.ui.shared.MiseChart;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.charts.model.*;
+import com.vaadin.flow.component.charts.model.style.SolidColor;
+import com.vaadin.flow.component.charts.model.style.Style;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
@@ -63,21 +67,14 @@ public class CostByCategoryPanel extends Div {
             }
         }
 
-        double maxCost = costs.values().stream().mapToDouble(d -> d).max().orElse(1.0);
-        if (maxCost <= 0) maxCost = 1.0;
-
-        for (String cat : CategoryColors.ORDER) {
-            double cost = costs.get(cat);
-            if (cost <= 0) continue;  // skip empty categories
-            add(buildRow(cat, cost, maxCost));
-        }
-
         // If everything is zero (no price data), show a note
         boolean noPriceData = costs.values().stream().allMatch(v -> v <= 0);
         if (noPriceData) {
             var note = new Paragraph("No price data available.");
             note.addClassName("mise-plan-no-data-note");
             add(note);
+        } else {
+            add(buildCategoryChart(costs));
         }
 
         // AI insights section — two stacked lines under the cost bars:
@@ -225,33 +222,63 @@ public class CostByCategoryPanel extends Div {
                 mealName, day, pct, topCategory.toLowerCase());
     }
 
-    private Div buildRow(String category, double cost, double maxCost) {
-        var row = new Div();
-        row.addClassName("mise-category-row");
+    private MiseChart buildCategoryChart(Map<String, Double> costs) {
+        List<String> activeCats = CategoryColors.ORDER.stream()
+                .filter(cat -> costs.getOrDefault(cat, 0.0) > 0)
+                .toList();
 
-        var label = new Span(category);
-        label.addClassName("mise-category-label");
-        row.add(label);
+        MiseChart chart = new MiseChart(ChartType.BAR);
+        Configuration conf = chart.getConfiguration();
+        conf.setTitle("");
 
-        var barTrack = new Div();
-        barTrack.addClassName("mise-category-bar-track");
+        // Tight margins: left for category labels, right for €X.XX data labels
+        conf.getChart().setMarginTop(4);
+        conf.getChart().setMarginBottom(4);
+        conf.getChart().setMarginLeft(62);
+        conf.getChart().setMarginRight(52);
 
-        var barFill = new Div();
-        barFill.addClassName("mise-category-bar-fill");
-        double pct = Math.min(100.0, (cost / maxCost) * 100.0);
-        // Inline styles below are runtime-computed per instance:
-        //   width % comes from cost / maxCost; background picked from CATEGORY_FILL by category name.
-        barFill.getStyle()
-                .set("width", String.format("%.1f%%", pct))
-                .set("background", CategoryColors.HEX.getOrDefault(category, "var(--mise-category-other)"));
-        barTrack.add(barFill);
-        row.add(barTrack);
+        XAxis x = new XAxis();
+        x.setCategories(activeCats.toArray(String[]::new));
+        conf.addxAxis(x);
 
-        var amount = new Span(String.format("€%.2f", cost));
-        amount.addClassName("mise-category-amount");
-        row.add(amount);
+        // Value axis: hide labels — the data labels on each bar show the amounts
+        YAxis y = new YAxis();
+        y.setTitle(new AxisTitle(""));
+        Labels yLabels = new Labels();
+        yLabels.setEnabled(false);
+        y.setLabels(yLabels);
+        y.setGridLineWidth(0);
+        conf.addyAxis(y);
 
-        return row;
+        conf.setLegend(new Legend(false));
+
+        PlotOptionsBar barOpts = new PlotOptionsBar();
+        barOpts.setBorderWidth(0);
+        DataLabels dl = new DataLabels();
+        dl.setEnabled(true);
+        dl.setFormat("€{y:.2f}");
+        Style dlStyle = new Style();
+        dlStyle.setColor(MiseChart.LABEL);
+        dlStyle.setFontSize("10px");
+        dl.setStyle(dlStyle);
+        barOpts.setDataLabels(dl);
+        conf.setPlotOptions(barOpts);
+
+        DataSeries series = new DataSeries();
+        for (String cat : activeCats) {
+            DataSeriesItem item = new DataSeriesItem(cat, costs.get(cat));
+            String hex = CategoryColors.HEX.get(cat);
+            if (hex != null) item.setColor(new SolidColor(hex));
+            series.add(item);
+        }
+        conf.addSeries(series);
+
+        // applyTheme after axes so X-axis label styling (11px, LABEL colour) takes effect
+        chart.applyTheme();
+        chart.setWidthFull();
+        // Height scales with bar count: 28px per bar + 8px top/bottom margin space
+        chart.setHeight((activeCats.size() * 28 + 8) + "px");
+        return chart;
     }
 
 }
