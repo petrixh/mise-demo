@@ -231,17 +231,24 @@ public class CostByCategoryPanel extends Div {
         Configuration conf = chart.getConfiguration();
         conf.setTitle("");
 
-        // Tight margins: left for category labels, right for €X.XX data labels
+        // Left margin reserves space for category labels (longest: "Produce" ≈ 7 chars).
+        // Minimal right margin since data labels render inside the bars.
         conf.getChart().setMarginTop(4);
         conf.getChart().setMarginBottom(4);
-        conf.getChart().setMarginLeft(62);
-        conf.getChart().setMarginRight(52);
+        conf.getChart().setMarginLeft(90);
+        conf.getChart().setMarginRight(6);
 
         XAxis x = new XAxis();
         x.setCategories(activeCats.toArray(String[]::new));
+        Labels xLabels = new Labels();
+        Style xLabelStyle = new Style();
+        xLabelStyle.setFontSize("10px");
+        xLabelStyle.setColor(MiseChart.LABEL);
+        xLabels.setStyle(xLabelStyle);
+        x.setLabels(xLabels);
         conf.addxAxis(x);
 
-        // Value axis: hide labels — the data labels on each bar show the amounts
+        // Value axis: hide entirely — amounts are shown by the data labels.
         YAxis y = new YAxis();
         y.setTitle(new AxisTitle(""));
         Labels yLabels = new Labels();
@@ -254,11 +261,16 @@ public class CostByCategoryPanel extends Div {
 
         PlotOptionsBar barOpts = new PlotOptionsBar();
         barOpts.setBorderWidth(0);
+        barOpts.setMinPointLength(24); // ensures very-small bars still carry the label
         DataLabels dl = new DataLabels();
         dl.setEnabled(true);
         dl.setFormat("€{y:.2f}");
+        // Render inside the bar at the right end; for short bars Highcharts
+        // will overflow outside the fill rather than hiding the label.
+        dl.setInside(true);
+        dl.setCrop(false);
         Style dlStyle = new Style();
-        dlStyle.setColor(MiseChart.LABEL);
+        dlStyle.setColor(SolidColor.WHITE);
         dlStyle.setFontSize("10px");
         dl.setStyle(dlStyle);
         barOpts.setDataLabels(dl);

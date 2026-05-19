@@ -8,14 +8,18 @@ import com.vaadin.flow.component.charts.model.style.Style;
 /**
  * Vaadin {@link Chart} subclass that applies the Mise dark-panel theme.
  *
- * <p>Construct it with the desired {@link ChartType}, then configure axes,
- * series, and legend layout as normal — the theme (transparent canvas,
- * hairline grid lines, panel-text label colours) is always applied.
+ * <p>Construct it with the desired {@link ChartType}, configure axes and
+ * series as normal, then call {@link #applyTheme()} once at the end.
  *
- * <p><strong>Axis ordering:</strong> theme styling requires axes to be
- * registered on the {@link Configuration} first.  Call {@link #applyTheme()}
- * explicitly after adding axes — the constructor calls it once as a
- * convenience for pie/donut charts that have no axes.
+ * <p><strong>Why applyTheme() is NOT called in the constructor:</strong>
+ * {@link Configuration#getxAxis()} and {@link Configuration#getyAxis()}
+ * lazily materialise a default axis and register it when called on an empty
+ * Configuration.  Calling them inside the constructor would create phantom
+ * "index 0" axes; any axes the caller subsequently adds via
+ * {@code conf.addxAxis()} become index 1, which Highcharts ignores for
+ * default series assignment — resulting in bars rendering against numeric
+ * indices instead of the caller's categories.  Only the transparent canvas
+ * background is set in the constructor (safe because it touches no axes).
  *
  * <p><strong>Why SolidColor uses int constructors:</strong> the
  * {@code SolidColor(String)} constructor stores the value verbatim, and the
@@ -37,13 +41,17 @@ public class MiseChart extends Chart {
 
     public MiseChart(ChartType type) {
         super(type);
-        applyTheme();
+        // Transparent canvas immediately — safe because it touches no axes.
+        Configuration conf = getConfiguration();
+        conf.getChart().setBackgroundColor(BG);
+        conf.getChart().setPlotBackgroundColor(BG);
     }
 
     /**
-     * Applies (or re-applies) the Mise theme to this chart's current
-     * {@link Configuration}.  Call after adding axes so the axis style
-     * helpers can find the registered axis instances.
+     * Applies the Mise theme: transparent canvas, hairline axes/grid,
+     * and panel-text label colours.  Call once after all axes are
+     * registered on the Configuration so the styling reaches the right
+     * axis instances.
      */
     public void applyTheme() {
         Configuration conf = getConfiguration();
