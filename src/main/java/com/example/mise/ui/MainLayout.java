@@ -31,8 +31,6 @@ import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
 import com.vaadin.flow.router.RouterLayout;
 
-import java.math.BigDecimal;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -46,6 +44,20 @@ public class MainLayout extends VerticalLayout
         implements RouterLayout, AfterNavigationObserver {
 
     private static final DateTimeFormatter WEEK_FMT = DateTimeFormatter.ofPattern("MMM d");
+
+    /**
+     * Tabler ti-tools-kitchen-2 icon, copied verbatim from
+     * ai-meal-planner/mise/html-mockups-initial/tools-kitchen-2.svg so the
+     * stroke="currentColor" path inherits the brand text color when inlined.
+     * Same markup lives at /icons/tools-kitchen-2.svg for external references.
+     */
+    private static final String MISE_LOGO_SVG =
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" "
+            + "fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" "
+            + "stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\">"
+            + "<path stroke=\"none\" d=\"M0 0h24v24H0z\" fill=\"none\"/>"
+            + "<path d=\"M19 3v12h-5c-.023 -3.681 .184 -7.406 5 -12m0 12v6h-1v-3m-10 -14v17m-3 -17v3a3 3 0 1 0 6 0v-3\"/>"
+            + "</svg>";
 
     private final HouseholdOrchestrator household;
     private final MessageList messageList;
@@ -94,8 +106,13 @@ public class MainLayout extends VerticalLayout
         // complete callback below). Set on submit, cleared when streaming finishes.
         // chatDock is assigned later in buildChatDock(); null-check guards the
         // (impossible-in-practice) case where a submit fires before that runs.
+        // Also clears any prior .ai-error class so the indicator returns to blue
+        // for each new attempt (a successful turn afterwards keeps it cleared).
         messageInput.addSubmitListener(e -> {
-            if (chatDock != null) chatDock.addClassName("ai-working");
+            if (chatDock != null) {
+                chatDock.removeClassName("ai-error");
+                chatDock.addClassName("ai-working");
+            }
         });
 
         // Capture UI reference (on UI thread) for use in the response-complete
@@ -125,6 +142,20 @@ public class MainLayout extends VerticalLayout
                     reportsRefreshBroadcaster.fireRefresh();
                 },
                 planTools, shoppingTools, reportsTools, navigationTools, insightTools);
+
+        // Error path: LLM unreachable / empty response → red indicator + toast.
+        // Runs on the background streaming thread; UI mutations need ui.access().
+        this.household.setResponseErrorCallback(errorText -> {
+            if (ui == null || ui.isClosing()) return;
+            ui.access(() -> {
+                if (chatDock != null) {
+                    chatDock.removeClassName("ai-working");
+                    chatDock.addClassName("ai-error");
+                }
+                var n = Notification.show(errorText, 4000, Notification.Position.BOTTOM_CENTER);
+                n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            });
+        });
 
         // ── Shell layout ─────────────────────────────────────────────────
         setSizeFull();
@@ -179,8 +210,19 @@ public class MainLayout extends VerticalLayout
     // The VerticalLayout's last "expand" slot holds the route content.
 
     private Div buildHeader(HouseholdService householdService, PlanService planService) {
-        // ── Wordmark (left) ──────────────────────────────────────────────────
-        var brand = new H1("Mise");
+        // ── Logo + wordmark (left) ───────────────────────────────────────────
+        // Tabler ti-tools-kitchen-2 icon next to the "Mise" text, per the mockup.
+        // Inlined (not via <img>) so stroke="currentColor" picks up the brand's
+        // text color and the logo stays in sync with the header in any theme.
+        var logo = new Span();
+        logo.addClassName("mise-brand-logo");
+        logo.getElement().setAttribute("aria-hidden", "true");
+        logo.getElement().setProperty("innerHTML", MISE_LOGO_SVG);
+
+        var wordmark = new H1("Mise");
+        wordmark.addClassName("mise-brand-wordmark");
+
+        var brand = new Div(logo, wordmark);
         brand.addClassName("mise-brand");
         brand.getElement().setAttribute("data-testid", "app-header-wordmark");
 
@@ -205,30 +247,16 @@ public class MainLayout extends VerticalLayout
         var weekNav = new Div(prevBtn, weekBadge, nextBtn);
         weekNav.addClassName("mise-header-week-nav");
 
-        // ── Budget pill (right) ──────────────────────────────────────────────
-        var budgetBadge = new Span(buildBudgetLabel(householdService));
-        budgetBadge.addClassName("mise-header-budget-badge");
-        budgetBadge.getElement().setAttribute("data-testid", "app-header-budget");
-
         // ── Assemble full-width header bar ───────────────────────────────────
-        var header = new Div(brand, weekNav, budgetBadge);
+        // Mockup desktop layout: brand · week-nav (left group) · tabs (right group).
+        // The budget pill that previously sat between week-nav and tabs is dropped —
+        // it isn't in the mockup and householdService is unused after that removal,
+        // but kept on the signature for now since other callers may still inject it.
+        var header = new Div(brand, weekNav);
         header.setId("mise-app-header");
         header.getElement().setAttribute("data-testid", "app-header");
         header.addClassName("mise-header");
         return header;
-    }
-
-    private String buildBudgetLabel(HouseholdService householdService) {
-        try {
-            if (householdService.exists()) {
-                var hh = householdService.findHousehold().orElse(null);
-                if (hh != null && hh.getWeeklyBudget() != null) {
-                    BigDecimal budget = hh.getWeeklyBudget();
-                    return "€" + String.format("%.0f", budget) + " budget";
-                }
-            }
-        } catch (Exception ignored) {}
-        return "";
     }
 
     private String buildWeekLabel(HouseholdService householdService, PlanService planService) {
@@ -282,20 +310,39 @@ public class MainLayout extends VerticalLayout
         messageList.getElement().setAttribute("data-testid", "chat-message-list");
 
         // C-L-01: right-align user messages. AIOrchestrator doesn't expose per-item
-        // theming hooks, so a MutationObserver tags each vaadin-message where the
-        // avatar name is not "Mise" (i.e. the user's own turn) with .current-user.
-        // CSS then reverses the flex direction on the host element.
+        // theming hooks, so a MutationObserver tags non-Mise messages with .current-user.
+        // Detection is brittle because vaadin-message sets userName as a property and
+        // vaadin-avatar's name is reflected via the inner shadow DOM — checking only the
+        // host's getAttribute('name') silently mis-classifies every turn (resolves to null,
+        // null !== 'Mise' tags everything). We probe both the property and the attribute
+        // on the message host AND the rendered avatar, and only tag once we have a
+        // resolved name (otherwise the observer re-runs on the next hydration mutation).
         messageList.getElement().executeJs("""
+            const ASSISTANT = 'Mise';
+            const resolveName = (msg) => {
+              const av = msg.querySelector('vaadin-avatar');
+              return msg.userName
+                || msg.getAttribute('user-name')
+                || (av && (av.name || av.getAttribute('name')))
+                || '';
+            };
             const mark = () => {
-              this.querySelectorAll('vaadin-message:not([data-aligned])').forEach(msg => {
-                msg.setAttribute('data-aligned', '');
-                const av = msg.querySelector('vaadin-avatar');
-                if (av && av.getAttribute('name') !== 'Mise') {
+              this.querySelectorAll('vaadin-message').forEach(msg => {
+                const name = resolveName(msg);
+                if (!name) return;                          // not hydrated yet
+                if (msg.dataset.aligned === '1') return;    // already classified
+                msg.dataset.aligned = '1';
+                if (name !== ASSISTANT) {
                   msg.classList.add('current-user');
                 }
               });
             };
-            new MutationObserver(mark).observe(this, { childList: true, subtree: true });
+            new MutationObserver(mark).observe(this, {
+              childList: true,
+              subtree: true,
+              attributes: true,
+              attributeFilter: ['user-name', 'name']
+            });
             mark();
             """);
 
@@ -349,8 +396,15 @@ public class MainLayout extends VerticalLayout
         household.setCurrentView(viewContext);
 
         // UC-009: update insight banner — skip on the onboarding/welcome route
+        // *and* on /plan (Plan renders its own inline insight in the cost-by-category
+        // sidebar) *and* on /reports (Reports renders its own non-dismissable
+        // insight block at the bottom of the panel, beneath the leaderboard).
+        // Shopping is the only remaining view that still relies on the top banner
+        // until it grows its own in-context insight area.
         boolean isWelcome = location.startsWith("welcome") || location.startsWith("onboarding");
-        updateInsightBanner(isWelcome);
+        boolean isPlan = location.startsWith("plan") || location.isEmpty();
+        boolean isReports = location.startsWith("reports");
+        updateInsightBanner(isWelcome || isPlan || isReports);
     }
 
     /**

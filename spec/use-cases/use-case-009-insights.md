@@ -13,11 +13,11 @@
 
 ## Main Flow
 
-- Periodically (or on specific triggers — see BR-04), the system generates an `Insight` and surfaces it in a non-intrusive banner above the main view content.
+- Periodically (or on specific triggers — see BR-04), the system generates an `Insight` and surfaces it in a non-intrusive callout inside the active view's panel.
   *e.g., "Your cheaper weeks all had three vegetarian dinners — worth locking in?"*
 - I can:
-  - **Dismiss** the insight (mark `dismissed = true`, banner disappears).
-  - **Act on it** by replying in chat (*"yes, lock that in"*) — the assistant takes the suggested action through normal plan-edit tools (UC-003).
+  - **Dismiss** the insight (mark `dismissed = true`, the callout disappears).
+  - **Act on it** by replying in chat (*"yes, lock that in"*) — the assistant takes the suggested action through normal plan-edit tools (UC-003). The callout exposes an inline "Act on it" pill that pre-fills this for me.
   - **Mute insights** in chat (*"mute insights"* or *"insights only weekly"*).
 - Muted state and frequency are stored on `Household.insightsMuted` and `Household.insightFrequency`.
 
@@ -39,9 +39,9 @@
 
 ## Acceptance Criteria
 
-- [ ] On app start after the trigger window has elapsed, an insight banner appears above the active view's main content.
-- [ ] Dismissing the banner sets `Insight.dismissed = true` and removes the banner without showing a replacement immediately.
-- [ ] *"Mute insights"* in chat sets `Household.insightsMuted = true`. No new banners appear afterward; existing ones disappear on next render.
+- [ ] On app start after the trigger window has elapsed, an insight callout appears in the active view's panel.
+- [ ] Dismissing the callout sets `Insight.dismissed = true` and removes it without showing a replacement immediately.
+- [ ] *"Mute insights"* in chat sets `Household.insightsMuted = true`. No new callouts appear afterward; existing ones disappear on next render.
 - [ ] *"Show me insights I missed"* lists undismissed (or all) insights even while muted.
 - [ ] Acting on an insight via chat (*"lock that in"*) triggers a UC-003 plan edit with the appropriate `MealEdit` row.
 - [ ] An insight's `evidenceRefs` list references real `Plan` / `Meal` IDs that exist in H2.
@@ -50,13 +50,21 @@
 
 ## UI / Routes
 
-- The insight banner is rendered by `MainLayout` above the routed view content. It is **sticky-top on mobile**, **inline at the top on desktop**.
-- The banner has: insight text, an "act on it" prompt that pre-fills the chat input, and a dismiss `×`.
-- No insights are shown in `/welcome`.
+The insight callout lives **inside the view panel**, not as a top banner. Each view picks the spot inside its own panel that makes the insight feel like an annotation of what the user is already looking at:
+
+- **Plan** — bottom of the cost-by-category sidebar (or stacked below the meal list on mobile), beneath the local cost-summary line. Dismissable + actionable.
+- **Reports** — bottom of the panel, beneath the per-meal leaderboard. Quiet annotation flavour (label + bulb icon + body, no dismiss).
+- **Shopping** — temporarily still uses the legacy top-of-view banner from `MainLayout` until it grows its own in-panel insights area. That banner is hidden on `/plan` and `/reports` because those views now handle insights themselves.
+- **`/welcome`** — no insights at all.
+
+See the design system's "AI insight callout" entry for shape and tone. Each view exposes an inline "Act on it" pill where applicable, which submits a derived phrase (e.g. "lock in 3 vegetarian dinners this week") to the shared orchestrator via `MainLayout.submitChatMessage`.
 
 | Route | Access | Notes |
 |-------|--------|-------|
-| any | public | Banner is part of `MainLayout`. |
+| /plan | public | Callout in the cost-by-category sidebar. |
+| /reports | public | Callout at the bottom of the Reports panel. |
+| /shopping | public | Legacy top banner via `MainLayout` until Shopping grows its own area. |
+| /welcome | public | No insights shown. |
 
 ---
 
@@ -64,15 +72,16 @@
 
 #### Functional
 
-- [ ] Banner appears at startup after trigger window elapses (BR-04)
+- [ ] Callout appears at startup after trigger window elapses (BR-04)
 - [ ] Dismiss sets `Insight.dismissed = true`; no replacement appears immediately (BR-02)
-- [ ] *"Mute insights"* sets `Household.insightsMuted = true`; no new banners (BR-05)
+- [ ] *"Mute insights"* sets `Household.insightsMuted = true`; no new callouts (BR-05)
 - [ ] Acting on an insight (*"lock that in"*) triggers a UC-003 plan edit with a `MealEdit`
 - [ ] `Insight.evidenceRefs` reference real `Plan` / `Meal` IDs (BR-03)
 
 #### Visual
 
-- [ ] Banner is sticky-top on mobile, inline at top on desktop
+- [ ] Callout renders inside the active view panel (Plan sidebar, Reports below leaderboard), not as a top-of-view banner
+- [ ] Plan callout is dismissable + actionable; Reports callout is quiet (no dismiss)
 - [ ] No insights on `/welcome`
 
 #### AI

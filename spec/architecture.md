@@ -84,7 +84,7 @@
 - **Persist by list position, not by `messageId`.** Vaadin's `AIOrchestrator` builds the assistant `ChatMessage` with `messageId = null` (verified in the orchestrator bytecode at `streamResponseToMessage`). `ConversationService` syncs by appending anything beyond `repository.count()` rather than deduping on messageId, so the assistant turn isn't silently dropped.
 - **Capabilities are bounded.** Tools are declared explicitly with `@org.springframework.ai.tool.annotation.Tool`. The AI cannot reach beyond them.
 - **Pluggable adapters.** `RecipeCatalog`, `PriceCatalog`, `NutritionEstimator` have file-backed stub implementations. Production replacements (real APIs) drop in behind the same interface without changes to services, orchestrator, or UI.
-- **Mobile-first.** `MainLayout` uses `AppLayout` with a bottom navbar on narrow widths and a side drawer at desktop widths. The chat panel docks into a `Popover` on mobile and into a side drawer on desktop. Grid and Chart components opt into responsive variants. Behavior is identical at every form factor.
+- **Mobile-first.** `MainLayout` is a single chrome-surface header (brand + week nav + tabs) above one filled per-view panel, with the chat dock fixed to the bottom of the viewport. The header wraps tabs to a second row on mobile; the chat dock stays bottom-anchored at every viewport size. Each routed view (Plan, Shopping, Reports) renders its content as one panel with internal hairline separators rather than a stack of cards — see the design system's "View panel" section. The legacy top-of-view insight banner has been replaced by in-panel insights inside each view (UC-009).
 
 ---
 
@@ -100,19 +100,24 @@ com.example.mise/
     SeedDataLoader.java                  — CommandLineRunner: load YAML seeds on first run  [planned]
 
   ui/
-    MainLayout.java                      — AppLayout with nav + shared chat panel
+    MainLayout.java                      — chrome header (brand logo + wordmark, week nav,
+                                           tabs) + view outlet + fixed chat dock; renders
+                                           legacy insight banner on /shopping only
     plan/
-      PlanView.java                      — @Route("plan") + @Route("")
+      PlanView.java                      — @Route("plan") + @Route(""); builds the Plan panel
+      WeeklyStatsBar.java                — KPI strip (cost / prep time / kcal / variety)
       MealGrid.java                      — reusable component (one row per day)
-      WeeklyStatsBar.java                — KPIs (cost / prep time / kcal / variety)
+      CostByCategoryPanel.java           — sidebar bars + in-panel AI insight (UC-009)
     shopping/
       ShoppingView.java                  — @Route("shopping")
       ShoppingListPanel.java             — grouped by aisle, pantry toggle, check-off
       StoreRecommendation.java           — selected store + "worth detour?" hint
     reports/
-      ReportsView.java                   — @Route("reports") — Vaadin Dashboard
-      CostByCategoryWidget.java          — uses ChartAIController
-      LeaderboardWidget.java             — uses GridAIController
+      ReportsView.java                   — @Route("reports"); single Reports panel with KPI
+                                           strip, chart row, leaderboard, AI insight. Chart
+                                           theming lives in applyMiseChartTheme(chart) so all
+                                           charts (existing + future) share one canvas/axis/
+                                           legend look.
     onboarding/
       OnboardingView.java                — @Route("welcome") + chat-only first run
     chat/

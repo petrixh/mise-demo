@@ -12,6 +12,8 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.charts.Chart;
 import com.vaadin.flow.component.charts.model.*;
+import com.vaadin.flow.component.charts.model.style.SolidColor;
+import com.vaadin.flow.component.charts.model.style.Style;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
@@ -61,6 +63,26 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
             "Dairy",   "#D4537E",
             "Other",   "#B4B2A9"
     );
+
+    /**
+     * Theme tokens applied to every chart so the chart canvas merges with the
+     * surrounding Reports panel and uses the Mise palette. The chart contents
+     * (the data) drive the series colors via per-item color overrides above;
+     * these tokens cover the chrome: background, axis lines, grid, labels.
+     *
+     * Important: SolidColor's String constructor stores the string verbatim,
+     * and the JSON serializer strips parentheses + commas — so passing
+     * "rgba(0,0,0,0)" ends up as "rgba0,0,0,0" in the SVG fill, which is
+     * invalid and Highcharts paints the canvas black. Always build rgba
+     * colors via SolidColor(int, int, int, double) instead.
+     */
+    private static SolidColor chartColor(int r, int g, int b, double a) {
+        return new SolidColor(r, g, b, a);
+    }
+    private static final SolidColor CHART_BG       = chartColor(0, 0, 0, 0.0);
+    private static final SolidColor CHART_HAIRLINE = chartColor(255, 255, 255, 0.08);
+    private static final SolidColor CHART_TEXT     = chartColor(228, 228, 231, 0.78);
+    private static final SolidColor CHART_LABEL    = chartColor(228, 228, 231, 0.62);
 
     private final HouseholdService householdService;
     private final ReportService reportService;
@@ -142,24 +164,31 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         var hh = hhOpt.get();
 
         contentArea.removeAll();
-        contentArea.addClassName("mise-reports-content-grid");
 
-        // ── R-F-01: AI insights block (non-dismissable) ───────────────────
-        contentArea.add(buildInsightsBlock(hh.getId()));
+        // Single-panel container matching the mockup at
+        //   ai-meal-planner/mise/html-mockups-initial/mise_meal_planner_reports_view.html
+        // KPI strip → chart row (cost trend + category breakdown side by side) →
+        // leaderboard → AI insights block, all inside one filled panel with
+        // 0.5px hairline separators.
+        var panel = new Div();
+        panel.addClassName("mise-reports-panel");
+        panel.getElement().setAttribute("data-testid", "reports-panel");
 
         // ── 0. KPI strip (M-5) ────────────────────────────────────────────
         WeeklyCostTrend trend = reportService.computeCostTrend(hh.getId());
-        contentArea.add(buildKpiStrip(hh, trend));
+        panel.add(buildKpiStrip(hh, trend));
 
-        // ── 1. Weekly cost trend ──────────────────────────────────────────
-        contentArea.add(buildCostTrendWidget(trend, hh.getId(), highlight));
+        // ── 1+2. Chart row: cost trend (left) + category breakdown (right) ──
+        var chartRow = new Div();
+        chartRow.addClassName("mise-reports-chart-row");
+        chartRow.add(buildCostTrendWidget(trend, hh.getId(), highlight));
 
-        // ── 2. Category breakdown ─────────────────────────────────────────
         CategoryBreakdown breakdown = reportService.computeCategoryBreakdown(hh.getId(), null);
         Map<String, Object> chartPrefs = viewPreferenceService
                 .getSettings(hh.getId(), ViewPreference.View.REPORTS, "categoryBreakdown")
                 .orElse(Map.of());
-        contentArea.add(buildCategoryWidget(breakdown, chartPrefs, hh.getId(), highlight));
+        chartRow.add(buildCategoryWidget(breakdown, chartPrefs, hh.getId(), highlight));
+        panel.add(chartRow);
 
         // ── 3. Leaderboard ────────────────────────────────────────────────
         Map<String, Object> leaderboardPrefs = viewPreferenceService
@@ -168,7 +197,14 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         List<String> extraColumns = extractExtraColumns(leaderboardPrefs);
         boolean includeKcalPerEuro = extraColumns.contains("kcalPerEuro");
         List<LeaderboardEntry> leaderboard = reportService.computeLeaderboard(hh.getId(), includeKcalPerEuro);
-        contentArea.add(buildLeaderboardWidget(leaderboard, extraColumns, hh.getId(), highlight));
+        panel.add(buildLeaderboardWidget(leaderboard, extraColumns, hh.getId(), highlight));
+
+        // ── R-F-01: AI insights block (non-dismissable), at the bottom of the
+        // panel so it sits beneath the leaderboard like the mockup. Above the
+        // chat dock conceptually; the chat dock itself is in MainLayout.
+        panel.add(buildInsightsBlock(hh.getId()));
+
+        contentArea.add(panel);
     }
 
     // ── R-F-01: AI insights block ──────────────────────────────────────────────
@@ -281,6 +317,80 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         return card;
     }
 
+    // ── Chart theme helper ────────────────────────────────────────────────────
+
+    /**
+     * Applies the Mise chart theme to a chart so it merges with the Reports
+     * panel: transparent canvas + plot area, hairline axis/grid lines, and
+     * label text in the panel's secondary/body text shades. Per-series colors
+     * are still set explicitly by callers from CATEGORY_COLORS — those win
+     * because they're per-item rather than the chart-level palette.
+     *
+     * Call once per chart, after the Configuration's axes have been added.
+     * It's safe to call when an axis hasn't been registered yet (the helper
+     * defensively skips missing ones).
+     */
+    private void applyMiseChartTheme(Chart chart) {
+        Configuration conf = chart.getConfiguration();
+
+        // Transparent canvas + plot area so the panel background shows through.
+        conf.getChart().setBackgroundColor(CHART_BG);
+        conf.getChart().setPlotBackgroundColor(CHART_BG);
+
+        // Per-series colors are already set explicitly by callers via
+        // CATEGORY_COLORS — chart-level palette isn't needed here. Vaadin
+        // Charts 25 has no Configuration.setColors; the per-item Color wins.
+
+        // Axis chrome — hairline lines + low-contrast labels.
+        styleXAxis(conf.getxAxis());
+        styleYAxis(conf.getyAxis());
+
+        // Legend text reads against the panel.
+        Legend legend = conf.getLegend();
+        if (legend != null) {
+            Style legendStyle = new Style();
+            legendStyle.setColor(CHART_TEXT);
+            legend.setItemStyle(legendStyle);
+            Style legendHover = new Style();
+            legendHover.setColor(SolidColor.WHITE);
+            legend.setItemHoverStyle(legendHover);
+        }
+    }
+
+    private void styleXAxis(XAxis axis) {
+        if (axis == null) return;
+        axis.setLineColor(CHART_HAIRLINE);
+        axis.setTickColor(CHART_HAIRLINE);
+        axis.setGridLineColor(CHART_HAIRLINE);
+        applyAxisLabelStyle(axis);
+    }
+
+    private void styleYAxis(YAxis axis) {
+        if (axis == null) return;
+        axis.setLineColor(CHART_HAIRLINE);
+        axis.setTickColor(CHART_HAIRLINE);
+        axis.setGridLineColor(CHART_HAIRLINE);
+        applyAxisLabelStyle(axis);
+    }
+
+    /** Applies the Mise label color + minimum font-size to an axis's tick labels and title. */
+    private void applyAxisLabelStyle(Axis axis) {
+        Labels labels = axis.getLabels() != null ? axis.getLabels() : new Labels();
+        Style labelStyle = labels.getStyle() != null ? labels.getStyle() : new Style();
+        labelStyle.setColor(CHART_LABEL);
+        if (labelStyle.getFontSize() == null) labelStyle.setFontSize("10px");
+        labels.setStyle(labelStyle);
+        axis.setLabels(labels);
+
+        AxisTitle title = axis.getTitle();
+        if (title != null) {
+            Style titleStyle = title.getStyle() != null ? title.getStyle() : new Style();
+            titleStyle.setColor(CHART_TEXT);
+            title.setStyle(titleStyle);
+            axis.setTitle(title);
+        }
+    }
+
     // ── Widget builders ────────────────────────────────────────────────────────
 
     private Div buildCostTrendWidget(WeeklyCostTrend trend, Long householdId, boolean highlight) {
@@ -335,6 +445,7 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
                         point.totalCost().doubleValue()));
             }
             conf.addSeries(series);
+            applyMiseChartTheme(chart);
             chart.setWidthFull();
             chart.setHeight("220px");
             chartDiv.add(chart);
@@ -379,15 +490,25 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
                 DataSeries series = new DataSeries("Cost");
                 PlotOptionsPie plotOpts = new PlotOptionsPie();
                 plotOpts.setInnerSize("50%");
-                // m-2: set data label color to a light value so callouts are readable on dark theme
+                // Mockup uses a side legend with color dots, not the
+                // connector-line callouts Highcharts draws by default. Disable
+                // data labels on the slices so the legend can do the work.
                 DataLabels dataLabels = new DataLabels();
-                dataLabels.setColor(new com.vaadin.flow.component.charts.model.style.SolidColor("#E4E4E7"));
+                dataLabels.setEnabled(false);
                 plotOpts.setDataLabels(dataLabels);
+                // Highcharts pie series default to showInLegend = false; flip it
+                // so the side legend (configured below) actually renders rows.
+                plotOpts.setShowInLegend(true);
                 conf.setPlotOptions(plotOpts);
-                // R-V-02: show category legend with percentage alongside each color swatch
+                // R-V-02: vertical legend on the right side (mockup: dot + label + %).
+                // Highcharts otherwise places the legend below the chart; at 220px it
+                // gets pushed out. Plain-text labelFormat — HTML labels with a span
+                // were silently dropping all legend items in 25.2-alpha5.
                 Legend pieLegend = new Legend(true);
-                pieLegend.setLabelFormat("{name} <span style=\"opacity:0.6\">{percentage:.0f}%</span>");
-                pieLegend.setUseHTML(true);
+                pieLegend.setLayout(LayoutDirection.VERTICAL);
+                pieLegend.setAlign(HorizontalAlign.RIGHT);
+                pieLegend.setVerticalAlign(VerticalAlign.MIDDLE);
+                pieLegend.setLabelFormat("{name}  {percentage:.0f}%");
                 conf.setLegend(pieLegend);
                 for (var entry : breakdown.entries()) {
                     DataSeriesItem item = new DataSeriesItem(
@@ -425,6 +546,7 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
                 conf.addSeries(series);
             }
 
+            applyMiseChartTheme(chart);
             chart.setWidthFull();
             chart.setHeight("220px");
             chartDiv.add(chart);
@@ -534,10 +656,14 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         header.setAlignItems(Alignment.CENTER);
 
         if (hasReset) {
-            var resetBtn = new Button(VaadinIcon.CLOSE_CIRCLE_O.create());
+            // Revert icon (rotate-left) — same affordance MealGrid uses for
+            // "undo last AI change". The previous × (close-circle-o) read as
+            // "remove this widget" rather than "undo my customizations".
+            var resetBtn = new Button(VaadinIcon.ROTATE_LEFT.create());
             resetBtn.addThemeVariants(ButtonVariant.LUMO_ICON, ButtonVariant.LUMO_TERTIARY_INLINE);
             resetBtn.getElement().setAttribute("data-testid", "report-reset-" + widgetKey);
-            resetBtn.getElement().setAttribute("aria-label", "Reset " + title);
+            resetBtn.getElement().setAttribute("aria-label", "Revert " + title + " to defaults");
+            resetBtn.getElement().setAttribute("title", "Revert to defaults");
             resetBtn.addClassName("mise-reports-reset-btn");
             resetBtn.addClickListener(e -> {
                 viewPreferenceService.deleteSettings(householdId, ViewPreference.View.REPORTS, widgetKey);

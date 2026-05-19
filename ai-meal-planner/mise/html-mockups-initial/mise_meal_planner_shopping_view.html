@@ -1,0 +1,185 @@
+<style>
+.aisle-header { font-size: 10px; color: var(--color-text-secondary); font-weight: 500; letter-spacing: 0.08em; padding: 12px 14px 6px; }
+.item-row { display: grid; grid-template-columns: 22px 1fr 70px 80px; gap: 10px; align-items: center; padding: 7px 14px; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px; }
+.item-row:last-child { border-bottom: 0; }
+.item-name { line-height: 1.3; }
+.item-meta { font-size: 11px; color: var(--color-text-secondary); }
+.price { text-align: right; }
+.store-chip { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; text-align: center; letter-spacing: 0.02em; background: var(--color-background-info); color: var(--color-text-info); }
+.checkbox { width: 14px; height: 14px; border: 0.5px solid var(--color-border-secondary); border-radius: 3px; }
+.toggle-btn { padding: 5px 11px; border-radius: var(--border-radius-md); font-size: 12px; border: 0.5px solid transparent; cursor: pointer; }
+.toggle-btn.active { background: var(--color-background-primary); border-color: var(--color-border-secondary); font-weight: 500; }
+.toggle-btn.inactive { color: var(--color-text-secondary); }
+.save-hint { grid-column: 2 / 5; font-size: 11px; color: #633806; background: #FAEEDA; padding: 4px 10px; border-radius: var(--border-radius-md); margin: 4px 0 2px; display: inline-flex; align-items: center; gap: 6px; }
+</style>
+
+<div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; font-size: 13px;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary);">
+    <div style="display: flex; align-items: center; gap: 18px;">
+      <div style="display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 14px;">
+        <i class="ti ti-tools-kitchen-2" aria-hidden="true" style="font-size: 18px;"></i> Mise
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-secondary);">
+        <i class="ti ti-chevron-left" aria-hidden="true"></i>
+        Week of Nov 17
+        <i class="ti ti-chevron-right" aria-hidden="true"></i>
+      </div>
+    </div>
+    <div style="display: flex; gap: 2px; font-size: 12px;">
+      <span style="padding: 5px 11px; color: var(--color-text-secondary);">Plan</span>
+      <span style="padding: 5px 11px; border-radius: var(--border-radius-md); background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); font-weight: 500;">Shopping</span>
+      <span style="padding: 5px 11px; color: var(--color-text-secondary);">Reports</span>
+    </div>
+  </div>
+
+  <div style="margin: 14px; padding: 14px 16px; background: var(--color-background-primary); border: 2px solid var(--color-border-info); border-radius: var(--border-radius-lg);">
+
+    <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--color-text-info); margin-bottom: 8px; font-weight: 500; letter-spacing: 0.04em;">
+      <i class="ti ti-sparkles" aria-hidden="true" style="font-size: 13px;"></i>
+      Best store for this week
+    </div>
+
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 10px;">
+      <div style="font-size: 22px; font-weight: 500;">Prima</div>
+      <div style="font-size: 13px; color: var(--color-text-secondary);">€87.40 · 13 items · 1 stop</div>
+    </div>
+
+    <div style="font-size: 13px; color: var(--color-text-secondary); line-height: 1.55; margin-bottom: 12px;">
+      Compared Prima, Lidl, and K-Market. Prima covers everything on your list this week. Lidl has salmon on sale at €3 less — worth a detour only if you're passing nearby. K-Market doesn't carry pancetta this week.
+    </div>
+
+    <div style="display: flex; gap: 4px; padding: 3px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); display: inline-flex;">
+      <span class="toggle-btn active">One store</span>
+      <span class="toggle-btn inactive">Cheapest mix · €84.40, 2 stops</span>
+    </div>
+
+  </div>
+
+  <div>
+    <div class="aisle-header">PRODUCE</div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Lemons</div><div class="item-meta">3 whole</div></div>
+      <div class="price">€1.20</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Yellow onions</div><div class="item-meta">4 whole</div></div>
+      <div class="price">€1.60</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Mushrooms, mixed</div><div class="item-meta">300 g</div></div>
+      <div class="price">€2.40</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Broccoli</div><div class="item-meta">2 heads</div></div>
+      <div class="price">€1.80</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="aisle-header">PROTEIN</div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Chicken thighs, boneless</div><div class="item-meta">800 g · Mon + Thu broth</div></div>
+      <div class="price">€6.40</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="item-row" style="border-bottom: 0; padding-bottom: 3px;">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Salmon fillets</div><div class="item-meta">2 × 150 g</div></div>
+      <div class="price">€11.40</div>
+      <div class="store-chip">Prima</div>
+    </div>
+    <div style="padding: 0 14px 8px 46px; border-bottom: 0.5px solid var(--color-border-tertiary);">
+      <span class="save-hint">
+        <i class="ti ti-tag" aria-hidden="true" style="font-size: 12px;"></i>
+        Save €3 at Lidl this week — on sale through Sunday
+      </span>
+    </div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Beef chuck</div><div class="item-meta">500 g · for ragu</div></div>
+      <div class="price">€7.20</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Pancetta</div><div class="item-meta">150 g</div></div>
+      <div class="price">€3.80</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="aisle-header">DAIRY &amp; EGGS</div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Eggs</div><div class="item-meta">6 large</div></div>
+      <div class="price">€2.40</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Parmesan</div><div class="item-meta">100 g · for carbonara &amp; risotto</div></div>
+      <div class="price">€4.50</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="aisle-header">PANTRY</div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Pappardelle</div><div class="item-meta">350 g</div></div>
+      <div class="price">€2.80</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Crushed tomatoes</div><div class="item-meta">2 cans, 400 g</div></div>
+      <div class="price">€1.80</div>
+      <div class="store-chip">Prima</div>
+    </div>
+
+    <div class="item-row">
+      <div class="checkbox"></div>
+      <div><div class="item-name">Pearl barley</div><div class="item-meta">200 g</div></div>
+      <div class="price">€1.40</div>
+      <div class="store-chip">Prima</div>
+    </div>
+  </div>
+
+  <div style="border-top: 0.5px solid var(--color-border-tertiary); padding: 12px 14px; background: var(--color-background-secondary);">
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
+      <div style="align-self: flex-end; max-width: 75%; padding: 8px 12px; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); font-size: 13px;">
+        Should I bother with the Lidl stop?
+      </div>
+      <div style="align-self: flex-start; max-width: 80%; padding: 4px 4px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.55;">
+        Only if you're already passing it — €3 saved on one item isn't worth a separate trip. If you'd rather skip the second stop entirely, I can swap Friday's salmon for trout from Prima at a similar price. Want me to?
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px; align-items: center; background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 7px 12px;">
+      <i class="ti ti-sparkles" aria-hidden="true" style="color: var(--color-text-secondary); font-size: 16px;"></i>
+      <span style="flex: 1; font-size: 13px; color: var(--color-text-tertiary);">Ask about prices, alternatives, splits across stores…</span>
+      <i class="ti ti-microphone" aria-hidden="true" style="color: var(--color-text-secondary); font-size: 16px;"></i>
+      <i class="ti ti-arrow-up" aria-hidden="true" style="font-size: 16px; color: var(--color-text-secondary);"></i>
+    </div>
+  </div>
+
+</div>

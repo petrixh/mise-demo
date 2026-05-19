@@ -1,26 +1,21 @@
 /* ── Plan view ──────────────────────────────────────────────────────────── */
 
-.mise-plan-layout {
-  display: flex;
-  height: 100%;
-  overflow: hidden;
-}
+/*
+ * Single-panel layout matching the mockup at
+ *   ai-meal-planner/mise/html-mockups-initial/mise_meal_planner_plan_view.html
+ * The whole Plan view is one filled panel; sections inside (KPI strip, meal
+ * grid, cost-by-category) are transparent and separated only by 0.5px
+ * hairlines (--mise-panel-border, defined in styles.css).
+ */
 
-.mise-plan-main {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 16px;
+.mise-plan-panel {
+  background: var(--mise-panel-bg);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.mise-plan-sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  padding: 10px 16px 10px 0;
+  width: 100%;
+  box-sizing: border-box;
+  border-top: 0.5px solid var(--mise-panel-border);
+  border-bottom: 0.5px solid var(--mise-panel-border);
 }
 
 /* "No price data available." note shown when CostByCategoryPanel has nothing to plot. */
@@ -29,18 +24,22 @@
   color: var(--vaadin-secondary-text-color);
 }
 
-/* KPI strip */
+/* ── KPI strip ──────────────────────────────────────────────────────────── */
 .mise-kpi-strip {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 0.5px solid var(--mise-panel-border);
 }
 
 .mise-kpi-card {
-  flex: 1;
-  background: var(--vaadin-background-container);
-  border-radius: var(--vaadin-radius-m, 8px);
-  padding: 10px 12px;
+  padding: 10px 14px;
+  border-right: 0.5px solid var(--mise-panel-border);
   min-width: 0;
+  background: transparent;
+}
+
+.mise-kpi-card:last-child {
+  border-right: none;
 }
 
 .mise-kpi-label {
@@ -60,11 +59,17 @@
   color: var(--vaadin-body-text-color);
 }
 
-/* Meal grid */
+/* ── Body: meal grid + cost-by-category sidebar ─────────────────────────── */
+.mise-plan-body {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+}
+
 .mise-meal-grid {
-  background: var(--vaadin-background-container);
-  border-radius: var(--vaadin-radius-m, 8px);
-  overflow: hidden;
+  background: transparent;
+  border-right: 0.5px solid var(--mise-panel-border);
+  border-radius: 0;
+  padding: 2px 4px;
 }
 
 .mise-meal-row {
@@ -72,7 +77,7 @@
   align-items: center;
   padding: 10px 14px;
   gap: 12px;
-  border-bottom: 0.5px solid rgba(255,255,255,0.06);
+  border-bottom: 0.5px solid var(--mise-panel-border);
   min-height: 52px;
 }
 
@@ -81,7 +86,7 @@
 }
 
 .mise-meal-row.edited {
-  background: rgba(250, 238, 218, 0.28);
+  background: rgba(250, 238, 218, 0.18);
 }
 
 .mise-day-chip {
@@ -175,11 +180,17 @@
   flex-shrink: 0;
 }
 
-/* Cost by category panel */
+/* ── Cost-by-category sidebar ───────────────────────────────────────────── */
+.mise-plan-sidebar {
+  padding: 14px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
 .mise-category-panel {
-  background: var(--vaadin-background-container);
-  border-radius: var(--vaadin-radius-m, 8px);
-  padding: 12px 14px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
 }
 
 .mise-category-panel-title {
@@ -231,61 +242,156 @@
   text-align: right;
 }
 
-/* AI insight callout */
+/* AI insight paragraph — hairline-separated note below the bars, matching the
+   mockup at mise_meal_planner_plan_view.html:142-145. Not a filled callout.
+   Two flavours stack inside this section:
+     1) plain `.mise-ai-insight` — read-only local note (no buttons)
+     2) `.mise-ai-insight.mise-ai-insight-actionable` — the cross-view Mise insight
+        formerly rendered as a top banner: same shape + bulb icon + body, plus
+        inline Act-on-it and dismiss buttons. */
 .mise-ai-insight {
-  background: rgba(230, 241, 251, 0.08);
-  border-radius: var(--vaadin-radius-m, 8px);
-  padding: 10px 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--mise-panel-border);
+  background: transparent;
+  border-radius: 0;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 11px;
   color: var(--vaadin-secondary-text-color);
+  line-height: 1.5;
+}
+
+.mise-ai-insight + .mise-ai-insight {
+  /* Stack a second line under the first, separated by a hairline, with less
+     air than the first (which is offset from the bars above). */
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.mise-ai-insight-icon {
+  font-size: 13px;
+  width: 13px !important;
+  height: 13px !important;
+  flex-shrink: 0;
+  margin-top: 2px;
+  opacity: 0.85;
+}
+
+.mise-ai-insight-actionable .mise-ai-insight-icon {
+  color: var(--mise-info, hsl(200, 60%, 50%));
+  opacity: 0.95;
+}
+
+.mise-ai-insight-body {
+  flex: 1;
+  min-width: 0;
+  color: var(--vaadin-body-text-color);
+}
+
+/* Actionable insight: stack icon+body on row 1, action buttons right-aligned
+   on row 2. Keeps the sidebar (220px wide) legible — squeezing all four into
+   one row leaves the body with only ~70px and wraps to 5 lines. */
+.mise-ai-insight-actionable {
+  display: grid;
+  grid-template-columns: 13px 1fr auto auto;
+  grid-template-areas:
+    "icon body body body"
+    ".    .    act  dismiss";
+  align-items: start;
+  column-gap: 6px;
+  row-gap: 8px;
+}
+
+.mise-ai-insight-actionable .mise-ai-insight-icon  { grid-area: icon; }
+.mise-ai-insight-actionable .mise-ai-insight-body  { grid-area: body; }
+.mise-ai-insight-actionable .mise-ai-insight-act   { grid-area: act; }
+.mise-ai-insight-actionable .mise-ai-insight-dismiss { grid-area: dismiss; }
+
+/* Inline "Act on it" pill — info-blue accent so it reads as an AI affordance. */
+.mise-ai-insight vaadin-button.mise-ai-insight-act {
+  font-size: 10px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  padding: 0 9px !important;
+  border-radius: 10px !important;
+  background: rgba(100, 170, 220, 0.12) !important;
+  color: var(--vaadin-body-text-color) !important;
+  border: 1px solid rgba(100, 170, 220, 0.30) !important;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.mise-ai-insight vaadin-button.mise-ai-insight-act:hover {
+  background: rgba(100, 170, 220, 0.22) !important;
+}
+
+.mise-ai-insight vaadin-button.mise-ai-insight-dismiss {
+  font-size: 14px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  color: var(--vaadin-secondary-text-color) !important;
+  border: none !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.mise-ai-insight vaadin-button.mise-ai-insight-dismiss:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* ── Responsive overrides ────────────────────────────────────────────────── */
 
-/*
- * Tablet/mobile: the cost-by-category panel stacks BELOW the meal list.
- * Design system §"Responsive": "Side panels stack below. Same content, same colors."
- * We never hide the panel — only change the flex direction.
- */
+/* Tablet/mobile: cost-by-category stacks below the meal grid (still inside the same panel). */
 @media (max-width: 1023px) {
-  .mise-plan-layout {
-    flex-direction: column;
-    overflow-y: auto;
-    height: auto;
+  .mise-plan-body {
+    grid-template-columns: 1fr;
   }
-  .mise-plan-main {
-    overflow-y: visible;
-  }
-  .mise-plan-sidebar {
-    width: 100%;
-    padding: 0 16px 16px;
-    flex-shrink: 0;
-    overflow-y: visible;
-    box-sizing: border-box;
+  .mise-meal-grid {
+    border-right: none;
+    border-bottom: 0.5px solid var(--mise-panel-border);
   }
 }
 
 @media (max-width: 639px) {
+  /* KPI strip becomes a 2x2 grid; internal hairlines split the four cells. */
   .mise-kpi-strip {
-    display: grid;
     grid-template-columns: 1fr 1fr;
   }
-  .mise-plan-main {
-    padding: 10px;
+  .mise-kpi-card {
+    border-right: 0.5px solid var(--mise-panel-border);
+    border-bottom: none;
   }
-  .mise-plan-sidebar {
-    padding: 0 10px 16px;
-    box-sizing: border-box;
+  .mise-kpi-card:nth-child(2n) {
+    border-right: none;
+  }
+  .mise-kpi-card:nth-child(-n+2) {
+    border-bottom: 0.5px solid var(--mise-panel-border);
   }
 
-  /* M-8 fix: compact single-row meal item at mobile (grid: chip + info + pin) */
+  .mise-plan-sidebar {
+    padding: 12px 14px;
+  }
+
+  /* M-8 fix: compact single-row meal item at mobile.
+   * Grid: chip + info + tags + pin. The tags column is `auto`-sized and
+   * sits between meal-info (which ellipsis-truncates) and the pin button.
+   * Why?/undo inline buttons stay hidden — too wide for mobile rows. */
   .mise-meal-row {
     display: grid;
-    grid-template-columns: 32px 1fr 32px;
-    grid-template-areas: "chip info pin";
+    grid-template-columns: 28px minmax(0, 1fr) auto 32px;
+    grid-template-areas: "chip info tags pin";
     align-items: center;
     padding: 9px 10px;
     gap: 8px;
@@ -322,15 +428,21 @@
     max-width: 100%;
   }
 
-  /* Tags hidden on mobile — no room in 2-line budget */
+  /* Tags stay visible on mobile but compact: smaller pill, tighter gap.
+   * The why?/undo buttons inside this container are hidden separately below
+   * so only the real tag pills (veg / fish / edited) render here. */
   .mise-meal-tags {
-    display: none;
+    grid-area: tags;
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
   }
 
-  /*
-   * Row actions: only the pin button is shown on mobile.
-   * Positioned in the "pin" grid area; all other buttons hidden.
-   */
+  .mise-meal-tags .mise-tag {
+    font-size: 9px;
+    padding: 1px 6px;
+  }
+
   .mise-row-actions {
     grid-area: pin;
     display: flex;
@@ -339,8 +451,6 @@
     gap: 0;
   }
 
-  /* On mobile hide all row-action buttons EXCEPT the pin button.
-     Pin button is identified by data-testid="meal-action-pin". */
   .mise-row-actions vaadin-button {
     display: none;
   }
@@ -348,9 +458,11 @@
     display: inline-flex;
   }
 
-  /* Hide why? and undo buttons entirely on mobile */
+  /* Why?/undo inline buttons (hosted inside .mise-meal-tags) — hide them on
+   * mobile so only the small status pills show next to the pin. */
   .mise-row-why-btn,
-  .mise-row-undo-btn {
+  .mise-row-undo-btn,
+  .mise-meal-tags vaadin-button {
     display: none !important;
   }
 }

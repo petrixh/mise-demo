@@ -60,15 +60,16 @@ Tags are sentence-case (`veg`, `fish`, `edited`), never uppercase. Section heade
 
 ### Neutrals
 
-The mockups use a standard surface hierarchy: primary surface for cards and the main canvas, a secondary surface for grouped containers like the chat dock and KPI cards, and a tertiary surface for the page background that sits behind cards.
+The mockups use a two-step surface hierarchy: a slightly lighter **panel** surface for the view content (Plan, Shopping, Reports), and a one-step-darker **chrome** surface for the persistent app frame (header, tabs, chat dock). The page background sits behind everything.
 
-- Primary surface: cards, main canvas — the brightest surface, where content lives
-- Secondary surface: chat dock, KPI cards, toggle tracks — subtle one-step-darker grouping
-- Tertiary surface: page background behind cards — the furthest-back layer
-- Border tertiary: `0.5px` hairlines at low alpha — the default for almost every divider
+- Panel surface: the view's main canvas — slightly lighter, hosts content
+- Chrome surface: header, tabs, chat dock — one step darker, frames the app
+- Border tertiary: `0.5px` hairlines at low alpha — the default for almost every divider, both around panels and between internal sections
 - Border secondary: slightly stronger — used for hover, focus, and the active tab indicator
 
-The exact values come from the underlying theme. The hierarchy is what matters: three surface levels, two border weights.
+These two surfaces must be **opaque solid colors**, not translucent overlays. The persistent chat dock is fixed-positioned over the view; if its background is translucent, scrolling content bleeds through and the dock reads as transparent. The implementation declares them as the two app-level custom properties `--mise-chrome-bg` and `--mise-panel-bg` (see "Implementation note" below) instead of relying on `--vaadin-background-container`, which Aura defines as a ~4% translucent overlay.
+
+The hierarchy is what matters: two opaque surface levels (chrome darker, panel lighter), separated by a hairline, with two border weights.
 
 ### Color rules summarized
 
@@ -130,17 +131,34 @@ These aren't strict rules, but they're the values used across the mockups and wo
 
 ### Grids
 
-Desktop uses a `1fr 220px` split for the Plan view (meal list + side panel), and `1fr 1fr` for the Reports view's chart row.
+Desktop uses a `1fr 220px` split for the Plan view (meal list + side panel), and `1fr 1fr` for the Reports view's chart row. The split lives **inside** the view panel — the two columns share the panel's background and are separated only by a `border-right` hairline on the left column, not by a gap.
 
-Mobile uses single column for everything except the KPI strip, which becomes `1fr 1fr` (2x2 grid). This is the only place where mobile makes a layout decision that's specifically a *responsive* choice rather than just stacking what desktop had.
+Between ~640px and ~1023px the desktop split collapses to a single column inside the same panel, with the column hairline moving from right to bottom of the upper section. This is the tablet midpoint; the panel itself stays edge-to-edge.
+
+Below 640px the KPI strip becomes a `1fr 1fr` 2x2 grid (the only layout that explicitly reshapes for responsive rather than just stacking). The right-side sidebar from desktop stacks below the main list, still inside the same panel and still separated by a hairline rather than a gap.
 
 ## Recurring component patterns
 
 These are the patterns that show up across views and should be reused rather than reinvented.
 
+### View panel
+
+Every primary view (Plan, Shopping, Reports) is rendered as **one filled panel** on the panel surface, with internal sections separated only by 0.5px hairlines and no gaps. The panel is the only rounded/bordered container; the sections inside it (KPI strip, list, sidebar, chart, leaderboard) have transparent backgrounds. The persistent chat dock sits below the panel on the chrome surface, visually distinct.
+
+This is a deliberate departure from a "stack of cards" layout. Three separate cards with gaps between them implies three loosely-related things; one panel with internal dividers implies one coherent dataset (the week / the time window / the shopping list) viewed through several lenses. The mockups consistently use the single-panel approach — see `mise_meal_planner_plan_view.html` and `mise_meal_planner_reports_view.html` — and it's what gives each view its "single object" feel.
+
+Section ordering inside the panel, top to bottom:
+
+1. **KPI strip** — four cells across with vertical hairlines (2×2 with internal hairlines on mobile). Bottom hairline closes the strip off from the body.
+2. **Body** — the largest content region. Plan uses a `1fr 220px` split (meal list + cost-by-category sidebar) with a vertical hairline between columns. Reports uses a `1fr 1fr` split (cost trend + cost-by-category donut). Shopping uses a single column. Below ~1023px the split collapses and the column hairline moves to the bottom of the upper section.
+3. **Secondary content** — Reports' per-meal leaderboard is a full-width row beneath the chart row, separated by a horizontal hairline.
+4. **AI insights** — non-dismissable in-context insight at the bottom of the panel, hairline-separated from the content above. See "AI insight callout" below.
+
+Mobile keeps the same vertical order but everything stacks into one column inside the same panel.
+
 ### KPI card
 
-Background-secondary surface, rounded corners, no border. Small uppercase label on top, headline number below. On desktop they're in a horizontal strip with internal dividers; on mobile they're a 2x2 grid with gaps. The number can carry an inline delta (`−4%`) in a status color when the trend is meaningful.
+Inside the view panel, the KPI strip is a four-column grid (desktop) or 2×2 grid (mobile). Each cell has no background of its own — it sits on the panel surface — and is separated from its neighbours by a 0.5px hairline (right border on desktop, internal grid hairlines on mobile). Small uppercase label on top, headline number below. The number can carry an inline delta (`−4%`) in a status color when the trend is meaningful.
 
 ### Meal row (Plan view)
 
@@ -162,13 +180,39 @@ Reserved for one specific use: the AI's recommended choice on the Shopping view.
 
 ### AI insight callout
 
-A pale info-blue panel with a bulb icon and a short observation: *"Your cheaper weeks all had three vegetarian dinners. Worth locking in?"* Uses the info color family but is visually quieter than the recommendation card — no thick border, no headline. The intent is "noticing", not "instructing."
+Insights have one canonical home: **inside the view panel that produced them**, at the bottom of the relevant section. There are two flavours that can coexist:
 
-Insights should be dismissable (assume an `×` even if not drawn) and should never stack — show one at a time.
+1. **Quiet annotation** — non-dismissable, no buttons. A `ti-info-circle` icon and one sentence of secondary text, separated from the content above by a `border-top` hairline. Used to surface a contextual observation about what the section already shows ("Tuna Pasta Bake on Tuesday accounts for 20% of pantry cost. Ask Mise for a cheaper swap." beneath the cost-by-category bars on Plan).
+2. **Actionable suggestion** — same shape (icon + body, hairline above), plus inline `Act on it` pill and `×` dismiss. Layout uses a small grid: icon + body on row 1, action buttons right-aligned on row 2, so a narrow sidebar (Plan's 220px right column) stays legible. The bulb icon (`ti-bulb`) signals "Mise is suggesting", not just "Mise noticed". Used for cross-view recommendations like "Your cheaper weeks all had three vegetarian dinners — worth locking in?".
+
+Both flavours share the same info-blue accent on the icon and the "noticing, not instructing" tone. Quiet annotations precede actionable suggestions when both appear; only one actionable suggestion shows per view at a time.
+
+The **Reports view** places its insight (currently the quiet annotation flavour, with the `ti-bulb` icon and an "AI INSIGHT" uppercase label preceding the body) at the very bottom of the panel, beneath the leaderboard, hairline-separated. This sits where the eye naturally lands after reading the table — *"and here's what stands out in this data"* — so don't move it back to the top.
+
+The global top-of-view banner that older mockups showed between tabs and the panel has been retired in favor of these in-panel insights. The only view that still uses the legacy top-banner is Shopping, until it grows its own bottom-of-panel insights area. New views should ship with the in-panel pattern from the start.
+
+### Charts (Reports)
+
+Two charts live in the Reports panel: a weekly cost trend (line) and a cost-by-category breakdown (donut, with bar/column variants the AI can switch into via tools). Theming rules that apply to every chart:
+
+- **Canvas background is transparent** so the panel surface reads through. Charts must not paint their own surface — that produces a darker rectangle inside the panel that breaks the "single object" illusion.
+- **Series colors come from data**, not chart order. For the cost-by-category donut/bar, each slice/bar takes its category's `--mise-category-*` color (per-item override). The trend line picks a single brand-aligned hue (Protein purple) since it's a single series. Don't let Highcharts cycle through its default palette.
+- **Axis chrome uses panel-border + secondary text colors.** Axis lines, tick marks, and grid lines all use the same `0.5px`-style hairline tone as the panel's internal dividers. Tick labels and titles use the panel's secondary text color at `10–11px` — readable without competing with the data.
+- **Legend over data labels** for the donut. Connector-line callouts crowd the chart and clip on narrow viewports. A vertical legend on the right side (`{name} {percentage}%` per row) is more compact and matches the mockup. Pie series in Highcharts default to `showInLegend: false` — flip it explicitly.
+
+These rules belong in **one place** (a single chart-theme helper), not per-chart. That way a new chart added later inherits the look without re-deriving it.
 
 ### Chat dock
 
-Sits at the bottom of every view. Two parts: a recent AI message above (single line, secondary color, sparkle icon prefix) and an input pill below. The input pill has, left to right: plus icon (attach), placeholder text, microphone, send arrow. Placeholder text is view-specific ("Ask Mise…", "Add a column, change a chart…", "Ask about prices, alternatives…") and is a quiet hint about what the AI can do here.
+Sits at the bottom of every view, on the **chrome surface** (one step darker than the panel above it) with a top hairline and a soft top-shadow that lifts it visually. The dock is `position: fixed` so it never scrolls with the view — the view itself reserves bottom padding to keep its last row reachable. The dock must be **fully opaque**; if its background is translucent, the meal grid bleeds through and the conversation becomes unreadable.
+
+**Collapsed state** (default): a single line of "last AI reply" preview with the sparkle icon, plus the input pill below. The input pill has, left to right: plus icon (attach), placeholder text, microphone, send arrow. Placeholder text is view-specific ("Ask Mise…", "Add a column, change a chart…", "Ask about prices, alternatives…") and is a quiet hint about what the AI can do here.
+
+**Expanded state** (input focused): the dock grows upward to reveal a scrollable message history above the input. The history shares the dock's chrome background — same color, fully opaque — so it visually merges into one expanded surface.
+
+**Message alignment.** User turns are right-aligned (avatar and username on the right, bubble flush to the right edge, max-width ~85%). Mise turns are left-aligned with the same max-width. Right-alignment is real positioning, not just avatar reordering: the bubble has `margin-left: auto` so its right edge meets the dock's right padding. This makes the conversation legible at a glance — *which side spoke* is encoded by position, the same way every other chat UI does it.
+
+**AI working / error indicator.** While a turn is in flight the dock carries an `.ai-working` state: the sparkle icon shimmers and the most recent avatar gets a slow blue glow ring. If the LLM endpoint cannot be reached (Spring AI returns a null/blank response), the dock switches to an `.ai-error` state — the same shimmer and glow, but in the system **error** color instead of info-blue — and a one-line error Notification appears at the bottom. The error state clears automatically on the next successful submit. Use the error color *only* here and in the Notification; never elsewhere as a decoration.
 
 The chat dock is identical between desktop and mobile. This is deliberate — it's the most consistent, most important interaction in the app, and varying it by viewport would undercut the "one chat, many views" pitch.
 
@@ -176,9 +220,19 @@ The chat dock is identical between desktop and mobile. This is deliberate — it
 
 A segmented control on a secondary-surface track. Active segment gets a white fill, `0.5px` border, weight 500; inactive segments are secondary-color text only. Used for the `One store / Cheapest mix` decision on Shopping; could appear elsewhere when there's a binary view choice that's part of state (e.g. `Bar / Donut` for the category chart in Reports).
 
+### Header (brand · week nav · tabs)
+
+The app header is one chrome-surface row with three groups:
+
+- **Brand** (left) — the Tabler `ti-tools-kitchen-2` icon and the "Mise" wordmark, side by side. The icon's stroke is `currentColor`, so it follows the wordmark color in any theme — inline the SVG, do not use `<img>`. Brand sits flush against the left padding.
+- **Week navigator** (left-aligned next to the brand on desktop) — `‹ Week of <date> ›` as a small pill. On mobile, the nav stays on the same row but centers between the brand and the right padding. Prev/next chevrons are always visible (even when disabled) since they communicate that weeks are scrollable.
+- **Tabs** (right) — three labels (Plan, Shopping, Reports). The active tab has an outline-pill on desktop (`0.5px` border + panel-bg fill + weight 500) and a `2px` underline on mobile, where the tabs wrap to a full-width second row with equal thirds. Inactive tabs are secondary-color text. Tabs are top-anchored on both viewports — explicitly *not* a bottom tab bar — because the chat dock owns the bottom of the screen.
+
+There is **no budget pill or other right-hand accessory** in the header. Anything that needs to appear there (settings, household switcher) belongs in a menu inside the brand cluster, not inline next to the tabs.
+
 ### Tabs
 
-Top of every view: three equal-width segments (Plan, Shopping, Reports). Active tab has a `2px` bottom border in primary text color and weight 500; inactive tabs are secondary color and no border. Tabs are top-anchored on both mobile and desktop — explicitly *not* a bottom tab bar — because the chat dock owns the bottom of the screen.
+See "Header" above for placement and active-state styling.
 
 ## Iconography
 
@@ -188,8 +242,14 @@ All icons in the mockups are from the Tabler icon set (outline style only, no fi
 - Section markers (chart-type indicators in panel labels): `14px`
 - AI sparkle icon (the recurring "this is from the AI" marker): `13-14px` inline, in secondary color
 - Navigation icons (top bar, chevrons): `16-20px`
+- Brand logo (`ti-tools-kitchen-2` in the header next to the "Mise" wordmark): `20px` desktop / `18px` mobile
 
-The sparkle icon (`ti-sparkles`) is the AI marker. It appears on the chat dock above the input, in the recommendation card label, in the AI insight callout, and on the "Mise added..." inline note in Reports. Reserve it for genuinely AI-generated content. Don't sprinkle it decoratively.
+Two icons carry semantic weight and should not be reused decoratively:
+
+- **`ti-sparkles`** is the AI marker. It appears on the chat dock above the input, in the recommendation card label, and on the "Mise added…" inline note in Reports. Reserve it for genuinely AI-generated content.
+- **`ti-bulb`** marks AI *insights* specifically (vs. AI *actions*). It sits at the start of the AI insight callouts described above.
+
+The brand logo SVG must be **inlined** (not loaded via `<img>`) so its `stroke="currentColor"` follows the wordmark text color across themes. A copy of the SVG also lives at `/icons/tools-kitchen-2.svg` for any external reference (favicons, social cards, etc.).
 
 ## Responsive
 
@@ -213,10 +273,15 @@ The colors, sizes, and rules above describe intent. They are not literal values 
 
 A few principles for mapping:
 
-**Use the theme's tokens where they correspond.** Surface colors, border colors and weights, border radii, type scale, and the four standard status colors (info, success, warning, danger) almost certainly already exist in the theme. Use them. Don't redefine them with literal hex values.
+**Use the theme's tokens where they correspond.** Border weights, border radii, type scale, and the four standard status colors (info, success, warning, danger) almost certainly already exist in the theme. Use them. Don't redefine them with literal hex values.
 
-**Define category colors as application-level custom properties.** The five category colors (Protein, Produce, Pantry, Dairy, Other) are a Mise-specific palette and don't correspond to anything a generic theme provides. They should be declared once as custom properties — `--mise-category-protein`, `--mise-category-produce`, etc. — and referenced from charts, pills, badges, and any other place a category appears. Each category needs the same three values used in the table above: a fill, a strong stroke/accent, and a text-on-fill.
+**Define application-level tokens where the theme can't be relied on.** Three categories of token currently need to be declared by Mise itself in `styles.css`:
 
-**Where mockup hex values diverge from theme defaults, prefer the theme.** Visual consistency with the surrounding ecosystem matters more than pixel-matching these mockups. The mockups exist to communicate intent; the theme provides the polish.
+- `--mise-chrome-bg` and `--mise-panel-bg` — the two opaque surface levels (chrome darker, panel lighter). Vaadin's Aura theme defines `--vaadin-background-container` as a translucent overlay rather than a solid color, which makes the fixed chat dock appear transparent when stacked over a view panel. Declaring opaque chrome/panel tokens at the app level avoids that. Use `light-dark()` so they switch with the page color scheme.
+- `--mise-panel-border` — the hairline separator used inside view panels and around the chat dock. Centralising it keeps every internal divider consistent.
+- `--mise-category-protein`, `--mise-category-produce`, `--mise-category-pantry`, `--mise-category-dairy`, `--mise-category-other` — the five Mise-specific category colors. Each declared once at the app level and referenced from charts, pills, badges, and any other place a category appears. Each category needs the same three values used in the color table above: a fill, a strong stroke/accent, and a text-on-fill.
+- `--mise-info` and `--mise-error` — the AI working / error indicator colors, used by the chat dock animations and matching error Notifications. Kept as app tokens so the indicator can move in lockstep with the rest of the visual language.
+
+**Where mockup hex values diverge from theme defaults, prefer the theme.** Visual consistency with the surrounding ecosystem matters more than pixel-matching these mockups. The mockups exist to communicate intent; the theme provides the polish. The exception is when a theme's default is functionally wrong for the pattern — a translucent surface where the design calls for an opaque one, for example. In that case, declare an app-level token rather than fighting the theme inline on every selector.
 
 **The semantic rules survive any theme.** "The Thursday edited row uses the attention color" is true whether the attention color is amber, peach, or pale rose. "The recommendation card uses a 2px border in the info color" is true regardless of what hex info is. The visual language is about *which color goes where*, not *what color it is*.
