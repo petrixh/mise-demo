@@ -77,9 +77,20 @@
   border-radius: 50% !important;
   background: transparent !important;
   border: none !important;
-  color: var(--vaadin-secondary-text-color) !important;
+  color: var(--vaadin-body-text-color) !important;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.mise-header-week-nav-btn:hover:not([disabled]) {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.mise-header-week-nav-btn[disabled] {
   cursor: default;
-  opacity: 0.35;
+  opacity: 0.3;
 }
 
 .mise-week-badge {
@@ -91,6 +102,44 @@
   background: rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mise-week-badge:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* UC-010: past (HISTORICAL) week — muted text, dotted underline */
+.mise-week-badge--past {
+  color: var(--vaadin-secondary-text-color);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+/* UC-010: future (PLANNED) week — italic, accent border (forward-compat for UC-011) */
+.mise-week-badge--future {
+  font-style: italic;
+  border: 1px solid var(--vaadin-selection-color, #1676F3);
+}
+
+/* UC-010: brand cluster is now interactive (home shortcut) */
+.mise-brand {
+  cursor: pointer;
+}
+
+.mise-brand:hover .mise-brand-wordmark {
+  opacity: 0.8;
+}
+
+/* UC-010: DatePicker used as overlay only — hide the input field */
+.mise-week-datepicker {
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  position: absolute;
+  pointer-events: none;
 }
 
 /* ── Tabs ──────────────────────────────────────────────────────────────── */

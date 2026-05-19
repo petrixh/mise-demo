@@ -22,6 +22,7 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.example.mise.ui.ViewedWeekService;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.BeforeLeaveEvent;
@@ -57,6 +58,7 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
     private final ViewPreferenceService viewPreferenceService;
     private final ReportsRefreshBroadcaster refreshBroadcaster;
     private final InsightService insightService;
+    private final ViewedWeekService viewedWeekService;
 
     /** Main content area — cleared and rebuilt on each refresh. */
     private final Div contentArea = new Div();
@@ -64,16 +66,21 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
     /** Hook registered with the broadcaster so we can deregister the exact lambda on leave. */
     private Runnable refreshHook;
 
+    /** UC-010: the week start date to display (null = most recent plan). */
+    private java.time.LocalDate viewedWeekStart;
+
     public ReportsView(HouseholdService householdService,
                        ReportService reportService,
                        ViewPreferenceService viewPreferenceService,
                        ReportsRefreshBroadcaster refreshBroadcaster,
-                       InsightService insightService) {
+                       InsightService insightService,
+                       ViewedWeekService viewedWeekService) {
         this.householdService = householdService;
         this.reportService = reportService;
         this.viewPreferenceService = viewPreferenceService;
         this.refreshBroadcaster = refreshBroadcaster;
         this.insightService = insightService;
+        this.viewedWeekService = viewedWeekService;
 
         setId("mise-reports-view");
         getElement().setAttribute("data-testid", "reports-view");
@@ -107,6 +114,20 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         if (!householdService.exists()) {
             event.forwardTo("welcome");
             return;
+        }
+        // UC-010: resolve the viewed week from the ?week= query param
+        String weekParam = event.getLocation().getQueryParameters()
+                .getParameters().getOrDefault("week", java.util.List.of()).stream()
+                .findFirst().orElse(null);
+        if (weekParam != null && !weekParam.isBlank()) {
+            try {
+                var any = java.time.LocalDate.parse(weekParam.trim());
+                viewedWeekStart = viewedWeekService.snapToMonday(any);
+            } catch (Exception ignored) {
+                viewedWeekStart = null;
+            }
+        } else {
+            viewedWeekStart = null;
         }
         loadAndRender(false);
     }
@@ -151,7 +172,7 @@ public class ReportsView extends VerticalLayout implements BeforeEnterObserver, 
         chartRow.addClassName("mise-reports-chart-row");
         chartRow.add(buildCostTrendWidget(trend, hh.getId(), highlight));
 
-        CategoryBreakdown breakdown = reportService.computeCategoryBreakdown(hh.getId(), null);
+        CategoryBreakdown breakdown = reportService.computeCategoryBreakdown(hh.getId(), viewedWeekStart);
         Map<String, Object> chartPrefs = viewPreferenceService
                 .getSettings(hh.getId(), ViewPreference.View.REPORTS, "categoryBreakdown")
                 .orElse(Map.of());

@@ -110,6 +110,50 @@ public class ShoppingService {
         return deriveList(householdId, null);
     }
 
+    /**
+     * UC-010: Derives the shopping list for a specific plan (viewed week).
+     * Falls back to the active-plan logic when planId is null.
+     */
+    @Transactional(readOnly = true)
+    public ShoppingList deriveListForPlan(Long householdId, Long planId, StoreMode storeModeOverride) {
+        if (planId == null) return deriveList(householdId, storeModeOverride);
+
+        StoreMode storeMode = resolveStoreMode(householdId, storeModeOverride);
+        var contributions = collectPlanIngredientsForPlan(planId);
+        var consolidated = consolidate(contributions);
+        var pantryItems = pantryService.findByHousehold(householdId);
+        var subtracted = subtractPantry(consolidated, pantryItems);
+        var pantrySection = buildPantrySection(pantryItems, contributions);
+        addExtraItems(householdId, subtracted);
+        var allStores = priceCatalog.findAllStores();
+        Store recommendedStore = resolveRecommendedStore(subtracted, allStores, storeMode);
+        priceItems(subtracted, allStores, recommendedStore, storeMode);
+        var aisleGroups = groupByAisle(subtracted);
+        BigDecimal totalCost = computeTotalCost(subtracted, recommendedStore, allStores, storeMode);
+        return new ShoppingList(aisleGroups, pantrySection, totalCost, recommendedStore, storeMode);
+    }
+
+    /**
+     * UC-010: Collects plan ingredients for a specific plan id (viewed week).
+     */
+    public Map<String, List<Contribution>> collectPlanIngredientsForPlan(Long planId) {
+        var meals = planService.findMeals(planId);
+        Map<String, List<Contribution>> map = new LinkedHashMap<>();
+        for (var meal : meals) {
+            var recipeOpt = recipeCatalog.findById(meal.getRecipeRef());
+            if (recipeOpt.isEmpty()) continue;
+            var recipe = recipeOpt.get();
+            if (recipe.getIngredients() == null) continue;
+            for (var ing : recipe.getIngredients()) {
+                String key = ing.getName().toLowerCase().trim();
+                map.computeIfAbsent(key, k -> new ArrayList<>())
+                        .add(new Contribution(ing.getName(), ing.getQuantity(), ing.getUnit(),
+                                normaliseAisle(ing.getAisle()), recipe.getId()));
+            }
+        }
+        return map;
+    }
+
     // ── internal / package-visible step implementations ───────────────────────
 
     private StoreMode resolveStoreMode(Long householdId, StoreMode override) {

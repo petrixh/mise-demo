@@ -10,6 +10,8 @@ import com.example.mise.domain.plan.MealEdit;
 import com.example.mise.domain.plan.MealSwapRequest;
 import com.example.mise.domain.plan.PinnedMealException;
 import com.example.mise.domain.plan.PlanService;
+import com.example.mise.ui.ViewedWeekService;
+import com.example.mise.ui.ViewedWeekState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
@@ -39,17 +41,23 @@ public class PlanTools {
     private final RecipeCatalog recipeCatalog;
     private final PriceCatalog priceCatalog;
     private final MealCostCalculator mealCostCalculator;
+    private final ViewedWeekService viewedWeekService;
+    private final ViewedWeekState viewedWeekState;
 
     public PlanTools(HouseholdService householdService,
                      PlanService planService,
                      RecipeCatalog recipeCatalog,
                      PriceCatalog priceCatalog,
-                     MealCostCalculator mealCostCalculator) {
+                     MealCostCalculator mealCostCalculator,
+                     ViewedWeekService viewedWeekService,
+                     ViewedWeekState viewedWeekState) {
         this.householdService = householdService;
         this.planService = planService;
         this.recipeCatalog = recipeCatalog;
         this.priceCatalog = priceCatalog;
         this.mealCostCalculator = mealCostCalculator;
+        this.viewedWeekService = viewedWeekService;
+        this.viewedWeekState = viewedWeekState;
     }
 
     /**
@@ -558,13 +566,19 @@ public class PlanTools {
 
     // ─────────────────────── helpers ────────────────────────────────────────
 
+    /**
+     * UC-010 (BR-06): returns the viewed plan when a week is selected, otherwise
+     * falls back to the household's ACTIVE plan. Chat tools call this so that
+     * "what's on Friday?" answers relative to the viewed week, not necessarily today.
+     */
     private com.example.mise.domain.plan.Plan getActivePlan() {
         try {
             var hh = householdService.findHousehold().orElse(null);
             if (hh == null) return null;
-            return planService.findActivePlan(hh.getId()).orElse(null);
+            return viewedWeekService.resolveViewedPlan(hh.getId(), viewedWeekState.getCurrentParam())
+                    .orElse(null);
         } catch (Exception e) {
-            log.warn("Error finding active plan: {}", e.getMessage());
+            log.warn("Error finding viewed/active plan: {}", e.getMessage());
             return null;
         }
     }

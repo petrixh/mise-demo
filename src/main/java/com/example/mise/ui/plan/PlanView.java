@@ -12,6 +12,7 @@ import com.example.mise.domain.plan.PinnedMealException;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
 import com.example.mise.ui.MainLayout;
+import com.example.mise.ui.ViewedWeekService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -44,12 +45,14 @@ public class PlanView extends VerticalLayout
     private final MealCostCalculator mealCostCalculator;
     private final PlanRefreshBroadcaster refreshBroadcaster;
     private final InsightService insightService;
+    private final ViewedWeekService viewedWeekService;
 
     private static final DateTimeFormatter FULL_DAY_FMT = DateTimeFormatter.ofPattern("EEEE");
 
     /** Held as a field so we can deregister the exact same lambda on detach. */
     private Runnable refreshHook;
 
+    /** UC-010: the plan to display — may be a historical plan, not necessarily ACTIVE. */
     private Plan activePlan;
 
 
@@ -61,7 +64,8 @@ public class PlanView extends VerticalLayout
                     ConversationService conversationService,
                     PlanTools planTools,
                     PlanRefreshBroadcaster refreshBroadcaster,
-                    InsightService insightService) {
+                    InsightService insightService,
+                    ViewedWeekService viewedWeekService) {
         this.householdService = householdService;
         this.planService = planService;
         this.recipeCatalog = recipeCatalog;
@@ -69,6 +73,7 @@ public class PlanView extends VerticalLayout
         this.mealCostCalculator = mealCostCalculator;
         this.refreshBroadcaster = refreshBroadcaster;
         this.insightService = insightService;
+        this.viewedWeekService = viewedWeekService;
         // conversationService and planTools are wired in MainLayout; kept as params for Spring DI
 
         setSizeFull();
@@ -96,8 +101,12 @@ public class PlanView extends VerticalLayout
             event.forwardTo("welcome");
             return;
         }
+        // UC-010: resolve the viewed plan from the ?week= query param (BR-03)
+        String weekParam = event.getLocation().getQueryParameters()
+                .getParameters().getOrDefault("week", java.util.List.of()).stream()
+                .findFirst().orElse(null);
         var household = householdService.findHousehold().orElseThrow();
-        activePlan = planService.findActivePlan(household.getId()).orElse(null);
+        activePlan = viewedWeekService.resolveViewedPlan(household.getId(), weekParam).orElse(null);
         buildUI();
         // Clear any undo strip that persisted from a previous AI swap in this session.
         // The strip re-appears only after the AI makes a new swap (via aiRefresh).
@@ -230,7 +239,14 @@ public class PlanView extends VerticalLayout
     private void aiRefresh() {
         var household = householdService.findHousehold().orElse(null);
         if (household == null) return;
-        activePlan = planService.findActivePlan(household.getId()).orElse(activePlan);
+        // UC-010: on AI refresh, keep the currently viewed plan (don't reset to ACTIVE)
+        if (activePlan != null) {
+            // re-read from DB in case it changed (e.g. a swap was applied)
+            activePlan = planService.findByWeekStartDate(household.getId(), activePlan.getWeekStartDate())
+                    .orElse(activePlan);
+        } else {
+            activePlan = planService.findActivePlan(household.getId()).orElse(null);
+        }
 
         // UC-004: detect meals edited by AI since the last refresh snapshot.
         // We look for meals whose lastEditedBy=AI and whose most-recent MealEdit

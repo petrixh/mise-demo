@@ -2,9 +2,11 @@ package com.example.mise.ui.shopping;
 
 import com.example.mise.capabilities.pricing.PriceCatalog;
 import com.example.mise.domain.household.HouseholdService;
+import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.preferences.ViewPreference;
 import com.example.mise.domain.preferences.ViewPreferenceService;
 import com.example.mise.domain.shopping.*;
+import com.example.mise.ui.ViewedWeekService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.details.Details;
@@ -38,6 +40,7 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
     private final PantryService pantryService;
     private final ViewPreferenceService viewPreferenceService;
     private final ShoppingRefreshBroadcaster refreshBroadcaster;
+    private final ViewedWeekService viewedWeekService;
     private final DetourEvaluator detourEvaluator;
     private final PriceCatalog priceCatalog;
 
@@ -56,13 +59,17 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
     /** Currently derived list (null before first load). */
     private ShoppingList currentList;
 
+    /** Currently viewed plan (null = active plan). Set in beforeEnter from ?week= param. */
+    private Plan viewedPlan;
+
     public ShoppingView(HouseholdService householdService,
                         ShoppingService shoppingService,
                         PantryService pantryService,
                         ViewPreferenceService viewPreferenceService,
                         ShoppingRefreshBroadcaster refreshBroadcaster,
                         DetourEvaluator detourEvaluator,
-                        PriceCatalog priceCatalog) {
+                        PriceCatalog priceCatalog,
+                        ViewedWeekService viewedWeekService) {
         this.householdService = householdService;
         this.shoppingService = shoppingService;
         this.pantryService = pantryService;
@@ -70,6 +77,7 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         this.refreshBroadcaster = refreshBroadcaster;
         this.detourEvaluator = detourEvaluator;
         this.priceCatalog = priceCatalog;
+        this.viewedWeekService = viewedWeekService;
 
         setSizeFull();
         setPadding(false);
@@ -95,6 +103,14 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
             event.forwardTo("welcome");
             return;
         }
+        // UC-010: resolve the viewed plan from the ?week= query param
+        String weekParam = event.getLocation().getQueryParameters()
+                .getParameters().getOrDefault("week", java.util.List.of()).stream()
+                .findFirst().orElse(null);
+        var hhOpt = householdService.findHousehold();
+        if (hhOpt.isPresent()) {
+            viewedPlan = viewedWeekService.resolveViewedPlan(hhOpt.get().getId(), weekParam).orElse(null);
+        }
         loadAndRender();
     }
 
@@ -114,7 +130,12 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
                 })
                 .orElse(StoreMode.ONE_STORE);
 
-        currentList = shoppingService.deriveList(hh.getId(), currentStoreMode);
+        // UC-010: derive list for the viewed plan when one is selected (BR-03)
+        if (viewedPlan != null) {
+            currentList = shoppingService.deriveListForPlan(hh.getId(), viewedPlan.getId(), currentStoreMode);
+        } else {
+            currentList = shoppingService.deriveList(hh.getId(), currentStoreMode);
+        }
         buildUI(hh.getId(), currentList);
     }
 
@@ -583,7 +604,12 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         if (hhOpt.isEmpty()) return;
         var hh = hhOpt.get();
 
-        currentList = shoppingService.deriveList(hh.getId(), currentStoreMode);
+        // UC-010: respect the viewed plan during AI-triggered refreshes
+        if (viewedPlan != null) {
+            currentList = shoppingService.deriveListForPlan(hh.getId(), viewedPlan.getId(), currentStoreMode);
+        } else {
+            currentList = shoppingService.deriveList(hh.getId(), currentStoreMode);
+        }
         buildUI(hh.getId(), currentList);
     }
 
