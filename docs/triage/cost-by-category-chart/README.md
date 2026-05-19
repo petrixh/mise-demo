@@ -20,7 +20,8 @@ document captures what was tried and what failed so we can revisit later.
 
 Match `ai-meal-planner/mise/Plan-desktop.png`: each row stacks the category
 **name** + **€value** on the top line and a thin proportional **bar** below.
-See `Design.png` next to this file.
+See [`design.png`](./design.png) for the target and [`actual.png`](./actual.png)
+for what the chart-based attempt produced.
 
 ```
 Protein                €32.10
