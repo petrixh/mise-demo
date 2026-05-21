@@ -12,7 +12,7 @@
         <vaadin.version>25.2.0-alpha5</vaadin.version>
         <!-- Vaadin AI components 25.2.0-alpha5 are built against Spring AI 2.0.0-M4.
              Stay pinned to this milestone until Vaadin republishes against a newer one. -->
-        <spring-ai.version>2.0.0-M4</spring-ai.version>
+        <spring-ai.version>2.0.0-M6</spring-ai.version>
     </properties>
     
     <parent>
