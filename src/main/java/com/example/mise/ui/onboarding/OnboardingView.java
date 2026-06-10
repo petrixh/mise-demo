@@ -7,7 +7,7 @@ import com.example.mise.domain.household.HouseholdService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.ai.common.ChatMessage;
 import com.vaadin.flow.component.ai.orchestrator.AIOrchestrator;
-import com.vaadin.flow.component.ai.orchestrator.ResponseCompleteListener;
+import com.vaadin.flow.component.ai.orchestrator.ResponseListener;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
 import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
@@ -114,7 +114,7 @@ public class OnboardingView extends VerticalLayout implements BeforeEnterObserve
                 .withAssistantName("Mise")
                 .withTools(onboardingTools)
                 .withHistory(initialHistory, Map.of())
-                .withResponseCompleteListener(this::onResponseComplete);
+                .withResponseListener(this::onResponseComplete);
 
         this.orchestrator = builder.build();
 
@@ -146,7 +146,7 @@ public class OnboardingView extends VerticalLayout implements BeforeEnterObserve
         messageInput.getElement().callJsFunction("focus");
     }
 
-    private void onResponseComplete(ResponseCompleteListener.ResponseCompleteEvent event) {
+    private void onResponseComplete(ResponseListener.ResponseEvent event) {
         // Persist all new messages with ONBOARDING context
         conversationService.syncFromOrchestrator(
                 orchestrator.getHistory(),

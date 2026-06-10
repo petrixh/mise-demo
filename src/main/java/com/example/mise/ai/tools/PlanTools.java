@@ -584,8 +584,14 @@ public class PlanTools {
     }
 
     /**
-     * Resolves a day-name / "today" / "tomorrow" / ISO-date string to a LocalDate
-     * within the current week's Mon–Sun window.
+     * Resolves a day-name / "today" / "tomorrow" / ISO-date string to a LocalDate.
+     *
+     * <p>UC-010 (BR-06): day names resolve within the <b>viewed</b> plan's Mon–Sun
+     * window — when the user is looking at the week of May 18, "Friday" means
+     * May 22 even if the real-world week is different. "today"/"tomorrow"/
+     * "yesterday" stay calendar-relative: they name real days, and the
+     * surrounding tools answer "no meal planned" honestly when those days fall
+     * outside the viewed plan.
      */
     LocalDate resolveDate(String input) {
         if (input == null || input.isBlank()) return null;
@@ -602,8 +608,11 @@ public class PlanTools {
             return LocalDate.parse(input.trim());
         } catch (Exception ignored) {}
 
-        // Day name (full or abbreviated, English)
-        LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        // Day name (full or abbreviated, English) — anchored to the viewed plan's
+        // week when one is resolved, falling back to the real-world week.
+        LocalDate monday = java.util.Optional.ofNullable(getActivePlan())
+                .map(com.example.mise.domain.plan.Plan::getWeekStartDate)
+                .orElseGet(() -> today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
         var dayOffsets = new java.util.HashMap<String, Integer>();
         dayOffsets.put("monday", 0);   dayOffsets.put("mon", 0);
         dayOffsets.put("tuesday", 1);  dayOffsets.put("tue", 1);   dayOffsets.put("tues", 1);

@@ -4,7 +4,7 @@ import com.example.mise.ai.HouseholdOrchestrator;
 import com.example.mise.ai.tools.InsightTools;
 import com.example.mise.ai.tools.NavigationTools;
 import com.example.mise.ai.tools.PlanTools;
-import com.example.mise.ai.tools.ReportsTools;
+import com.example.mise.ai.tools.ReportingTools;
 import com.example.mise.ai.tools.ShoppingTools;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
 import com.example.mise.domain.conversation.ConversationMessageRepository;
@@ -55,7 +55,7 @@ public abstract class MiseAIIT {
     @Autowired protected ChatModel chatModel;
     @Autowired protected PlanTools planTools;
     @Autowired protected ShoppingTools shoppingTools;
-    @Autowired protected ReportsTools reportsTools;
+    @Autowired protected ReportingTools reportingTools;
     @Autowired protected NavigationTools navigationTools;
     @Autowired protected InsightTools insightTools;
 
@@ -147,24 +147,24 @@ public abstract class MiseAIIT {
     }
 
     /**
-     * Returns a {@link ChatClient} with PlanTools + ShoppingTools + ReportsTools.
+     * Returns a {@link ChatClient} with PlanTools + ShoppingTools + ReportingTools.
      * Used by UC-007 AI integration tests.
      */
     protected ChatClient reportsChat() {
         return ChatClient.builder(chatModel)
                 .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
-                .defaultTools(planTools, shoppingTools, reportsTools)
+                .defaultTools(planTools, shoppingTools, reportingTools)
                 .build();
     }
 
     /**
-     * Returns a {@link ChatClient} with PlanTools + ShoppingTools + ReportsTools + NavigationTools.
+     * Returns a {@link ChatClient} with PlanTools + ShoppingTools + ReportingTools + NavigationTools.
      * Used by UC-008 AI integration tests.
      */
     protected ChatClient navigationChat() {
         return ChatClient.builder(chatModel)
                 .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
-                .defaultTools(planTools, shoppingTools, reportsTools, navigationTools)
+                .defaultTools(planTools, shoppingTools, reportingTools, navigationTools)
                 .build();
     }
 
@@ -175,7 +175,7 @@ public abstract class MiseAIIT {
     protected ChatClient insightsChat() {
         return ChatClient.builder(chatModel)
                 .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
-                .defaultTools(planTools, shoppingTools, reportsTools, navigationTools, insightTools)
+                .defaultTools(planTools, shoppingTools, reportingTools, navigationTools, insightTools)
                 .build();
     }
 

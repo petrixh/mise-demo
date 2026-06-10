@@ -65,10 +65,10 @@ class WeekNavigationAIIT extends MiseAIIT {
      * Friday and an ACTIVE plan with {@value #ACTIVE_FRIDAY_RECIPE} on Friday.
      * Mock {@link ViewedWeekState#getCurrentParam()} to return last week's Monday
      * so {@code PlanTools.getActivePlan()} resolves to the historical plan.
-     * Because {@link com.example.mise.ai.tools.PlanTools#resolveDate} resolves
-     * day names against {@code LocalDate.now()}, we include the explicit ISO date
-     * of the historical Friday in the user prompt so the model can pass it directly
-     * to {@code findMealOnDay}.
+     * The prompt asks the natural question — plain "What's on Friday?" — because
+     * {@code PlanTools.resolveDate} anchors day names to the <b>viewed</b> plan's
+     * week (BR-06). This test used to smuggle the ISO date into the prompt to work
+     * around day names resolving against {@code LocalDate.now()}; that was the bug.
      */
     @Test
     void fridayQueryWhileViewingHistoricalWeekNamesHistoricalMeal() {
@@ -95,18 +95,14 @@ class WeekNavigationAIIT extends MiseAIIT {
             planService.swapMeal(historicalFriday.getId(), HISTORICAL_FRIDAY_RECIPE, "test setup");
         }
 
-        // Compute the ISO date of last Friday so the model can call findMealOnDay
-        // with a concrete date (day-name resolution is always relative to LocalDate.now()).
-        LocalDate lastFridayDate = lastMonday.plusDays(4); // Friday = Monday + 4
-
         // ── Mock the viewed week ──────────────────────────────────────────────
         // PlanTools calls viewedWeekState.getCurrentParam() which returns a String.
         when(viewedWeekState.getCurrentParam()).thenReturn(lastMonday.toString());
 
         // ── Chat round-trip ───────────────────────────────────────────────────
-        String prompt = String.format(
-                "I'm looking at the week of %s. What's on %s (Friday)?",
-                lastMonday, lastFridayDate);
+        // Plain day-name question: resolveDate must anchor "Friday" to the viewed
+        // (historical) week, not the real-world week (UC-010 BR-06).
+        String prompt = "What's for dinner on Friday?";
 
         long t0 = System.currentTimeMillis();
         var reply = planChat()

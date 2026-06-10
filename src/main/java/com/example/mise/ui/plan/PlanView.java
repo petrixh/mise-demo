@@ -1,5 +1,6 @@
 package com.example.mise.ui.plan;
 
+import com.example.mise.ui.shared.ViewRefreshBroadcaster;
 import com.example.mise.ai.tools.PlanTools;
 import com.example.mise.capabilities.pricing.PriceCatalog;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
@@ -43,7 +44,7 @@ public class PlanView extends VerticalLayout
     private final RecipeCatalog recipeCatalog;
     private final PriceCatalog priceCatalog;
     private final MealCostCalculator mealCostCalculator;
-    private final PlanRefreshBroadcaster refreshBroadcaster;
+    private final ViewRefreshBroadcaster refreshBroadcaster;
     private final InsightService insightService;
     private final ViewedWeekService viewedWeekService;
 
@@ -63,7 +64,7 @@ public class PlanView extends VerticalLayout
                     MealCostCalculator mealCostCalculator,
                     ConversationService conversationService,
                     PlanTools planTools,
-                    PlanRefreshBroadcaster refreshBroadcaster,
+                    ViewRefreshBroadcaster refreshBroadcaster,
                     InsightService insightService,
                     ViewedWeekService viewedWeekService) {
         this.householdService = householdService;
@@ -231,7 +232,7 @@ public class PlanView extends VerticalLayout
     }
 
     /**
-     * Called via UI.access() from the PlanRefreshBroadcaster after an AI turn completes.
+     * Called via UI.access() from the ViewRefreshBroadcaster after an AI turn completes.
      * Re-fetches the active plan so newly-swapped meals appear immediately.
      * UC-004: Also detects which meals were just edited in this turn and updates the
      * chat-reply undo strip in the MainLayout chat dock.

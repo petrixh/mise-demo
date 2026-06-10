@@ -1,5 +1,6 @@
 package com.example.mise.ui.shopping;
 
+import com.example.mise.ui.shared.ViewRefreshBroadcaster;
 import com.example.mise.capabilities.pricing.PriceCatalog;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.plan.Plan;
@@ -39,7 +40,7 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
     private final ShoppingService shoppingService;
     private final PantryService pantryService;
     private final ViewPreferenceService viewPreferenceService;
-    private final ShoppingRefreshBroadcaster refreshBroadcaster;
+    private final ViewRefreshBroadcaster refreshBroadcaster;
     private final ViewedWeekService viewedWeekService;
     private final DetourEvaluator detourEvaluator;
     private final PriceCatalog priceCatalog;
@@ -66,7 +67,7 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
                         ShoppingService shoppingService,
                         PantryService pantryService,
                         ViewPreferenceService viewPreferenceService,
-                        ShoppingRefreshBroadcaster refreshBroadcaster,
+                        ViewRefreshBroadcaster refreshBroadcaster,
                         DetourEvaluator detourEvaluator,
                         PriceCatalog priceCatalog,
                         ViewedWeekService viewedWeekService) {
@@ -596,7 +597,7 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
     }
 
     /**
-     * Called via UI.access() from the ShoppingRefreshBroadcaster after an AI turn
+     * Called via UI.access() from the ViewRefreshBroadcaster after an AI turn
      * or after a plan mutation (BR-08). Re-derives the list.
      */
     private void aiRefresh() {

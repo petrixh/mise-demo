@@ -1,6 +1,7 @@
 package com.example.mise.it;
 
-import com.example.mise.ai.tools.ReportsTools;
+import com.example.mise.ai.tools.ReportingTools;
+import com.example.mise.domain.preferences.ViewPreferenceService;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
 import com.example.mise.domain.conversation.ConversationMessageRepository;
 import com.example.mise.domain.household.Household;
@@ -32,8 +33,10 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
  * to /reports. AC-level assertions cover the deterministic UI surface only; LLM-driven
  * paths (natural-language chat triggers) are deferred to Phase 5a.
  *
- * <p>Tool-call seam tests ({@link ReportsTools}) call the Spring bean directly rather
- * than going through the AI, then reload /reports and assert visible state changes.
+ * <p>State-seam tests exercise the UC-012 persistence path directly: a saved
+ * {@code ViewPreference} query must restore into the controller-driven widgets on load
+ * (BR-10), and {@link ReportingTools#resetReportsWidget} must drop it again. The
+ * LLM-driven reshape path is verified against the live model, not here.
  *
  * <p>Cleanup in {@code @AfterEach} deletes rows in FK-safe order:
  * meal_edit → view_preference → conversation_message → meal → plan → household.
@@ -68,7 +71,10 @@ class ReportsViewIT extends MisePlaywrightIT {
     private ViewPreferenceRepository viewPreferenceRepository;
 
     @Autowired
-    private ReportsTools reportsTools;
+    private ReportingTools reportingTools;
+
+    @Autowired
+    private ViewPreferenceService viewPreferenceService;
 
     @Override
     public String getView() {
@@ -194,101 +200,63 @@ class ReportsViewIT extends MisePlaywrightIT {
                 .isGreaterThanOrEqualTo(1);
     }
 
-    // ── AC #2 + AC #3: add leaderboard column (tool-call seam) ───────────────
+    // ── UC-012 BR-10: persisted query restores into the grid ─────────────────
 
     /**
-     * AC #2 (tool-call seam): calling {@link ReportsTools#addLeaderboardColumn} directly
-     * then reloading /reports causes the "kcal/€" column header to appear in the leaderboard.
+     * BR-10 (state seam): a ViewPreference row holding a custom leaderboard SQL query
+     * must be restored into the Grid on load — the custom column header appears.
      */
     @Test
-    void addLeaderboardColumnAddsColumnToGrid() {
-        reportsTools.addLeaderboardColumn("kcalPerEuro");
-
-        page.navigate(getUrl() + "/reports");
-
-        // The column header "kcal/€" must be present in the leaderboard widget
-        var leaderboardGrid = page.getByTestId("leaderboard-grid");
-        assertThat(leaderboardGrid.getByText("kcal/€")).isVisible();
-    }
-
-    /**
-     * AC #3 (persistence): the "kcal/€" column added via the tool survives a page reload.
-     */
-    @Test
-    void columnSurvivesReload() {
-        reportsTools.addLeaderboardColumn("kcalPerEuro");
-
-        // First reload — column is added
-        page.navigate(getUrl() + "/reports");
-        assertThat(page.getByTestId("leaderboard-grid").getByText("kcal/€")).isVisible();
-
-        // Second reload — column must still be present (BR-04 persistence)
-        page.navigate(getUrl() + "/reports");
-        assertThat(page.getByTestId("leaderboard-grid").getByText("kcal/€")).isVisible();
-    }
-
-    // ── AC #6: reset widget removes added column ───────────────────────────────
-
-    /**
-     * AC #6: after adding the "kcal/€" column via the tool, calling
-     * {@link ReportsTools#resetWidget} then reloading /reports removes the column.
-     */
-    @Test
-    void resetWidgetRemovesColumn() {
-        reportsTools.addLeaderboardColumn("kcalPerEuro");
-
-        // Confirm the column was added
-        page.navigate(getUrl() + "/reports");
-        assertThat(page.getByTestId("leaderboard-grid").getByText("kcal/€")).isVisible();
-
-        // Reset the leaderboard widget — deletes the ViewPreference row
-        reportsTools.resetWidget("leaderboard");
-
-        // Reload — column must be gone
-        page.navigate(getUrl() + "/reports");
-        assertThat(page.getByTestId("leaderboard-grid").getByText("kcal/€")).not().isVisible();
-    }
-
-    // ── AC #4: transform category chart (persistence-level assertion) ──────────
-
-    /**
-     * AC #4 (tool-call seam): calling {@link ReportsTools#transformCategoryChart} with
-     * chartType="bar" and orientation="horizontal" persists a {@link ViewPreference} row
-     * with the correct settings JSON.
-     *
-     * <p>Visual chart-shape changes are not reliably assertable at the IT layer (Highcharts
-     * renders asynchronously into a {@code <canvas>}). The assertion is kept at the
-     * persistence layer per the coverage rules.
-     */
-    @Test
-    void transformCategoryChartUpdatesViewPreference() {
-        reportsTools.transformCategoryChart("bar", "horizontal");
-
+    void persistedLeaderboardQueryRestoresOnLoad() {
         var household = householdService.findHousehold().orElseThrow();
-        var prefOpt = viewPreferenceRepository.findByHouseholdIdAndViewAndWidgetKey(
-                household.getId(), ViewPreference.View.REPORTS, "categoryBreakdown");
+        viewPreferenceService.saveSettings(household.getId(), ViewPreference.View.REPORTS,
+                "leaderboard", java.util.Map.of("query",
+                        "SELECT recipe_name AS \"Meal\", COUNT(*) AS \"Cooked times\" "
+                        + "FROM meal_history GROUP BY recipe_name ORDER BY COUNT(*) DESC"));
 
-        Assertions.assertThat(prefOpt)
-                .as("AC #4: ViewPreference row for categoryBreakdown must exist after transform")
-                .isPresent();
-        Assertions.assertThat(prefOpt.get().getSettings())
-                .as("AC #4: settings must record chartType=bar")
-                .contains("\"chartType\":\"bar\"");
-        Assertions.assertThat(prefOpt.get().getSettings())
-                .as("AC #4: settings must record orientation=horizontal")
-                .contains("\"orientation\":\"horizontal\"");
+        page.navigate(getUrl() + "/reports");
+        assertThat(page.getByTestId("leaderboard-grid").getByText("Cooked times")).isVisible();
+
+        // Second reload — the customization survives (persistence, not session state)
+        page.navigate(getUrl() + "/reports");
+        assertThat(page.getByTestId("leaderboard-grid").getByText("Cooked times")).isVisible();
+    }
+
+    // ── UC-012 BR-10: reset drops the persisted state ─────────────────────────
+
+    /**
+     * BR-10 (reset seam): {@link ReportingTools#resetReportsWidget} deletes the
+     * ViewPreference row; after reload the widget is back on its default query.
+     */
+    @Test
+    void resetWidgetRevertsToDefaultQuery() {
+        var household = householdService.findHousehold().orElseThrow();
+        viewPreferenceService.saveSettings(household.getId(), ViewPreference.View.REPORTS,
+                "leaderboard", java.util.Map.of("query",
+                        "SELECT recipe_name AS \"Meal\", COUNT(*) AS \"Cooked times\" "
+                        + "FROM meal_history GROUP BY recipe_name ORDER BY COUNT(*) DESC"));
+
+        page.navigate(getUrl() + "/reports");
+        assertThat(page.getByTestId("leaderboard-grid").getByText("Cooked times")).isVisible();
+
+        reportingTools.resetReportsWidget("leaderboard");
+
+        page.navigate(getUrl() + "/reports");
+        assertThat(page.getByTestId("leaderboard-grid").getByText("Cooked times")).not().isVisible();
+        // Default query header is back
+        assertThat(page.getByTestId("leaderboard-grid").getByText("Times")).isVisible();
     }
 
     // ── Reset buttons are rendered (UI surface) ───────────────────────────────
 
     /**
-     * AC: the per-widget reset buttons for categoryBreakdown and leaderboard are present
-     * in the DOM (even when no customisation has been applied yet, the buttons are always
-     * rendered — see {@code buildWidgetShell(hasReset=true)} in ReportsView).
+     * AC: the per-widget reset buttons are present in the DOM (always rendered —
+     * see {@code widgetShell(...)} in ReportsView).
      */
     @Test
     void resetButtonsArePresentForCustomisableWidgets() {
-        assertThat(page.getByTestId("report-reset-categoryBreakdown")).isAttached();
+        assertThat(page.getByTestId("report-reset-trendChart")).isAttached();
+        assertThat(page.getByTestId("report-reset-categoryChart")).isAttached();
         assertThat(page.getByTestId("report-reset-leaderboard")).isAttached();
     }
 }

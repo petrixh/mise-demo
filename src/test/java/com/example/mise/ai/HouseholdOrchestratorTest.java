@@ -122,7 +122,8 @@ class HouseholdOrchestratorTest {
                 conversationService,
                 messageList,
                 messageInput,
-                null /* no response callback needed */
+                null /* no response callback needed */,
+                java.util.List.of() /* no controllers */
                 /* no tools */
         );
     }

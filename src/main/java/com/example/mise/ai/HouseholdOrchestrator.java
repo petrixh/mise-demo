@@ -2,11 +2,13 @@ package com.example.mise.ai;
 
 import com.example.mise.domain.conversation.ConversationMessage;
 import com.example.mise.domain.conversation.ConversationService;
+import com.vaadin.flow.component.ai.orchestrator.AIController;
 import com.vaadin.flow.component.ai.orchestrator.AIOrchestrator;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
 import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -21,7 +23,9 @@ import java.util.function.Consumer;
  *
  * <p>Tools are registered at build time via {@link AIOrchestrator.Builder#withTools}.
  * The tools array is passed in from {@link com.example.mise.ui.MainLayout} which
- * receives them as Spring beans (PlanTools, ShoppingTools, ReportsTools, NavigationTools).
+ * receives them as Spring beans (PlanTools, ShoppingTools, ReportingTools, NavigationTools).
+ * UC-012: the Reports chart/grid {@link AIController}s are registered the same way via
+ * {@link AIOrchestrator.Builder#withController}.
  *
  * <p><b>UC-008 per-view tool scoping:</b> {@code AIOrchestrator} only supports tool
  * registration at construction time (no runtime re-registration API). All tools are
@@ -59,7 +63,8 @@ public class HouseholdOrchestrator {
             - Tool scoping by view (all tools are registered globally but conceptually scoped):
               Plan tools (use when on /plan): swapMealOnDay, undoLastEdit, explainEdit, pinMeal, unpinMeal, negotiateMealOnDay, getCurrentPlan
               Shopping tools (use when on /shopping): addPantryItem, listPantryItems, addExtraToShoppingList, explainListSize, evaluateDetour, suggestPlanSwapForSavings
-              Reports tools (use when on /reports): addLeaderboardColumn, transformCategoryChart, explainWeekVsAverage, resetWidget
+              Reports widget tools (use when on /reports): trend_*/category_* chart tools, update_grid_data, get_grid_state, resetReportsWidget
+              Available from ANY view: queryReportingData and get_database_schema (read-only data questions about meal history and costs)
             - If the user is on /plan and asks for a Reports action (e.g. "add a kcal-per-euro column"), you MUST call goToView("reports") FIRST, then call the Reports tool. Both actions happen in one turn.
             - If the user is on /reports and asks for a Plan action, call goToView("plan") FIRST, then the Plan tool.
             - If the user is on /shopping and asks for an action from another view, call goToView with the correct view FIRST, then the tool.
@@ -85,12 +90,29 @@ public class HouseholdOrchestrator {
             - After any detour-driven swap, briefly summarize: old meal → new meal, what it saves, the new total. Keep it under 4 sentences.
             - If the user asks about a price that the catalog doesn't have, say "I don't have a price for X in the catalog" instead of inventing one (BR-01, anti-fabrication).
 
-            UC-007 Reports:
-            - The Reports view (/reports) has three widgets: weekly cost trend chart, cost-by-category chart, and a per-meal leaderboard grid.
-            - To add a derived column to the leaderboard, call addLeaderboardColumn (supported: kcalPerEuro). If the user asks for a non-derivable column (e.g., "carbon footprint"), tell them it isn't derivable and refuse — never fabricate values.
-            - To change the category chart shape ("show as bar", "make it horizontal"), call transformCategoryChart with chartType (donut|bar) and orientation (horizontal|vertical).
-            - To answer "why was last week cheaper/more expensive than usual", call explainWeekVsAverage and paraphrase. Cite concrete meals and categories from the result; never invent prices.
-            - To reset a customization, call resetWidget with widgetKey ("leaderboard"|"categoryBreakdown").
+            UC-007 / UC-012 Reports:
+            - The Reports view (/reports) has three AI-drivable widgets, addressable by name:
+              trendChart (chart; default: weekly total cost over time), categoryChart (chart;
+              default: cost by ingredient category, donut), leaderboard (data grid; default:
+              recipes by how often they appear).
+            - To RESHAPE a widget ("make the trend chart compare cost vs kcal", "rank the
+              leaderboard by kcal per euro", "show categories as a bar chart"), use the widget
+              tools: get_database_schema for the available tables, then the tool matching the
+              widget the user named — trend_update_chart_data_source / trend_update_chart_configuration
+              for the trend chart, category_update_chart_data_source / category_update_chart_configuration
+              for the category chart, update_grid_data for the leaderboard — with a SELECT against
+              that schema. See get_reports_widget_instructions for the full workflow.
+            - If a reshape request doesn't name a widget and is ambiguous, ask ONE clarifying
+              question (e.g. "which one — the trend chart, the category chart, or the
+              leaderboard?") before changing anything.
+            - To ANSWER data questions in chat ("why was last week more expensive than usual?",
+              "how often did I cook fish in May?"), call queryReportingData with a SELECT and
+              ground your answer in the returned rows. Cite concrete meals, weeks, and amounts
+              from the result; never invent prices or counts.
+            - If the user asks for data the schema doesn't have (e.g. "carbon footprint"), say so
+              and offer the closest real proxy (cost or kcal intensity). Never fabricate columns.
+            - "Reset the <widget>" → call resetReportsWidget with trendChart, categoryChart or
+              leaderboard.
 
             UC-009 Insights:
             - When the user says "mute insights" / "stop insights" / "no more insights", call muteInsights.
@@ -118,8 +140,13 @@ public class HouseholdOrchestrator {
     private volatile ConversationMessage.ViewContext currentView = ConversationMessage.ViewContext.PLAN;
 
     /**
-     * Builds the orchestrator with optional tools (e.g. PlanTools).
-     * Tools may be null or empty for contexts that don't require them.
+     * Builds the orchestrator with optional tools (e.g. PlanTools) and optional
+     * AI controllers (UC-012: the Reports chart/grid controllers).
+     *
+     * <p>Controllers must be supplied at build time — {@code AIOrchestrator.reconnect}
+     * exists only for the after-deserialization path, so there is no runtime
+     * attach/detach. Like the tool beans, controllers are registered globally and
+     * scoped to their view by the system prompt (UC-008 pattern).
      *
      * @param responseCompleteCallback optional; called on the background streaming thread
      *                                 with the latest assistant response text. The caller
@@ -131,6 +158,7 @@ public class HouseholdOrchestrator {
                                  MessageList messageList,
                                  MessageInput messageInput,
                                  Consumer<String> responseCompleteCallback,
+                                 List<AIController> controllers,
                                  Object... tools) {
         this.conversationService = conversationService;
         this.responseCompleteCallback = responseCompleteCallback;
@@ -141,10 +169,13 @@ public class HouseholdOrchestrator {
                 .withMessageList(messageList)
                 .withInput(messageInput)
                 .withAssistantName("Mise")
-                .withResponseCompleteListener(this::onResponseComplete);
+                .withResponseListener(this::onResponseComplete);
 
         if (tools != null && tools.length > 0) {
             builder.withTools(tools);
+        }
+        if (controllers != null) {
+            controllers.forEach(builder::withController);
         }
 
         if (!history.isEmpty()) {
@@ -187,7 +218,7 @@ public class HouseholdOrchestrator {
     }
 
     private void onResponseComplete(
-            com.vaadin.flow.component.ai.orchestrator.ResponseCompleteListener.ResponseCompleteEvent event) {
+            com.vaadin.flow.component.ai.orchestrator.ResponseListener.ResponseEvent event) {
         // Persist new messages stamped with the view the user was on when this turn completed.
         // currentView is updated by MainLayout's AfterNavigationObserver so it reflects the
         // actual route at the time of each response (UC-008, BR-03).
@@ -196,11 +227,12 @@ public class HouseholdOrchestrator {
 
         // Notify MainLayout (or any other caller) with the latest assistant text.
         // Runs on the background streaming thread; callers must wrap UI updates in ui.access().
-        // A null/blank response signals failure (Spring AI's OpenAiChatModel silently returns
-        // null when the endpoint is unreachable — see memory:project_spring_ai_base_url_no_v1).
+        // Beta1's ResponseEvent carries the error explicitly; a null/blank response is still
+        // treated as failure (Spring AI's OpenAiChatModel returns null when the endpoint is
+        // unreachable — see memory:project_spring_ai_base_url_no_v1).
         String response = event.getResponse();
-        boolean hasResponse = response != null && !response.isBlank();
-        if (hasResponse) {
+        boolean failed = event.getError().isPresent() || response == null || response.isBlank();
+        if (!failed) {
             if (responseCompleteCallback != null) {
                 responseCompleteCallback.accept(response);
             }

@@ -1,10 +1,11 @@
 package com.example.mise.ui;
 
 import com.example.mise.ai.HouseholdOrchestrator;
+import com.example.mise.ai.MiseDatabaseProvider;
 import com.example.mise.ai.tools.InsightTools;
 import com.example.mise.ai.tools.NavigationTools;
 import com.example.mise.ai.tools.PlanTools;
-import com.example.mise.ai.tools.ReportsTools;
+import com.example.mise.ai.tools.ReportingTools;
 import com.example.mise.ai.tools.ShoppingTools;
 import com.example.mise.domain.conversation.ConversationMessage;
 import com.example.mise.domain.conversation.ConversationService;
@@ -13,9 +14,9 @@ import com.example.mise.domain.insights.Insight;
 import com.example.mise.domain.insights.InsightService;
 import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
-import com.example.mise.ui.plan.PlanRefreshBroadcaster;
-import com.example.mise.ui.reports.ReportsRefreshBroadcaster;
-import com.example.mise.ui.shopping.ShoppingRefreshBroadcaster;
+import com.example.mise.domain.preferences.ViewPreferenceService;
+import com.example.mise.ui.reports.ReportsWidgets;
+import com.example.mise.ui.shared.ViewRefreshBroadcaster;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
 import com.vaadin.flow.component.button.Button;
@@ -47,6 +48,8 @@ import java.util.List;
 public class MainLayout extends VerticalLayout
         implements RouterLayout, AfterNavigationObserver {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MainLayout.class);
+
     private static final DateTimeFormatter WEEK_FMT = DateTimeFormatter.ofPattern("MMM d");
 
     /**
@@ -64,6 +67,8 @@ public class MainLayout extends VerticalLayout
             + "</svg>";
 
     private final HouseholdOrchestrator household;
+    /** UC-012: per-UI Reports widgets + AI controllers; adopted by ReportsView on attach. */
+    private final ReportsWidgets reportsWidgets;
     private final MessageList messageList;
     private final Span lastAiMessageText;
     /** The chat dock container — assigned in buildChatDock(); referenced by the
@@ -100,19 +105,25 @@ public class MainLayout extends VerticalLayout
                       PlanService planService,
                       PlanTools planTools,
                       ShoppingTools shoppingTools,
-                      ReportsTools reportsTools,
+                      ReportingTools reportingTools,
                       NavigationTools navigationTools,
                       InsightTools insightTools,
                       InsightService insightService,
-                      PlanRefreshBroadcaster planRefreshBroadcaster,
-                      ShoppingRefreshBroadcaster shoppingRefreshBroadcaster,
-                      ReportsRefreshBroadcaster reportsRefreshBroadcaster,
+                      ViewRefreshBroadcaster refreshBroadcaster,
+                      MiseDatabaseProvider databaseProvider,
+                      ViewPreferenceService viewPreferenceService,
                       ViewedWeekService viewedWeekService,
                       ViewedWeekState viewedWeekState) {
         this.insightService = insightService;
         this.householdServiceRef = householdService;
         this.viewedWeekService = viewedWeekService;
         this.viewedWeekState = viewedWeekState;
+
+        // UC-012: per-UI Reports widgets + controllers. Built before the
+        // orchestrator so the controllers can be registered at build time
+        // (reconnect() is deserialization-only). ReportsView adopts the
+        // components on attach via reportsWidgets().
+        this.reportsWidgets = new ReportsWidgets(databaseProvider, viewPreferenceService, householdService);
         // ── Chat components shared across all views ───────────────────────
         messageList = new MessageList();
         messageList.setMarkdown(true);
@@ -152,15 +163,12 @@ public class MainLayout extends VerticalLayout
                             if (chatDock != null) chatDock.removeClassName("ai-working");
                         });
                     }
-                    // BR-08: push plan refresh to all attached PlanView instances after every AI turn
-                    planRefreshBroadcaster.fireRefresh();
-                    // BR-08: push shopping refresh to all attached ShoppingView instances after every AI turn
-                    // Both broadcasters fire here so meal mutations propagate to both views simultaneously.
-                    shoppingRefreshBroadcaster.fireRefresh();
-                    // UC-007: push reports refresh to all attached ReportsView instances after every AI turn
-                    reportsRefreshBroadcaster.fireRefresh();
+                    // UC-008 BR-08: one refresh channel — every attached view
+                    // re-reads its data after each AI turn.
+                    refreshBroadcaster.fireRefresh();
                 },
-                planTools, shoppingTools, reportsTools, navigationTools, insightTools);
+                List.of(reportsWidgets.controller()),
+                planTools, shoppingTools, reportingTools, navigationTools, insightTools);
 
         // Error path: LLM unreachable / empty response → red indicator + toast.
         // Runs on the background streaming thread; UI mutations need ui.access().
@@ -311,7 +319,9 @@ public class MainLayout extends VerticalLayout
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("Week label fell back to the current calendar week: {}", e.getMessage());
+        }
         LocalDate monday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         return "Week of " + monday.format(WEEK_FMT);
     }
@@ -676,6 +686,11 @@ public class MainLayout extends VerticalLayout
 
     public HouseholdOrchestrator household() {
         return household;
+    }
+
+    /** UC-012: the Reports widgets owned by this UI's layout. */
+    public ReportsWidgets reportsWidgets() {
+        return reportsWidgets;
     }
 
     public MessageList messageList() {
