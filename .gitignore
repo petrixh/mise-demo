@@ -27,6 +27,9 @@ vite.generated.ts
 # Progress files are per-run artefacts, not part of the spec.
 /docs/progress/
 images/
+# …but the user-manual screenshots are committed sources (regenerable via
+# docs/manual/capture-screenshots.cjs).
+!/docs/manual/images/
 Mise-review-1/
 
 # Temporary reference checkout of the Vaadin AI dashboard example — used while

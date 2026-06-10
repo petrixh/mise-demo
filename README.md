@@ -23,6 +23,8 @@ The product concept and rough mockups live under [`ai-meal-planner/mise/`](ai-me
 
 Port defaults to **8080** (override with `PORT`). Open <http://localhost:8080> in a browser; the chat panel and the H2 console link live in the side drawer.
 
+New to Mise? The **[user manual](docs/manual/mise-manual.pdf)** covers setup, day-to-day usage with example queries, and how to add your own recipes, stores, and personas. (Source: [`docs/manual/mise-manual.typ`](docs/manual/mise-manual.typ) — rebuild with `typst compile docs/manual/mise-manual.typ docs/manual/mise-manual.pdf`.)
+
 ### Run with Docker
 
 No JDK, Maven, or checkout needed — a multi-arch image (linux/amd64 + linux/arm64) is published to GHCR on every release tag:
