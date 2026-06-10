@@ -23,6 +23,39 @@ The product concept and rough mockups live under [`ai-meal-planner/mise/`](ai-me
 
 Port defaults to **8080** (override with `PORT`). Open <http://localhost:8080> in a browser; the chat panel and the H2 console link live in the side drawer.
 
+### Run with Docker
+
+No JDK, Maven, or checkout needed — a multi-arch image (linux/amd64 + linux/arm64) is published to GHCR on every release tag:
+
+```bash
+docker pull ghcr.io/petrixh/mise-demo:latest
+```
+
+The only mandatory configuration is the LLM endpoint (any OpenAI-compatible API). A full run with persistence:
+
+```bash
+docker run -p 8080:8080 \
+  -e MISE_MODEL_BASE_URL=https://api.openai.com/v1 \
+  -e MISE_MODEL_API_KEY=sk-... \
+  -e MISE_MODEL_NAME=gpt-4o-mini \
+  -e MISE_MODEL_MAX_TOKENS=16384 \
+  -v mise-data:/data \
+  ghcr.io/petrixh/mise-demo:latest
+```
+
+- `MISE_MODEL_BASE_URL` **must include the `/v1` path segment** (the OpenAI SDK appends `/chat/completions` directly to it).
+- `MISE_MODEL_MAX_TOKENS` defaults to 16384; `PORT` (default 8080) changes the in-container listen port — remember to adjust `-p` to match.
+- The H2 database lives at `/data` inside the container; the `-v mise-data:/data` mount keeps plans, pantry, preferences, and conversation history across container restarts. Drop the volume (`docker volume rm mise-data`) to reset to factory state.
+- Seed catalogs (recipes, stores, personas) ship inside the image at `/app/demo/data`; mount your own directory over that path to customize them without rebuilding.
+
+To build the image yourself from a checkout (full Vaadin production build inside the container, no Vaadin keys required):
+
+```bash
+docker build -t mise .
+```
+
+Releasing: pushing a `v*` tag (e.g. `v0.1.0`) triggers [`release.yml`](.github/workflows/release.yml), which builds the JAR once natively and publishes the multi-arch image as `ghcr.io/petrixh/mise-demo:<version>` and `:latest`.
+
 ### Integration (browser) tests
 
 End-to-end tests live next to the unit tests in `src/test/java/.../it/` and are named `*IT.java`. They run a real Chromium under [Microsoft Playwright](https://playwright.dev/java/) against a real Spring Boot server, using [DramaFinder](https://github.com/parttio/dramafinder) wrappers for Vaadin component locators. They are **opt-in via the `it` Maven profile** so plain `./mvnw test` stays fast.

@@ -1,0 +1,91 @@
+name: Release
+
+# Publish a multi-arch Docker image to GHCR whenever a release tag is pushed:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# → ghcr.io/<owner>/<repo>:0.1.0, :0.1 and :latest, linux/amd64 + linux/arm64.
+#
+# One-time manual step after the first publish: set the package visibility to
+# public (repo → Packages → package settings) so users can pull anonymously.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish-image:
+    name: Build & publish multi-arch image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up Node (Vaadin frontend bundle)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # The fat JAR is architecture-independent: build it once natively here,
+      # then let buildx assemble the runtime-only `release` stage per platform.
+      # Running the full Vaadin production build under QEMU emulation would
+      # blow the job timeout.
+      #
+      # vaadin-chart (commercial, via the AI components) needs a license for
+      # production builds. Set the VAADIN_OFFLINE_KEY repo secret for a clean
+      # build; without it the image ships Vaadin's watermarked banner build.
+      - name: Build JAR
+        env:
+          VAADIN_OFFLINE_KEY: ${{ secrets.VAADIN_OFFLINE_KEY }}
+        run: |
+          if [ -n "$VAADIN_OFFLINE_KEY" ]; then
+            ./mvnw -B -ntp clean package -DskipTests -Dvaadin.offlineKey="$VAADIN_OFFLINE_KEY"
+          else
+            echo "::warning::No VAADIN_OFFLINE_KEY secret set — publishing a watermarked (commercialWithBanner) build"
+            ./mvnw -B -ntp clean package -DskipTests -Dvaadin.commercialWithBanner
+          fi
+
+      - name: Set up QEMU (arm64 runtime stage)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tags: v1.2.3 → 1.2.3, 1.2 and latest (latest=auto on semver tags).
+      - name: Docker image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: release
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
