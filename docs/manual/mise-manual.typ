@@ -61,6 +61,9 @@
     #link(repo) \
     This manual covers running and using the Mise demo. \
     For architecture and specifications, see the #link(repo + "/tree/main/spec")[spec tree] in the repository.
+    #v(0.4em)
+    Licensed under the #link("https://www.apache.org/licenses/LICENSE-2.0")[Apache License 2.0]. \
+    Logo: #link("https://tabler.io/icons/icon/tools-kitchen-2")[tools-kitchen-2] from #link("https://tabler.io/icons")[Tabler Icons] by Paweł Kuna (MIT License).
   ]
 ]
 #pagebreak()

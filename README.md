@@ -144,3 +144,12 @@ Use cases (UC-001..UC-009) are specified and ready to implement.
 ## Getting started with Vaadin
 
 The [Vaadin Quick Start](https://vaadin.com/docs/v25/getting-started/quick-start) is a good 10-minute orientation for anyone new to Vaadin Flow.
+
+## License & attributions
+
+This project is licensed under the [Apache License 2.0](LICENSE.md).
+
+Third-party material (see [NOTICE.md](NOTICE.md) for details):
+
+- **Logo & icons** — the Mise logo is the [`tools-kitchen-2`](https://tabler.io/icons/icon/tools-kitchen-2) icon from [Tabler Icons](https://tabler.io/icons) by Paweł Kuna, licensed under the [MIT License](https://github.com/tabler/tabler-icons/blob/main/LICENSE). The design mockups also use Tabler outline icons.
+- **DramaFinder** — Playwright element wrappers for Vaadin from [parttio/dramafinder](https://github.com/parttio/dramafinder) (Apache 2.0), used as a test dependency; parts of its documentation are vendored into the [`vaadin-playwright-test`](.claude/skills/vaadin-playwright-test/) skill.
