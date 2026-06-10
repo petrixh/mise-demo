@@ -26,7 +26,6 @@ import com.vaadin.flow.router.Route;
 
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * UC-005 Shopping list view at /shopping.
@@ -53,6 +52,9 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
 
     /** Current store mode — reflected in the UI toggle. */
     private StoreMode currentStoreMode = StoreMode.ONE_STORE;
+
+    /** The non-active mode's derived list — feeds the toggle's trade-off summary. */
+    private ShoppingList alternativeList;
 
     /** Held as a field so we can deregister the exact same lambda on detach. */
     private Runnable refreshHook;
@@ -132,12 +134,31 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
                 .orElse(StoreMode.ONE_STORE);
 
         // UC-010: derive list for the viewed plan when one is selected (BR-03)
+        // The alternative mode's list is derived too — the mode toggle shows the
+        // other option's total + stop count so the store trade-off is visible
+        // at a glance (concept mockup: "Cheapest mix · €84.40, 2 stops").
+        StoreMode altMode = currentStoreMode == StoreMode.ONE_STORE
+                ? StoreMode.CHEAPEST_MIX : StoreMode.ONE_STORE;
         if (viewedPlan != null) {
             currentList = shoppingService.deriveListForPlan(hh.getId(), viewedPlan.getId(), currentStoreMode);
+            alternativeList = shoppingService.deriveListForPlan(hh.getId(), viewedPlan.getId(), altMode);
         } else {
             currentList = shoppingService.deriveList(hh.getId(), currentStoreMode);
+            alternativeList = shoppingService.deriveList(hh.getId(), altMode);
         }
         buildUI(hh.getId(), currentList);
+    }
+
+    /** "€84.40, 2 stops" — the mode trade-off summary for the toggle pill. */
+    private String modeSummary(ShoppingList list) {
+        if (list == null) return "";
+        var tradeoff = shoppingService.tradeoff(list);
+        return String.format("€%.2f, %d %s", tradeoff.total(), tradeoff.stops(),
+                tradeoff.stops() == 1 ? "stop" : "stops");
+    }
+
+    private int itemCount(ShoppingList list) {
+        return list.aisleGroups().stream().mapToInt(g -> g.items().size()).sum();
     }
 
     private void buildUI(Long householdId, ShoppingList list) {
@@ -218,7 +239,12 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         return strip;
     }
 
-    /** Builds the store-mode segmented control. Used in both header strip (mobile) and recommendation panel (desktop). */
+    /**
+     * Builds the store-mode segmented control. Used in both header strip (mobile)
+     * and recommendation panel (desktop). Per the concept mockup the non-active
+     * option carries its trade-off summary ("Cheapest mix · €84.40, 2 stops") so
+     * the user sees what switching buys before clicking.
+     */
     private Div buildModeControl(Long householdId, String id, String extraClass) {
         // Outer wrapper carries the visible id / extra class for CSS visibility toggling
         var modeControl = new Div();
@@ -231,16 +257,21 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         var track = new Div();
         track.addClassName("mise-shopping-mode-track");
 
-        var oneStoreBtn = new Button("One store");
+        boolean oneStoreActive = currentStoreMode == StoreMode.ONE_STORE;
+        String altSummary = modeSummary(alternativeList);
+
+        var oneStoreBtn = new Button(oneStoreActive || altSummary.isEmpty()
+                ? "One store" : "One store · " + altSummary);
         oneStoreBtn.getElement().setAttribute("data-testid", "store-mode-one");
         oneStoreBtn.addClassName("mise-shopping-mode-btn");
-        if (currentStoreMode == StoreMode.ONE_STORE) oneStoreBtn.addClassName("active");
+        if (oneStoreActive) oneStoreBtn.addClassName("active");
         oneStoreBtn.addClickListener(e -> onStoreModeChange(householdId, StoreMode.ONE_STORE));
 
-        var cheapestMixBtn = new Button("Cheapest mix");
+        var cheapestMixBtn = new Button(!oneStoreActive || altSummary.isEmpty()
+                ? "Cheapest mix" : "Cheapest mix · " + altSummary);
         cheapestMixBtn.getElement().setAttribute("data-testid", "store-mode-mix");
         cheapestMixBtn.addClassName("mise-shopping-mode-btn");
-        if (currentStoreMode == StoreMode.CHEAPEST_MIX) cheapestMixBtn.addClassName("active");
+        if (!oneStoreActive) cheapestMixBtn.addClassName("active");
         cheapestMixBtn.addClickListener(e -> onStoreModeChange(householdId, StoreMode.CHEAPEST_MIX));
 
         track.add(oneStoreBtn, cheapestMixBtn);
@@ -285,7 +316,10 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
 
     /**
      * Right-column recommendation panel (desktop) / top-stacked collapsible block (mobile).
-     * Shows: recommended store headline, total cost, cost-by-aisle breakdown, mode toggle.
+     * Per the concept mockup the panel is about <b>which store to go to</b>: store
+     * headline with "€total · N items · M stops" meta, a comparison narrative, and
+     * the mode toggle carrying the alternative's trade-off — no per-category pricing
+     * (category costs live in the Plan sidebar and Reports).
      * On mobile the body is collapsed by default (Issue #21); a chevron toggle in the
      * header lets the user expand/collapse inline.
      */
@@ -309,12 +343,16 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
                 ? list.recommendedStore().getName() : "—";
         storeHeadline.setText(defaultStoreName);
 
-        // Total cost — shown in summary row (always visible on mobile even when collapsed)
-        BigDecimal total = list.totalCost() != null ? list.totalCost() : BigDecimal.ZERO;
-        var totalValue = new Span();
-        totalValue.addClassName("mise-shopping-rec-total-value");
-        totalValue.getElement().setAttribute("data-testid", "shopping-total-cost");
-        totalValue.setText("€" + String.format("%.2f", total));
+        // Meta line next to the headline: "€87.40 · 13 items · 1 stop" (mockup) —
+        // mode-faithful numbers (one-store basket vs cheapest-mix total).
+        // Always visible (lives in the header), so mobile sees the total when collapsed.
+        var tradeoff = shoppingService.tradeoff(list);
+        int items = itemCount(list);
+        var meta = new Span(String.format("€%.2f · %d %s · %d %s",
+                tradeoff.total(), items, items == 1 ? "item" : "items",
+                tradeoff.stops(), tradeoff.stops() == 1 ? "stop" : "stops"));
+        meta.addClassName("mise-shopping-rec-meta");
+        meta.getElement().setAttribute("data-testid", "shopping-total-cost");
 
         // Chevron toggle button — visible on mobile, hidden on desktop
         var chevron = new Button(VaadinIcon.CHEVRON_DOWN.create());
@@ -322,17 +360,21 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
         chevron.getElement().setAttribute("aria-label", "Expand store details");
         chevron.getElement().setAttribute("data-testid", "rec-panel-toggle");
 
-        // Summary header — always visible; contains label, store name, total, chevron
+        // Summary header — always visible; contains label, store name + meta, chevron
         var header = new Div();
         header.addClassName("mise-shopping-rec-header");
 
+        var headlineRow = new Div();
+        headlineRow.addClassName("mise-shopping-rec-headline-row");
+        headlineRow.add(storeHeadline, meta);
+
         var headerLeft = new Div();
         headerLeft.addClassName("mise-shopping-rec-header-left");
-        headerLeft.add(label, storeHeadline);
+        headerLeft.add(label, headlineRow);
 
         var headerRight = new Div();
         headerRight.addClassName("mise-shopping-rec-header-right");
-        headerRight.add(totalValue, chevron);
+        headerRight.add(chevron);
 
         header.add(headerLeft, headerRight);
         panel.add(header);
@@ -349,65 +391,6 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
             var narrativeSpan = new Span(narrative);
             narrativeSpan.addClassName("mise-shopping-rec-narrative");
             body.add(narrativeSpan);
-        }
-
-        // Total cost row (full label+value row in expanded body)
-        var totalRow = new Div();
-        totalRow.addClassName("mise-shopping-rec-total-row");
-        var totalLabel = new Span("Total");
-        totalLabel.addClassName("mise-shopping-rec-total-label");
-        var totalValueBody = new Span("€" + String.format("%.2f", total));
-        totalValueBody.addClassName("mise-shopping-rec-total-value");
-        totalRow.add(totalLabel, totalValueBody);
-        body.add(totalRow);
-
-        // Cost-by-aisle breakdown
-        if (!list.aisleGroups().isEmpty()) {
-            var breakdownDiv = new Div();
-            breakdownDiv.addClassName("mise-shopping-rec-breakdown");
-
-            // Compute cost per aisle
-            Map<String, BigDecimal> costByAisle = list.aisleGroups().stream()
-                    .collect(Collectors.toMap(
-                            AisleGroup::aisle,
-                            g -> g.items().stream()
-                                    .map(item -> item.recommendedPrice() != null
-                                            ? item.recommendedPrice() : BigDecimal.ZERO)
-                                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    ));
-
-            // Render in aisle order (same order as the list)
-            for (var group : list.aisleGroups()) {
-                BigDecimal aisleTotal = costByAisle.getOrDefault(group.aisle(), BigDecimal.ZERO);
-                if (aisleTotal.compareTo(BigDecimal.ZERO) == 0) continue;
-
-                var row = new Div();
-                row.addClassName("mise-shopping-rec-breakdown-row");
-                row.getElement().setAttribute("data-testid", "cost-by-category-row");
-
-                String aisleKey = group.aisle().toLowerCase();
-                var rowLabel = new Span(group.aisle());
-                rowLabel.addClassName("mise-shopping-rec-breakdown-label");
-                // Apply category color class based on aisle name
-                if (aisleKey.contains("produce") || aisleKey.contains("fruit") || aisleKey.contains("veg")) {
-                    rowLabel.addClassName("mise-shopping-cat-produce");
-                } else if (aisleKey.contains("protein") || aisleKey.contains("meat") || aisleKey.contains("fish") || aisleKey.contains("seafood")) {
-                    rowLabel.addClassName("mise-shopping-cat-protein");
-                } else if (aisleKey.contains("dairy") || aisleKey.contains("egg")) {
-                    rowLabel.addClassName("mise-shopping-cat-dairy");
-                } else if (aisleKey.contains("pantry") || aisleKey.contains("dry") || aisleKey.contains("canned") || aisleKey.contains("oil")) {
-                    rowLabel.addClassName("mise-shopping-cat-pantry");
-                } else {
-                    rowLabel.addClassName("mise-shopping-cat-other");
-                }
-
-                var rowValue = new Span("€" + String.format("%.2f", aisleTotal));
-                rowValue.addClassName("mise-shopping-rec-breakdown-value");
-
-                row.add(rowLabel, rowValue);
-                breakdownDiv.add(row);
-            }
-            body.add(breakdownDiv);
         }
 
         // Mode toggle — always visible in the panel (panel is now top-of-view on all breakpoints)
@@ -552,13 +535,12 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
 
     private void onStoreModeChange(Long householdId, StoreMode newMode) {
         if (newMode == currentStoreMode) return;
-        currentStoreMode = newMode;
-        // Persist preference
+        // Persist preference, then go through the normal load path so BOTH lists
+        // (current + alternative for the toggle's trade-off summary) re-derive and
+        // the viewed week (UC-010) stays honored.
         viewPreferenceService.saveSettings(householdId, ViewPreference.View.SHOPPING, "storeMode",
                 Map.of("mode", newMode.name()));
-        // Re-derive and rebuild
-        currentList = shoppingService.deriveList(householdId, currentStoreMode);
-        buildUI(householdId, currentList);
+        loadAndRender();
     }
 
     /**

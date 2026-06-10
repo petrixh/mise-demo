@@ -378,6 +378,42 @@ public class ShoppingService {
         }
     }
 
+    /** Mode trade-off shown in the recommendation panel: what the trip costs and how many stores it takes. */
+    public record ModeTradeoff(BigDecimal total, int stops) {}
+
+    /**
+     * Computes the store trade-off the recommendation panel and mode toggle show
+     * (concept mockup: "Prima €87.40 · 1 stop" vs "Cheapest mix · €84.40, 2 stops").
+     * Row-level pricing is mode-independent (see {@link #priceItems}); this is the
+     * mode-faithful summary:
+     * <ul>
+     *   <li>ONE_STORE — the full basket at the recommended store (items it doesn't
+     *       carry are skipped, same convention as {@code computeTotalCost}); 1 stop.</li>
+     *   <li>CHEAPEST_MIX — the list total (already per-item cheapest) across however
+     *       many distinct stores those prices come from.</li>
+     * </ul>
+     */
+    public ModeTradeoff tradeoff(ShoppingList list) {
+        var items = list.aisleGroups().stream().flatMap(g -> g.items().stream()).toList();
+        if (list.storeMode() == StoreMode.ONE_STORE && list.recommendedStore() != null) {
+            BigDecimal total = BigDecimal.ZERO;
+            for (var item : items) {
+                var p = findPriceInStore(list.recommendedStore(), item.ingredientName());
+                if (p.isPresent()) {
+                    total = total.add(BigDecimal.valueOf(p.get()));
+                }
+            }
+            return new ModeTradeoff(total.setScale(2, RoundingMode.HALF_UP), 1);
+        }
+        int stops = (int) Math.max(1, items.stream()
+                .map(ShoppingItem::recommendedStoreId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count());
+        return new ModeTradeoff(
+                list.totalCost() != null ? list.totalCost() : BigDecimal.ZERO, stops);
+    }
+
     private List<AisleGroup> groupByAisle(List<ShoppingItem> items) {
         // Group by aisle, preserving canonical ordering
         Map<String, List<ShoppingItem>> byAisle = new LinkedHashMap<>();
