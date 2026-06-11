@@ -115,6 +115,8 @@ This chapter assumes you can already run a container (or a Maven project) and
 covers only what is Mise-specific. The published image is
 `ghcr.io/petrixh/mise-demo` (multi-arch: x86-64 and ARM64); from a checkout,
 `./mvnw` starts dev mode and `docker build .` produces the same image locally.
+No Docker? A runnable JAR bundle ships with every release too (see
+@jar-direct-run).
 
 == The one mandatory decision: an LLM endpoint
 
@@ -181,6 +183,26 @@ Running from a checkout instead? Copy `application-local.properties.example`
 to `application-local.properties` (project root, gitignored) and set the same
 values there — the file is auto-loaded for every dev run.
 
+=== No Docker? Run the JAR directly <jar-direct-run>
+
+The only prerequisite is *Java 21 or newer*. Each release's CI run stores a
+`mise-demo-<version>-jar` artifact (repo → Actions → the Release run for the
+tag → Artifacts; downloading needs a GitHub login, and artifacts expire after
+90 days). The zip contains the runnable JAR plus the `demo/` seed-catalog
+directory it reads at startup — extract it and run *from the extracted
+directory*:
+
+```bash
+MISE_MODEL_BASE_URL=https://api.openai.com/v1 \
+MISE_MODEL_API_KEY=sk-... \
+MISE_MODEL_NAME=gpt-4o-mini \
+java -jar mise-demo-<version>.jar
+```
+
+The same environment variables as the table above apply. Data persists to
+`./data` next to the JAR (see below), and a JAR built without a Vaadin
+license shows a watermark banner — expected, not a bug.
+
 == Persistence — what survives a restart <persistence>
 
 Mise stores its state (household, plans, pantry, preferences, report
@@ -194,7 +216,9 @@ survives container restarts:
 
 *Factory reset:* stop the container and delete the volume
 (`docker volume rm mise-data`) — on the next start Mise is back to first-run
-state. From a checkout, delete the `data/` directory instead.
+state. Running the JAR directly (or from a checkout), the database lives in
+`./data` relative to the working directory instead: re-running from the same
+directory resumes your data, and deleting `data/` is the reset.
 
 == First run: the onboarding interview (and what personas add)
 

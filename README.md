@@ -58,6 +58,19 @@ docker build -t mise .
 
 Releasing: pushing a `v*` tag (e.g. `v0.1.0`) triggers [`release.yml`](.github/workflows/release.yml), which builds the JAR once natively and publishes the multi-arch image as `ghcr.io/petrixh/mise-demo:<version>` and `:latest`.
 
+### Run the JAR (no Docker)
+
+Requires **Java 21 or newer** — that's the only prerequisite. Each release workflow run stores a `mise-demo-<version>-jar` artifact (Actions → the Release run for the tag → Artifacts; a GitHub login is needed to download, and artifacts expire after 90 days). The artifact zip contains the runnable JAR plus the `demo/` seed-catalog directory it needs — extract it and run from the extracted directory:
+
+```bash
+MISE_MODEL_BASE_URL=https://api.openai.com/v1 \
+MISE_MODEL_API_KEY=sk-... \
+MISE_MODEL_NAME=gpt-4o-mini \
+java -jar mise-demo-<version>.jar
+```
+
+The same `MISE_MODEL_*` / `PORT` variables as the Docker run apply (including the `/v1` gotcha). The app serves on <http://localhost:8080>, reads the seed catalogs from `./demo/data`, and persists to `./data` relative to the working directory — re-running from the same directory resumes your data, and deleting `./data` is the factory reset. A JAR built without a Vaadin license shows a watermark banner (vaadin-chart is commercial); that's expected, not a bug.
+
 ### Integration (browser) tests
 
 End-to-end tests live next to the unit tests in `src/test/java/.../it/` and are named `*IT.java`. They run a real Chromium under [Microsoft Playwright](https://playwright.dev/java/) against a real Spring Boot server, using [DramaFinder](https://github.com/parttio/dramafinder) wrappers for Vaadin component locators. They are **opt-in via the `it` Maven profile** so plain `./mvnw test` stays fast.

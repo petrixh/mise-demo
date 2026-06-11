@@ -57,6 +57,25 @@ jobs:
             ./mvnw -B -ntp clean package -DskipTests -Dvaadin.commercialWithBanner
           fi
 
+      # Direct-JAR flow (UC-098 Alternate Flow B): the seed catalogs are read
+      # from demo/data on the filesystem, so a bare JAR boots empty. Stage the
+      # JAR next to demo/ and upload the pair as one workflow artifact — the
+      # artifact download is a zip the user extracts and runs in place.
+      - name: Stage direct-run bundle (JAR + seed catalogs)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          cp target/*.jar "dist/mise-demo-${VERSION}.jar"
+          cp -r demo dist/demo
+          echo "MISE_VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Upload runnable JAR bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mise-demo-${{ env.MISE_VERSION }}-jar
+          path: dist/
+          if-no-files-found: error
+
       - name: Set up QEMU (arm64 runtime stage)
         uses: docker/setup-qemu-action@v3
 
