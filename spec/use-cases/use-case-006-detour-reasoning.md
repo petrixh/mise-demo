@@ -15,13 +15,13 @@
 
 ### Should I bother with the detour?
 - I'm on `/shopping`. The recommended store is Prima.
-- I ask: *"Should I bother with Lidl this week?"*
-- The assistant computes the savings of moving Lidl-cheaper items off Prima, weighs them against Lidl's `detourMinutesFromRoute`, and replies with a reasoned verdict: *"Not really — €3 across two items doesn't justify a second stop."* It names the items and the savings.
+- I ask: *"Should I bother with Lido this week?"*
+- The assistant computes the savings of moving Lido-cheaper items off Prima, weighs them against Lido's `detourMinutesFromRoute`, and replies with a reasoned verdict: *"Not really — €3 across two items doesn't justify a second stop."* It names the items and the savings.
 - The recommended store does not change automatically — the user is choosing, not the AI.
 
 ### Tipping the threshold (the demo's headline)
-- A developer edits `demo/data/stores/lidl.yaml` and changes salmon from `2.70` to `1.50`. The app restarts; `StubbedPriceCatalog` reloads from disk.
-- I ask the same question: *"Should I bother with Lidl this week?"*
+- A developer edits `demo/data/stores/lido.yaml` and changes salmon from `2.70` to `1.50`. The app restarts; `StubbedPriceCatalog` reloads from disk.
+- I ask the same question: *"Should I bother with Lido this week?"*
 - The assistant now responds in favor — the new salmon price has crossed the savings threshold. It explains the change in terms of the data.
 
 ### "I don't want a second stop, but I want the savings"
@@ -46,8 +46,8 @@
 
 ## Acceptance Criteria
 
-- [ ] Asking *"Should I bother with Lidl?"* with default seed data produces a "not worth it" verdict that names specific items and amounts.
-- [ ] Changing a single price in `demo/data/stores/lidl.yaml` (e.g., salmon `2.70` → `1.50`), restarting, and re-asking flips the verdict to "worth it" and the new reasoning cites the changed price.
+- [ ] Asking *"Should I bother with Lido?"* with default seed data produces a "not worth it" verdict that names specific items and amounts.
+- [ ] Changing a single price in `demo/data/stores/lido.yaml` (e.g., salmon `2.70` → `1.50`), restarting, and re-asking flips the verdict to "worth it" and the new reasoning cites the changed price.
 - [ ] Asking *"I want the savings without the detour"* produces a plan-level swap and a `MealEdit` row that explains the savings.
 - [ ] The detour verdict does not change the recommended store unless the user explicitly asks.
 - [ ] If a price is missing from all stores for a requested ingredient, the assistant states *"I don't have a price for X"* rather than guessing.
@@ -56,7 +56,7 @@
 
 ## UI / Routes
 
-- The interaction happens entirely in the chat on `/shopping`. The recommended store header may flash a "consider Lidl?" hint in *Cheapest mix* mode when an obvious detour is favorable, but the verdict and the explanation live in chat.
+- The interaction happens entirely in the chat on `/shopping`. The recommended store header may flash a "consider Lido?" hint in *Cheapest mix* mode when an obvious detour is favorable, but the verdict and the explanation live in chat.
 - Plan-level alternatives, once accepted, surface on `/plan` exactly as UC-003 edits do (edited pill, undo, why).
 
 | Route | Access | Notes |
@@ -70,15 +70,15 @@
 
 #### Functional
 
-- [ ] *"Should I bother with Lidl?"* produces a verdict naming specific items and savings (default data: "not worth it")
-- [ ] Editing `stores/lidl.yaml` salmon price → restart → re-ask: verdict flips to "worth it" and cites the new price (BR-06 — the demo headline)
+- [ ] *"Should I bother with Lido?"* produces a verdict naming specific items and savings (default data: "not worth it")
+- [ ] Editing `stores/lido.yaml` salmon price → restart → re-ask: verdict flips to "worth it" and cites the new price (BR-06 — the demo headline)
 - [ ] *"Savings without the detour"* triggers a UC-003 plan swap with a documented `MealEdit`
 - [ ] Detour verdicts never auto-change the recommended store (BR-03)
 - [ ] Missing price → explicit "I don't have a price for X" (BR-01)
 
 #### Visual
 
-- [ ] *Cheapest mix* mode may flash a "consider Lidl?" hint; verdict text lives in chat
+- [ ] *Cheapest mix* mode may flash a "consider Lido?" hint; verdict text lives in chat
 
 #### AI
 

@@ -12,22 +12,22 @@ import java.util.regex.Pattern;
  * under the production system prompt.
  *
  * <p>Detour evaluation is grounded in real shopping-list data from {@code DetourEvaluator}.
- * The "Lidl" store is present in the seed data (demo/data/stores/lidl.yaml) and provides
+ * The "Lido" store is present in the seed data (demo/data/stores/lido.yaml) and provides
  * a non-trivial comparison with the default store, so the verdict is concrete.
  * "Whole-Foods" is not in the seed data — evaluateDetour returns INSUFFICIENT_DATA, which
  * the model should relay verbatim without fabricating prices.
  *
  * <p>Hallucination check: if the model claims a concrete saving > €100 it must have
- * invented the number — the demo plan's budget is €100 and Lidl savings are a fraction.
+ * invented the number — the demo plan's budget is €100 and Lido savings are a fraction.
  * BR-04: the model MUST NOT auto-apply swaps; suggestPlanSwapForSavings only presents
  * options.
  */
 class DetourToolsAIIT extends MiseAIIT {
 
     /**
-     * UC-006 AC #1 / BR-01 — "Should I bother with Lidl?" grounds the verdict in real
+     * UC-006 AC #1 / BR-01 — "Should I bother with Lido?" grounds the verdict in real
      * shopping-list data. The reply must contain either a concrete saving (€ amount) plus
-     * the word "Lidl", OR a clear "not worth it" / "no" verdict. It must NOT cite a
+     * the word "Lido", OR a clear "not worth it" / "no" verdict. It must NOT cite a
      * saving > €100 (the demo plan budget).
      */
     @Test
@@ -36,7 +36,7 @@ class DetourToolsAIIT extends MiseAIIT {
 
         var reply = shoppingChat()
                 .prompt()
-                .user("Should I bother with Lidl this week?")
+                .user("Should I bother with Lido this week?")
                 .call()
                 .content();
 
@@ -44,10 +44,10 @@ class DetourToolsAIIT extends MiseAIIT {
 
         // Either a concrete saving with the store name, or a negative verdict.
         Assertions.assertThat(reply)
-                .as("Reply must either cite Lidl with a € amount, or give a clear 'not worth it' answer")
+                .as("Reply must either cite Lido with a € amount, or give a clear 'not worth it' answer")
                 .satisfiesAnyOf(
                         r -> {
-                            Assertions.assertThat(r.toLowerCase(Locale.ROOT)).contains("lidl");
+                            Assertions.assertThat(r.toLowerCase(Locale.ROOT)).contains("lido");
                             Assertions.assertThat(r).containsPattern(Pattern.compile("€\\s*\\d"));
                         },
                         r -> Assertions.assertThat(r.toLowerCase(Locale.ROOT))
@@ -55,7 +55,7 @@ class DetourToolsAIIT extends MiseAIIT {
                                         "don't bother", "unnecessary", "save nothing",
                                         "worth it", "worth the trip", "worth a detour"));
 
-        // Fabrication guard: Lidl savings on a 7-meal plan cannot exceed the plan budget
+        // Fabrication guard: Lido savings on a 7-meal plan cannot exceed the plan budget
         // of €100. Any claim of > €100 saved is hallucinated.
         var largeEuroPattern = Pattern.compile("€\\s*([0-9]+(?:\\.[0-9]+)?)", Pattern.CASE_INSENSITIVE);
         var matcher = largeEuroPattern.matcher(reply);
@@ -63,7 +63,7 @@ class DetourToolsAIIT extends MiseAIIT {
             double amount = Double.parseDouble(matcher.group(1).replace(",", "."));
             Assertions.assertThat(amount)
                     .as("Potential fabrication: reply claims a saving/cost of €%.2f. "
-                            + "The demo plan budget is €100; Lidl savings cannot exceed that. "
+                            + "The demo plan budget is €100; Lido savings cannot exceed that. "
                             + "Full reply: \"%s\"", amount, reply)
                     .isLessThanOrEqualTo(100.0);
         }
@@ -81,7 +81,7 @@ class DetourToolsAIIT extends MiseAIIT {
 
         var reply = shoppingChat()
                 .prompt()
-                .user("I want to avoid going to Lidl this week. Find swaps so I can stay at one store.")
+                .user("I want to avoid going to Lido this week. Find swaps so I can stay at one store.")
                 .call()
                 .content();
 

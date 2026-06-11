@@ -74,11 +74,11 @@ class DetourEvaluatorTest {
 
     // Price data that matches "default seed data" scenario:
     //   Prima is the default store (0 detour minutes)
-    //   Lidl has salmon at €5.99, Prima has salmon at €13.98 → saving = €7.99
-    //   Lidl detour = 8 minutes → threshold = 8 * 0.50 = €4.00 → WORTH_IT (€7.99 > €4.00)
+    //   Lido has salmon at €5.99, Prima has salmon at €13.98 → saving = €7.99
+    //   Lido detour = 8 minutes → threshold = 8 * 0.50 = €4.00 → WORTH_IT (€7.99 > €4.00)
     //
     // For NOT_WORTH_IT scenario we use small savings:
-    //   Only canned tomatoes: Prima €0.99, Lidl €0.79 → saving = €0.20
+    //   Only canned tomatoes: Prima €0.99, Lido €0.79 → saving = €0.20
     //   threshold 8 * 0.50 = €4.00 → NOT_WORTH_IT
 
     @BeforeEach
@@ -107,7 +107,7 @@ class DetourEvaluatorTest {
     }
 
     /**
-     * Default seed data scenario: Lidl has salmon for €5.99, Prima for €13.98.
+     * Default seed data scenario: Lido has salmon for €5.99, Prima for €13.98.
      * With a salmon-pasta meal, the saving is €7.99. Detour = 8 min → threshold = €4.00.
      * Expected: WORTH_IT.
      *
@@ -122,13 +122,13 @@ class DetourEvaluatorTest {
                 si("salmon fillet", 13.98),
                 si("pasta", 1.29),
                 si("cream", 1.79));
-        // Lidl = 8-min detour, salmon cheaper
-        var lidl = buildStore("lidl", "Lidl", 8, false,
+        // Lido = 8-min detour, salmon cheaper
+        var lido = buildStore("lido", "Lido", 8, false,
                 si("salmon fillet", 5.99),
                 si("pasta", 0.99),
                 si("cream", 1.49));
 
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
         when(priceCatalog.findPrice(anyString())).thenAnswer(inv -> {
             String name = inv.getArgument(0);
@@ -147,11 +147,11 @@ class DetourEvaluatorTest {
 
         seedMeal("salmon-pasta");
 
-        var verdict = detourEvaluator.evaluate(household.getId(), "lidl");
+        var verdict = detourEvaluator.evaluate(household.getId(), "lido");
 
         assertThat(verdict.verdict()).isEqualTo(DetourVerdict.Verdict.WORTH_IT);
-        assertThat(verdict.storeId()).isEqualTo("lidl");
-        assertThat(verdict.storeName()).isEqualTo("Lidl");
+        assertThat(verdict.storeId()).isEqualTo("lido");
+        assertThat(verdict.storeName()).isEqualTo("Lido");
         assertThat(verdict.detourMinutes()).isEqualTo(8);
         assertThat(verdict.totalSavings()).isGreaterThan(BigDecimal.ZERO);
         assertThat(verdict.itemsWorthSwitching()).isNotEmpty();
@@ -160,7 +160,7 @@ class DetourEvaluatorTest {
     }
 
     /**
-     * Mocked-cheaper scenario (demo headline): salmon at Lidl is €1.50 (not €5.99).
+     * Mocked-cheaper scenario (demo headline): salmon at Lido is €1.50 (not €5.99).
      * Saving = 13.98 - 1.50 = €12.48, easily above threshold.
      * Expected: WORTH_IT with even higher savings.
      */
@@ -169,11 +169,11 @@ class DetourEvaluatorTest {
         var prima = buildStore("prima", "Prima Supermarket", 0, true,
                 si("salmon fillet", 13.98),
                 si("pasta", 1.29));
-        var lidl = buildStore("lidl", "Lidl", 8, false,
+        var lido = buildStore("lido", "Lido", 8, false,
                 si("salmon fillet", 1.50),   // mocked cheaper salmon
                 si("pasta", 0.99));
 
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
         when(priceCatalog.findPrice(anyString())).thenAnswer(inv -> {
             String name = inv.getArgument(0);
@@ -190,7 +190,7 @@ class DetourEvaluatorTest {
 
         seedMeal("salmon-pasta");
 
-        var verdict = detourEvaluator.evaluate(household.getId(), "lidl");
+        var verdict = detourEvaluator.evaluate(household.getId(), "lido");
 
         assertThat(verdict.verdict()).isEqualTo(DetourVerdict.Verdict.WORTH_IT);
         // Saving on salmon = 13.98 - 1.50 = 12.48
@@ -225,15 +225,15 @@ class DetourEvaluatorTest {
     void evaluate_emptyPlan_gracefulHandling() {
         var prima = buildStore("prima", "Prima Supermarket", 0, true,
                 si("salmon fillet", 13.98));
-        var lidl = buildStore("lidl", "Lidl", 8, false,
+        var lido = buildStore("lido", "Lido", 8, false,
                 si("salmon fillet", 5.99));
 
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
         when(priceCatalog.findPrice(anyString())).thenReturn(Optional.empty());
 
         // No meals seeded — list will be empty
-        var verdict = detourEvaluator.evaluate(household.getId(), "lidl");
+        var verdict = detourEvaluator.evaluate(household.getId(), "lido");
 
         // Empty plan → no shopping list → NOT_WORTH_IT or no items
         assertThat(verdict.verdict()).isIn(

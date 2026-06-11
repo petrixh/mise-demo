@@ -89,15 +89,15 @@ class ShoppingServiceTest {
         activePlan.setStatus(Plan.Status.ACTIVE);
         activePlan = planRepository.save(activePlan);
 
-        // Set up three stores: prima (default), lidl, local-market
+        // Set up three stores: prima (default), lido, local-market
         var prima = buildStore("prima", "Prima Supermarket", true,
                 storeItem("carrot", 1.29),
                 storeItem("olive oil", 4.99),
                 storeItem("tomato", 1.49),
                 storeItem("onion", 1.49),
                 storeItem("cheese", 3.99));
-        var lidl = buildStore("lidl", "Lidl", false,
-                storeItem("carrot", 0.69),   // much cheaper at Lidl
+        var lido = buildStore("lido", "Lido", false,
+                storeItem("carrot", 0.69),   // much cheaper at Lido
                 storeItem("olive oil", 3.99),
                 storeItem("tomato", 1.19),
                 storeItem("onion", 0.99),
@@ -109,7 +109,7 @@ class ShoppingServiceTest {
                 storeItem("onion", 1.79),
                 storeItem("cheese", 4.49));
 
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl, localMarket));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido, localMarket));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
         when(priceCatalog.findPrice(anyString())).thenAnswer(inv -> {
             String name = inv.getArgument(0);
@@ -259,8 +259,8 @@ class ShoppingServiceTest {
     }
 
     @Test
-    void deriveList_cheapestMixMode_carrots_assignedToLidl() {
-        // Lidl has carrots at 0.69 vs prima at 1.29 — CHEAPEST_MIX should prefer Lidl
+    void deriveList_cheapestMixMode_carrots_assignedToLido() {
+        // Lido has carrots at 0.69 vs prima at 1.29 — CHEAPEST_MIX should prefer Lido
         when(recipeCatalog.findById("recipe-a")).thenReturn(Optional.of(
                 buildRecipe("recipe-a", "Soup",
                         ingredient("carrot", 300, "g", "Produce"))));
@@ -276,24 +276,24 @@ class ShoppingServiceTest {
                 .findFirst();
 
         assertThat(carrotRow).isPresent();
-        // In CHEAPEST_MIX mode, carrot should be at Lidl (cheaper)
-        assertThat(carrotRow.get().recommendedStoreId()).isEqualTo("lidl");
+        // In CHEAPEST_MIX mode, carrot should be at Lido (cheaper)
+        assertThat(carrotRow.get().recommendedStoreId()).isEqualTo("lido");
     }
 
     // ── BR-06: Cheapest alternative hint ──────────────────────────────────────
 
     @Test
-    void deriveList_oneStoreMode_cheaperAlternativeAtLidl_hintsPopulated() {
-        // Setup: prima wins overall (lower total), but Lidl has carrot much cheaper (saving > €0.50)
-        // Carrot: prima=2.00, lidl=1.00 (saving €1.00 > threshold)
-        // Onion: prima=1.49, lidl=9.00 (makes prima win the ONE_STORE selection)
+    void deriveList_oneStoreMode_cheaperAlternativeAtLido_hintsPopulated() {
+        // Setup: prima wins overall (lower total), but Lido has carrot much cheaper (saving > €0.50)
+        // Carrot: prima=2.00, lido=1.00 (saving €1.00 > threshold)
+        // Onion: prima=1.49, lido=9.00 (makes prima win the ONE_STORE selection)
         var prima = buildStore("prima", "Prima Supermarket", true,
                 storeItem("carrot", 2.00),
                 storeItem("onion", 1.49));
-        var lidl = buildStore("lidl", "Lidl", false,
+        var lido = buildStore("lido", "Lido", false,
                 storeItem("carrot", 1.00),   // €1.00 cheaper than prima — saving = €1.00 > €0.50 threshold
                 storeItem("onion", 9.00));
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
 
         when(recipeCatalog.findById("recipe-a")).thenReturn(Optional.of(
@@ -304,7 +304,7 @@ class ShoppingServiceTest {
 
         var list = shoppingService.deriveList(household.getId(), StoreMode.ONE_STORE);
 
-        // Prima should win ONE_STORE (total prima: 2.00+1.49=3.49 vs lidl: 1.00+9.00=10.00)
+        // Prima should win ONE_STORE (total prima: 2.00+1.49=3.49 vs lido: 1.00+9.00=10.00)
         assertThat(list.recommendedStore()).isNotNull();
         assertThat(list.recommendedStore().getId()).isEqualTo("prima");
 
@@ -314,24 +314,24 @@ class ShoppingServiceTest {
                 .findFirst();
 
         assertThat(carrotRow).isPresent();
-        // Carrot is €1.00 cheaper at Lidl — should have a cheapest alternative hint
+        // Carrot is €1.00 cheaper at Lido — should have a cheapest alternative hint
         assertThat(carrotRow.get().cheapestAlternative()).isNotNull();
-        assertThat(carrotRow.get().cheapestAlternative().storeId()).isEqualTo("lidl");
+        assertThat(carrotRow.get().cheapestAlternative().storeId()).isEqualTo("lido");
     }
 
     @Test
     void deriveList_oneStoreMode_noMeaningfulSaving_noHint() {
-        // Cheese: prima 3.99, lidl 3.49 — saving = 0.50, at the threshold exactly (not strictly greater)
+        // Cheese: prima 3.99, lido 3.49 — saving = 0.50, at the threshold exactly (not strictly greater)
         // So no hint should be shown (threshold requires saving > 0.50)
         when(recipeCatalog.findById("recipe-a")).thenReturn(Optional.of(
                 buildRecipe("recipe-a", "Cheesy Dish",
                         ingredient("cheese", 100, "g", "Dairy"))));
         seedMeals("recipe-a");
 
-        // Override: make lidl cheese 3.59 (saving 0.40 < threshold)
+        // Override: make lido cheese 3.59 (saving 0.40 < threshold)
         var prima = buildStore("prima", "Prima Supermarket", true, storeItem("cheese", 3.99));
-        var lidlClose = buildStore("lidl", "Lidl", false, storeItem("cheese", 3.59));
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidlClose));
+        var lidoClose = buildStore("lido", "Lido", false, storeItem("cheese", 3.59));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidoClose));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
 
         var list = shoppingService.deriveList(household.getId(), StoreMode.ONE_STORE);

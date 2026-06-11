@@ -166,7 +166,7 @@ public class ShoppingTools {
      */
     @Tool(description = "Evaluate whether a detour to a second store this week is worth it. Returns the savings, the detour minutes, and a recommended verdict grounded in real shopping-list data.")
     public String evaluateDetour(
-            @ToolParam(description = "Store id (e.g. 'lidl', 'prima', 'local-market')") String storeId) {
+            @ToolParam(description = "Store id (e.g. 'lido', 'prima', 'local-market')") String storeId) {
         try {
             var hh = householdService.findHousehold().orElse(null);
             if (hh == null) return "No household found.";
@@ -210,7 +210,7 @@ public class ShoppingTools {
      */
     @Tool(description = "Suggest plan-level meal swaps that would keep all shopping at one store, achieving similar savings without the detour. Use AFTER evaluateDetour when the user says they want the savings but not the second stop.")
     public String suggestPlanSwapForSavings(
-            @ToolParam(description = "Store the user wants to avoid (e.g. 'lidl')") String storeToAvoid) {
+            @ToolParam(description = "Store the user wants to avoid (e.g. 'lido')") String storeToAvoid) {
         try {
             var hh = householdService.findHousehold().orElse(null);
             if (hh == null) return "No household found.";

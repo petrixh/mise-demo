@@ -97,32 +97,32 @@ class PlanSwapSuggesterTest {
     }
 
     /**
-     * Given a plan with a salmon-pasta meal (salmon exclusively cheaper at Lidl vs Prima),
+     * Given a plan with a salmon-pasta meal (salmon exclusively cheaper at Lido vs Prima),
      * the suggester should return at least 1 swap candidate without salmon.
      *
      * Setup:
      *   Prima (default): salmon=13.98, pasta=1.29, cream=1.79, chicken=4.99
-     *   Lidl: ONLY salmon is cheaper (5.99 vs 13.98). pasta/cream/chicken same or pricier.
+     *   Lido: ONLY salmon is cheaper (5.99 vs 13.98). pasta/cream/chicken same or pricier.
      *   Alternative recipe (chicken-pasta) has no salmon → avoidIngredientCount=0 < current (1).
      */
     @Test
-    void suggestSwaps_lidlOnlyIngredient_returnsAtLeastOneCandidate() {
-        // Prima = default; Lidl ONLY has salmon cheaper
+    void suggestSwaps_lidoOnlyIngredient_returnsAtLeastOneCandidate() {
+        // Prima = default; Lido ONLY has salmon cheaper
         var prima = buildStore("prima", "Prima Supermarket", 0, true,
                 si("salmon fillet", 13.98),
                 si("pasta", 1.29),
                 si("cream", 1.79),
                 si("chicken breast", 4.99));
-        var lidl = buildStore("lidl", "Lidl", 8, false,
+        var lido = buildStore("lido", "Lido", 8, false,
                 si("salmon fillet", 5.99),    // cheaper than prima (13.98 vs 5.99)
                 si("pasta", 1.49),             // MORE expensive than prima → not in avoidIngredients
                 si("cream", 1.99),             // MORE expensive
                 si("chicken breast", 5.99));   // MORE expensive
 
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
 
-        // Current recipe: salmon-pasta — contains salmon fillet (only Lidl-cheaper item)
+        // Current recipe: salmon-pasta — contains salmon fillet (only Lido-cheaper item)
         var salmonPasta = buildRecipe("salmon-pasta", "Creamy Salmon Pasta",
                 List.of("fish", "pasta"),
                 ing("salmon fillet", 400, "g"),
@@ -141,7 +141,7 @@ class PlanSwapSuggesterTest {
 
         seedMeal("salmon-pasta");
 
-        var suggestions = planSwapSuggester.suggestSwapsToAvoidStore(household.getId(), "lidl");
+        var suggestions = planSwapSuggester.suggestSwapsToAvoidStore(household.getId(), "lido");
 
         assertThat(suggestions).isNotEmpty();
         // The suggested recipe should be different from the current one
@@ -167,11 +167,11 @@ class PlanSwapSuggesterTest {
         var prima = buildStore("prima", "Prima Supermarket", 0, true,
                 si("salmon fillet", 13.98),
                 si("chicken breast", 4.99));
-        var lidl = buildStore("lidl", "Lidl", 8, false,
+        var lido = buildStore("lido", "Lido", 8, false,
                 si("salmon fillet", 5.99),
                 si("chicken breast", 3.99));
 
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
 
         // Current recipe: chicken pasta (no salmon, so allergy-ok for current meal)
@@ -192,7 +192,7 @@ class PlanSwapSuggesterTest {
 
         seedMeal("chicken-pasta");
 
-        var suggestions = planSwapSuggester.suggestSwapsToAvoidStore(household.getId(), "lidl");
+        var suggestions = planSwapSuggester.suggestSwapsToAvoidStore(household.getId(), "lido");
 
         // All suggestions must be allergy-safe: none should use salmon
         for (var s : suggestions) {

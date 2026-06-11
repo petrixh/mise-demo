@@ -56,7 +56,7 @@ public class PlanSwapSuggester {
      * {@code storeToAvoid}.
      *
      * @param householdId  the household to evaluate
-     * @param storeToAvoid the store id the user wants to avoid (e.g. "lidl")
+     * @param storeToAvoid the store id the user wants to avoid (e.g. "lido")
      * @return up to 3 swap suggestions; may be empty if no beneficial swaps exist
      */
     @Transactional(readOnly = true)
