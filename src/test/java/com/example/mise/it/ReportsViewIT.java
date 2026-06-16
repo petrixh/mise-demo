@@ -222,6 +222,38 @@ class ReportsViewIT extends MisePlaywrightIT {
         assertThat(page.getByTestId("leaderboard-grid").getByText("Cooked times")).isVisible();
     }
 
+    // ── UC-008 AC #2 / UC-012: derived kcal-per-euro leaderboard column ───────
+
+    /**
+     * UC-008 AC #2, ported from the retired
+     * {@code NavigationToolsAIIT#crossViewCommandChainsGoToWithTargetTool}.
+     *
+     * <p>Adding a kcal-per-euro column to the leaderboard is no longer a standalone
+     * {@code addLeaderboardColumn} tool (removed in UC-012). The reshape is now a
+     * {@code GridAIController} ({@code update_grid_data}) action that persists a
+     * leaderboard SQL query into {@code ViewPreference}. This verifies the state seam
+     * that controller writes to: a persisted query deriving kcal-per-euro
+     * (avg kcal ÷ avg cost — the old tool's BR-03 semantics) restores into the Grid on
+     * load, with the derived-column header rendered, and survives a reload.
+     */
+    @Test
+    void leaderboardKcalPerEuroColumnRestoresOnLoad() {
+        var household = householdService.findHousehold().orElseThrow();
+        viewPreferenceService.saveSettings(household.getId(), ViewPreference.View.REPORTS,
+                "leaderboard", java.util.Map.of("query",
+                        "SELECT recipe_name AS \"Meal\", COUNT(*) AS \"Times\", "
+                        + "ROUND(AVG(CAST(kcal_per_serving AS DOUBLE)) "
+                        + "/ AVG(CAST(est_cost_eur AS DOUBLE)), 1) AS \"kcal per euro\" "
+                        + "FROM meal_history GROUP BY recipe_name ORDER BY 3 DESC"));
+
+        page.navigate(getUrl() + "/reports");
+        assertThat(page.getByTestId("leaderboard-grid").getByText("kcal per euro")).isVisible();
+
+        // Second reload — the derived column survives (persistence, not session state).
+        page.navigate(getUrl() + "/reports");
+        assertThat(page.getByTestId("leaderboard-grid").getByText("kcal per euro")).isVisible();
+    }
+
     // ── UC-012 BR-10: reset drops the persisted state ─────────────────────────
 
     /**
