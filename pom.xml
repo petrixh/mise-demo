@@ -15,7 +15,7 @@
              vaadin-ai-components-flow POM for ${vaadin.version} declares; a
              mismatched milestone breaks SpringAILLMProvider at runtime
              (advisor builder APIs were renamed between milestones). -->
-        <spring-ai.version>2.0.0-M5</spring-ai.version>
+        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
     
     <parent>
