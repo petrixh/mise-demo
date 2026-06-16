@@ -55,7 +55,7 @@
 ## UI / Routes
 
 - **Mobile (< 640px):** the primary form factor for this view — large tap targets, sticky aisle headers, check-off via swipe or tap. Chat is in a `Popover`.
-- **Desktop (≥ 1024px):** two-column — list on the left, recommended-store summary + cost breakdown on the right, chat docked.
+- **Desktop (≥ 1024px):** two-column — list on the left, recommended-store panel on the right (store headline with "€total · N items · M stops" meta, comparison narrative, and a mode toggle whose non-active pill carries the alternative's trade-off, e.g. "Cheapest mix · €48.80, 3 stops"), chat docked. No per-category cost breakdown here — the panel is about the store choice; category costs live in the Plan sidebar and Reports.
 - The "You already have" section is collapsed by default but expandable.
 - Store-mode toggle is a segmented control in the header strip.
 

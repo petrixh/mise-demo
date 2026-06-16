@@ -54,7 +54,7 @@ The `debug-ui` profile flips Playwright out of headless mode so you can watch th
 The default model and endpoint are baked into `application.properties` but can be overridden without recompiling:
 
 ```bash
-MISE_MODEL_BASE_URL=https://api.openai.com \
+MISE_MODEL_BASE_URL=https://api.openai.com/v1 \
 MISE_MODEL_API_KEY=sk-... \
 MISE_MODEL_NAME=gpt-4o-mini \
 ./mvnw

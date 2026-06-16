@@ -5,7 +5,7 @@
 - [DramaFinder MessageListElement gotcha](reference_dramafinder_messagelistelement.md) — `get(locator)` searches INSIDE the locator; use `new MessageListElement(locator)` when the testid IS the message-list element
 - [Track experiments as GitHub issues](feedback_track_experiments_as_gh_issues.md) — multi-session bake-offs / comparisons live as gh issues (body=spec, comments=per-run results), not committed eval scripts/plans
 - [Capture perf in model comparisons](feedback_capture_perf_in_model_comparisons.md) — always record tok/s + TTFT alongside quality when comparing LLMs; use a fixed perf probe 3× per model
-- [Spring AI base-url has no /v1 suffix](project_spring_ai_base_url_no_v1.md) — MISE_MODEL_BASE_URL should be `http://host:port` not `…/v1`; otherwise the request hits `/v1/v1/...` and silently returns null replies
+- [Spring AI base-url convention (flipped in M5)](project_spring_ai_base_url_no_v1.md) — M5 uses the official OpenAI SDK: MISE_MODEL_BASE_URL must now INCLUDE `/v1`; bare host:port 404s (the M4 advice was the opposite)
 - [AIIT forkCount override doesn't take](project_aiit_forkcount_override.md) — `-DforkCount=1` CLI flag is ignored by Failsafe; edit pom.xml:217 directly when targeting LM-Studio-class single-concurrent endpoints
 - [Stop means stop](feedback_stop_means_stop.md) — when user says "stop", abandon in-flight work and don't post pending results; "Stopping…" followed by more work is worse than not stopping at all
 - [Vaadin CSS @import bundler doesn't rebuild on sub-file edits](project_vaadin_css_import_cache.md) — touch master `styles.css` after editing any `mise-<view>.css` or the served bundle stays stale

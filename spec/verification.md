@@ -127,3 +127,16 @@ Each use case carries its own `## Verification` section at the bottom of its `us
 
 - **Status:** [Pass / Fail / Partial]
 - **Notes:** [Any issues found or follow-up items]
+
+---
+
+## Manual pre-demo checklist
+
+These items can't be (or aren't) covered by automated tests — run them by hand before any on-stage demo. Each takes under two minutes against the live local model.
+
+- [ ] **UC-006 seed-edit flip (the teaching moment):** note the current detour verdict for a store (*"is Lidl worth a stop?"*), edit that store's YAML price for a named item, restart the app, re-ask — the verdict (or its € figure) must visibly change.
+- [ ] **UC-012 live reshape:** on /reports, ask *"rank the leaderboard by kcal per euro"* — the grid reshapes in place and survives a page reload.
+- [ ] **UC-012 refusal:** *"chart my carbon footprint per meal"* → refusal + proxy offer, no invented numbers.
+- [ ] **UC-010 keyboard pass:** tab order reaches prev → week pill → next; Enter/Space on the pill opens the date picker.
+- [ ] **UC-008 cross-view single turn:** from /plan, ask a Reports reshape — assistant navigates and applies it in one turn.
+- [ ] **Endpoint sanity:** chat round-trip streams within the latency budget on the demo network (the configured model name must appear in `GET <base-url>/v1/models`).

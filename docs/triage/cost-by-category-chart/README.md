@@ -2,6 +2,16 @@
 
 ## Status
 
+**RESOLVED (2026-06-10).** The panel is back on `MiseChart` (BAR): the root
+cause was phantom default axes — `MiseChart`'s constructor called
+`applyTheme()`, which lazily materialised axis index 0 before the caller's
+axes were added, so Highcharts ignored the caller's category axis. Fixed in
+"Fix MiseChart phantom-axis bug" (constructor no longer touches axes;
+`applyTheme()` is called after axis setup), and the design was further aligned
+by embedding category labels inside the bars, avoiding axis labels entirely.
+Verified live on Vaadin 25.2.0-beta1. The original diagnostic trail is kept
+below for reference.
+
 The "Cost by category" panel on the Plan view was migrated to a Vaadin Chart
 (BAR) during the UI sweep, then reverted to plain DOM bars because the chart's
 axis labels never render visible text in this Vaadin/Highcharts version. This

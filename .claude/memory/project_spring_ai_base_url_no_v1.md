@@ -1,23 +1,22 @@
 ---
-name: project-spring-ai-base-url-no-v1
-description: "Spring AI's spring.ai.openai.base-url expects the host:port WITHOUT a trailing /v1 — it appends /v1/chat/completions internally. Including /v1 produces /v1/v1/chat/completions which most OpenAI-compatible servers handle as a non-error 200 with empty body, silently breaking everything downstream."
-metadata: 
+name: spring-ai-base-url-v1-convention
+description: Spring AI M5 flipped the base-url convention — MISE_MODEL_BASE_URL must now INCLUDE /v1
+metadata:
   node_type: memory
   type: project
-  originSessionId: 465b0e19-fa5f-4bc9-82e1-ea2b6e965dff
 ---
 
-`spring.ai.openai.base-url` (and the `MISE_MODEL_BASE_URL` env var that overrides it in `application-ai-it.properties`) must be the **bare host:port URL with no path** — e.g. `http://192.168.1.123:1234`, not `http://192.168.1.123:1234/v1`.
+**Convention flipped with Spring AI 2.0.0-M5 (2026-06-10).** M5 replaced its own HTTP client with the official OpenAI Java SDK (`com.openai.*`), which appends `/chat/completions` directly to the base URL and ignores `spring.ai.openai.chat.completions-path`. So:
 
-Spring AI internally appends `/v1/chat/completions`. If you include `/v1` yourself, the resulting URL becomes `/v1/v1/chat/completions`.
+```
+# Spring AI 2.0.0-M5+ (current)
+export MISE_MODEL_BASE_URL=http://host:port/v1   # ✓ correct
+export MISE_MODEL_BASE_URL=http://host:port      # ✗ 404 (NotFoundException: 404: null)
 
-**Why this is hard to debug:** LM Studio (and many other OpenAI-compatible servers) handle the duplicated-`/v1` URL by returning HTTP 200 with an empty/non-conforming body and logging an internal warning. Spring AI's `OpenAiChatModel` swallows the response and emits `WARN: No choices returned for prompt: …`, which surfaces in the AIIT tests as `reply` being `null` and the assertion failure `Cannot invoke "String.toLowerCase(...)" because "reply" is null`. The symptoms look like model failure but are pure config.
-
-**How to apply:** When pointing AIIT (or any Spring AI usage in this project) at an LM Studio / vLLM / llama.cpp-server endpoint, set the env var WITHOUT the `/v1` suffix:
-
-```bash
-export MISE_MODEL_BASE_URL=http://host:port      # ✓ correct
-export MISE_MODEL_BASE_URL=http://host:port/v1   # ✗ produces /v1/v1/...
+# Spring AI 2.0.0-M4 (historic — the old advice, now wrong)
+# bare host:port was correct; adding /v1 produced /v1/v1/... and null replies
 ```
 
-If the model loaded and a direct `curl http://host:port/v1/chat/completions` works but AIIT reports `reply: null`, check the LM Studio (or server) logs for `POST /v1/v1/chat/completions` first — it's almost always this.
+**Symptom of getting it wrong under M5:** `com.openai.errors.NotFoundException: 404: null` from `ChatCompletionServiceImpl.create` on every chat call.
+
+**How to apply:** all committed defaults (`application.properties`, `application-ai-it.properties`), `application-local.properties(.example)`, and README already carry `/v1`. When rotating the endpoint in `application-local.properties`, keep the `/v1` suffix.

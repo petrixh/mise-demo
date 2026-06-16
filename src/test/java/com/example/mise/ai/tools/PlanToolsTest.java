@@ -60,14 +60,15 @@ class PlanToolsTest {
     @MockitoBean
     private MealCostCalculator mealCostCalculator;
 
+    /** Mocked so tests can set a viewed week without a VaadinSession (returns null by default). */
+    @MockitoBean
+    private com.example.mise.ui.ViewedWeekState viewedWeekState;
+
     /**
-     * The seeded plan is anchored to the current week so day-name resolution
-     * lines up. {@link PlanTools#resolveDate(String)} interprets weekday strings
-     * ("Thursday", "Monday") relative to {@code LocalDate.now()} — it has no
-     * way to know about this plan's {@code weekStartDate}. Pinning a fixed
-     * past date here makes tests pass on the day it was written and quietly
-     * rot afterwards as "Thursday" starts resolving to a date outside the
-     * seeded week.
+     * The seeded ACTIVE plan is anchored to the current week. UC-010 BR-06:
+     * {@link PlanTools#resolveDate(String)} anchors weekday strings ("Thursday",
+     * "Monday") to the <b>viewed</b> plan's week — which, with no viewed-week
+     * param mocked, is this ACTIVE plan, i.e. the current week.
      */
     private static final LocalDate WEEK_START =
             LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
@@ -160,6 +161,30 @@ class PlanToolsTest {
         assertThat(planTools.resolveDate(null)).isNull();
         assertThat(planTools.resolveDate("")).isNull();
         assertThat(planTools.resolveDate("  ")).isNull();
+    }
+
+    /**
+     * UC-010 BR-06 (regression for the live-found bug): while viewing a past
+     * week, "friday" must resolve to that week's Friday — not the real-world
+     * week's Friday. Caught live 2026-06-10: viewing the week of May 18,
+     * "What's for dinner on Friday?" answered "no meal planned" while the
+     * Friday meal was on screen.
+     */
+    @Test
+    void resolveDate_dayName_anchorsToViewedWeek() {
+        LocalDate pastMonday = WEEK_START.minusWeeks(3);
+        var pastPlan = new Plan();
+        pastPlan.setHouseholdId(savedHousehold.getId());
+        pastPlan.setWeekStartDate(pastMonday);
+        pastPlan.setStatus(Plan.Status.HISTORICAL);
+        planRepository.save(pastPlan);
+
+        when(viewedWeekState.getCurrentParam()).thenReturn(pastMonday.toString());
+
+        assertThat(planTools.resolveDate("friday")).isEqualTo(pastMonday.plusDays(4));
+        assertThat(planTools.resolveDate("Monday")).isEqualTo(pastMonday);
+        // Calendar-relative words stay calendar-relative even on a past week
+        assertThat(planTools.resolveDate("today")).isEqualTo(LocalDate.now());
     }
 
     @Test

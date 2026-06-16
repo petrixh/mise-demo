@@ -10,7 +10,7 @@
 
 - **Java 21**
 - **Spring Boot 4.x** — auto-configuration, embedded Tomcat
-- **Vaadin Flow 25.2 (alpha)** with the **Aura theme** — server-side Java UI. Currently `25.2.0-alpha5` or newer is required for the AI component preview.
+- **Vaadin Flow 25.2 (pre-release)** with the **Aura theme** — server-side Java UI. Currently `25.2.0-beta1` (Maven Central) — the first pre-release that ships the AI-powered Charts and Grids preview used by UC-012.
 - **Maven** (wrapper included). Default goal: `spring-boot:run`.
 
 ### AI
@@ -19,10 +19,10 @@
   - `orchestrator.AIOrchestrator` — non-visual coordination engine; one per household, wired to a `MessageList`, `MessageInput`, optional `UploadManager`, and a set of tools.
   - `provider.LLMProvider` — interface for LLM communication.
   - `provider.SpringAILLMProvider` — concrete provider backed by Spring AI's `ChatClient`. (This project uses Spring AI, **not** the LangChain4J variant from the reference example.)
-  - `provider.DatabaseProvider` — exposes a DB connection to the orchestrator so it can run SQL against H2 directly (used by Grid/Chart controllers; we will also use it for ad-hoc reasoning over plan history in Reports).
-  - `grid.GridAIController` + `chart.ChartAIController` — AI-driven Grid and Chart wrappers used by Reports.
+  - `provider.DatabaseProvider` — the AI's SQL surface (`getSchema()` + `executeQuery(sql)`). Implemented by `MiseDatabaseProvider` over the curated reporting snapshot (UC-012); also backs `queryReportingData` for ad-hoc data questions in chat.
+  - `grid.GridAIController` + `chart.ChartAIController` — AI-driven Grid and Chart controllers powering the Reports widgets (UC-012). Registered on the orchestrator at build time via `Builder.withController(...)`; their components live in the per-UI `ReportsWidgets` holder and are adopted by `ReportsView` on attach.
   - `common.ChatMessage` — used to serialize and restore conversation history.
-- **Spring AI 2.0.0-M4** (`spring-ai-starter-model-openai`) — provides a `ChatClient`/`ChatModel` configured against any OpenAI-compatible endpoint. Wraps the Qwen local model by default. **Pinned to M4** because Vaadin AI components 25.2.0-alpha5 are compiled against that exact milestone; newer milestones (M5/M6) renamed `MessageChatMemoryAdvisor$Builder.conversationId(...)` and break `SpringAILLMProvider` at runtime. Spring AI 1.x is incompatible with Spring Boot 4 entirely (references a removed `RestClientAutoConfiguration` class). Bump in lockstep with Vaadin AI releases only.
+- **Spring AI 2.0.0-M5** (`spring-ai-starter-model-openai`) — provides a `ChatClient`/`ChatModel` configured against any OpenAI-compatible endpoint. Wraps the Qwen local model by default. **Pinned to the milestone the Vaadin AI components are compiled against** (alpha5 → M4, beta1 → M5; check `vaadin-ai-components-flow`'s POM when bumping) — a mismatched milestone breaks `SpringAILLMProvider` at runtime because advisor builder APIs were renamed between milestones. Spring AI 1.x is incompatible with Spring Boot 4 entirely (references a removed `RestClientAutoConfiguration` class). Bump in lockstep with Vaadin AI releases only.
 - **Feature flag:** `com.vaadin.experimental.aiComponents=true` in `src/main/resources/vaadin-featureflags.properties`.
 - **Push:** `@Push` on `Application` is required for streaming chat responses.
 
@@ -78,7 +78,7 @@
 ### Principles
 
 - **Orchestrator mediates; it does not store.** All durable state lives in domain services and H2. The orchestrator carries only the in-flight conversation and the tool bindings.
-- **One conversation, many views.** A single `AIOrchestrator` drives one shared `MessageList`/`MessageInput` placed in `MainLayout`. The conversation is persisted to H2 via `ConversationService` and rehydrated on app restart through `AIOrchestrator.builder(...).withHistory(...)`. Each view registers view-specific tools/controllers (e.g. `GridAIController` for Reports) with the same orchestrator when entered, and unregisters on leave.
+- **One conversation, many views.** A single `AIOrchestrator` drives one shared `MessageList`/`MessageInput` placed in `MainLayout`. The conversation is persisted to H2 via `ConversationService` and rehydrated on app restart through `AIOrchestrator.builder(...).withHistory(...)`. All tools **and** the Reports controllers are registered at orchestrator build time (the API has no runtime attach/detach — `reconnect()` is deserialization-only); the system prompt scopes them to their views, and cross-view requests work in a single turn via `goToView`.
   - **Scope is per-UI** in the demo (the orchestrator binds to the UI's `MessageList`/`MessageInput` in `MainLayout`'s constructor). Conversation persistence via H2 means a second browser tab sees the same chat history — they just get separate live orchestrator instances. Multi-UI conflict is not a stage-1 concern for the single-user demo.
 - **AI output is structured data.** Tools return DTOs. The UI reacts to service-level state changes via Vaadin Signals or repository-event listeners, not by parsing chat text.
 - **Persist by list position, not by `messageId`.** Vaadin's `AIOrchestrator` builds the assistant `ChatMessage` with `messageId = null` (verified in the orchestrator bytecode at `streamResponseToMessage`). `ConversationService` syncs by appending anything beyond `repository.count()` rather than deduping on messageId, so the assistant turn isn't silently dropped.
@@ -125,15 +125,14 @@ com.example.mise/
       ChatLayouts.java                   — layout factory (mirrors the reference example)
 
   ai/
-    HouseholdOrchestrator.java           — per-UI wrapper around AIOrchestrator
-    OrchestratorFactory.java             — builds orchestrator from history + current view tools  [planned]
-    MiseDatabaseProvider.java            — DatabaseProvider impl over the curated reporting schema (UC-012)  [planned]
+    HouseholdOrchestrator.java           — per-UI wrapper around AIOrchestrator (tools + controllers at build time)
+    MiseDatabaseProvider.java            — DatabaseProvider impl over the curated reporting schema (UC-012)
     tools/
-      PlanTools.java                     — @Tool methods: swapMeal, pinMeal, regenerateWeek, ...
-      ShoppingTools.java                 — @Tool methods: markPantry, switchMode, evaluateDetour, ...
-      ReportsTools.java                  — @Tool methods: addColumn, transformChart, ...
-      PreferencesTools.java              — @Tool methods: setAllergy, setBudget, muteInsights, ...
-      ViewNavigationTools.java           — @Tool: goToView (cross-view chat)
+      PlanTools.java                     — @Tool methods: swapMeal, pinMeal, negotiateWeek, undo, explain, ...
+      ShoppingTools.java                 — @Tool methods: addPantryItem, evaluateDetour, ...
+      ReportingTools.java                — @Tool methods: queryReportingData (NL→SQL data questions), resetReportsWidget
+      InsightTools.java                  — @Tool methods: muteInsights, dismissCurrentInsight, ...
+      NavigationTools.java               — @Tool: goToView (cross-view chat)
 
   domain/
     household/
@@ -149,10 +148,11 @@ com.example.mise/
       PantryItem.java                    — JPA entity
       PantryService.java + impl
     reports/
-      ReportService.java + impl
-      ReportSnapshotService.java + impl  — maintains denormalized H2 reporting tables (UC-012)  [planned]
-      ViewPreference.java                — JPA entity (chart shape, added columns)
-      ViewPreferenceService.java + impl
+      ReportService.java                 — KPI-strip aggregations (cost trend, weekly average)
+      ReportSnapshotService.java         — owns + rebuilds the denormalized H2 reporting tables (UC-012)
+    preferences/
+      ViewPreference.java                — JPA entity (per-widget query + controller state)
+      ViewPreferenceService.java
     conversation/
       ConversationMessage.java           — JPA entity
       ConversationService.java + impl    — persist + load history per household
@@ -233,10 +233,6 @@ class AIConfig {
         return new SpringAILLMProvider(builder.build());
     }
 
-    @Bean
-    DatabaseProvider databaseProvider(DataSource ds) {
-        return new DatabaseProvider(ds);
-    }
 }
 
 // Per-UI: built inside MainLayout's constructor, given the MessageList/MessageInput
@@ -249,18 +245,22 @@ public class HouseholdOrchestrator {
     public HouseholdOrchestrator(LLMProvider provider,
                                  ConversationService conversations,
                                  MessageList messageList,
-                                 MessageInput messageInput) {
+                                 MessageInput messageInput,
+                                 List<AIController> controllers,   // UC-012: Reports chart/grid controllers
+                                 Object... tools) {
         this.conversations = conversations;
         var history = conversations.loadHistory();
         var builder = AIOrchestrator.builder(provider, SYSTEM_PROMPT)
             .withMessageList(messageList)
             .withInput(messageInput)
-            .withResponseCompleteListener(this::onResponseComplete);
+            .withTools(tools)
+            .withResponseListener(this::onResponseComplete);
+        controllers.forEach(builder::withController);
         if (!history.isEmpty()) builder.withHistory(history, Map.of());
         this.orchestrator = builder.build();
     }
 
-    private void onResponseComplete(ResponseCompleteListener.ResponseCompleteEvent e) {
+    private void onResponseComplete(ResponseListener.ResponseEvent e) {
         // Index-based sync (assistant ChatMessage.messageId is null — see above).
         conversations.syncFromOrchestrator(orchestrator.getHistory());
     }
@@ -269,11 +269,11 @@ public class HouseholdOrchestrator {
 }
 ```
 
-Tools are plain Spring beans whose methods carry `@org.springframework.ai.tool.annotation.Tool("...")`. They take and return DTOs; the UI listens to service-level state changes (via Vaadin Signals or `ApplicationEventPublisher`) rather than parsing tool responses.
+Tools are plain Spring beans whose methods carry `@org.springframework.ai.tool.annotation.Tool("...")`. They take and return DTOs; views re-read their data when `ViewRefreshBroadcaster` fires after each AI turn rather than parsing tool responses.
 
-### View-scoped controllers
+### Reports controllers (UC-012)
 
-Reports widgets attach `GridAIController` / `ChartAIController` to the shared orchestrator when entered (`AfterNavigationObserver`) and detach on leave. The system prompt is augmented for the view ("you are currently in Reports; the user can ask for column additions or chart transforms").
+`AIOrchestrator` accepts controllers only at build time (`reconnect()` exists solely for the post-deserialization path), so the Reports `Chart`/`Grid` components and their `ChartAIController`/`GridAIController` live in a per-UI `ReportsWidgets` holder created by `MainLayout` before the orchestrator is built. `ReportsView` adopts the components into its layout on attach and applies persisted-or-default states (`restoreState`); the controllers' tools are scoped to `/reports` by the system prompt — the same UC-008 convention as every other view's tools. `MiseDatabaseProvider` is the controllers' SQL surface: it describes only the curated reporting snapshot (rebuilt on demand by `ReportSnapshotService` when a source-table fingerprint changes) and rejects everything but single SELECTs.
 
 ---
 

@@ -1,23 +1,26 @@
 package com.example.mise.ui;
 
 import com.example.mise.ai.HouseholdOrchestrator;
+import com.example.mise.ai.MiseDatabaseProvider;
 import com.example.mise.ai.tools.InsightTools;
 import com.example.mise.ai.tools.NavigationTools;
 import com.example.mise.ai.tools.PlanTools;
-import com.example.mise.ai.tools.ReportsTools;
+import com.example.mise.ai.tools.ReportingTools;
 import com.example.mise.ai.tools.ShoppingTools;
 import com.example.mise.domain.conversation.ConversationMessage;
 import com.example.mise.domain.conversation.ConversationService;
 import com.example.mise.domain.household.HouseholdService;
 import com.example.mise.domain.insights.Insight;
 import com.example.mise.domain.insights.InsightService;
+import com.example.mise.domain.plan.Plan;
 import com.example.mise.domain.plan.PlanService;
-import com.example.mise.ui.plan.PlanRefreshBroadcaster;
-import com.example.mise.ui.reports.ReportsRefreshBroadcaster;
-import com.example.mise.ui.shopping.ShoppingRefreshBroadcaster;
+import com.example.mise.domain.preferences.ViewPreferenceService;
+import com.example.mise.ui.reports.ReportsWidgets;
+import com.example.mise.ui.shared.ViewRefreshBroadcaster;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
@@ -29,12 +32,14 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.AfterNavigationEvent;
 import com.vaadin.flow.router.AfterNavigationObserver;
+import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.RouterLayout;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
+import java.util.List;
 
 /**
  * UC-002 MainLayout: header + tabs (Plan/Shopping/Reports) + view outlet + chat dock.
@@ -42,6 +47,8 @@ import java.time.temporal.TemporalAdjusters;
  */
 public class MainLayout extends VerticalLayout
         implements RouterLayout, AfterNavigationObserver {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MainLayout.class);
 
     private static final DateTimeFormatter WEEK_FMT = DateTimeFormatter.ofPattern("MMM d");
 
@@ -60,6 +67,8 @@ public class MainLayout extends VerticalLayout
             + "</svg>";
 
     private final HouseholdOrchestrator household;
+    /** UC-012: per-UI Reports widgets + AI controllers; adopted by ReportsView on attach. */
+    private final ReportsWidgets reportsWidgets;
     private final MessageList messageList;
     private final Span lastAiMessageText;
     /** The chat dock container — assigned in buildChatDock(); referenced by the
@@ -72,6 +81,8 @@ public class MainLayout extends VerticalLayout
     private final Div insightBanner;
     private final InsightService insightService;
     private final HouseholdService householdServiceRef;
+    private final ViewedWeekService viewedWeekService;
+    private final ViewedWeekState viewedWeekState;
     private UI ui;
 
     // Tab elements kept as fields for active-state management
@@ -79,21 +90,40 @@ public class MainLayout extends VerticalLayout
     private final Div shoppingTab;
     private final Div reportsTab;
 
+    // UC-010: week navigator controls — kept as fields so afterNavigation can update them
+    private Button prevBtn;
+    private Button nextBtn;
+    private Span weekBadge;
+    private DatePicker weekPicker;
+
+    /** UC-010: the current route path (without ?week=) used when navigating prev/next. */
+    private String currentRoutePath = "plan";
+
     public MainLayout(LLMProvider llmProvider,
                       ConversationService conversationService,
                       HouseholdService householdService,
                       PlanService planService,
                       PlanTools planTools,
                       ShoppingTools shoppingTools,
-                      ReportsTools reportsTools,
+                      ReportingTools reportingTools,
                       NavigationTools navigationTools,
                       InsightTools insightTools,
                       InsightService insightService,
-                      PlanRefreshBroadcaster planRefreshBroadcaster,
-                      ShoppingRefreshBroadcaster shoppingRefreshBroadcaster,
-                      ReportsRefreshBroadcaster reportsRefreshBroadcaster) {
+                      ViewRefreshBroadcaster refreshBroadcaster,
+                      MiseDatabaseProvider databaseProvider,
+                      ViewPreferenceService viewPreferenceService,
+                      ViewedWeekService viewedWeekService,
+                      ViewedWeekState viewedWeekState) {
         this.insightService = insightService;
         this.householdServiceRef = householdService;
+        this.viewedWeekService = viewedWeekService;
+        this.viewedWeekState = viewedWeekState;
+
+        // UC-012: per-UI Reports widgets + controllers. Built before the
+        // orchestrator so the controllers can be registered at build time
+        // (reconnect() is deserialization-only). ReportsView adopts the
+        // components on attach via reportsWidgets().
+        this.reportsWidgets = new ReportsWidgets(databaseProvider, viewPreferenceService, householdService);
         // ── Chat components shared across all views ───────────────────────
         messageList = new MessageList();
         messageList.setMarkdown(true);
@@ -133,15 +163,12 @@ public class MainLayout extends VerticalLayout
                             if (chatDock != null) chatDock.removeClassName("ai-working");
                         });
                     }
-                    // BR-08: push plan refresh to all attached PlanView instances after every AI turn
-                    planRefreshBroadcaster.fireRefresh();
-                    // BR-08: push shopping refresh to all attached ShoppingView instances after every AI turn
-                    // Both broadcasters fire here so meal mutations propagate to both views simultaneously.
-                    shoppingRefreshBroadcaster.fireRefresh();
-                    // UC-007: push reports refresh to all attached ReportsView instances after every AI turn
-                    reportsRefreshBroadcaster.fireRefresh();
+                    // UC-008 BR-08: one refresh channel — every attached view
+                    // re-reads its data after each AI turn.
+                    refreshBroadcaster.fireRefresh();
                 },
-                planTools, shoppingTools, reportsTools, navigationTools, insightTools);
+                List.of(reportsWidgets.controller()),
+                planTools, shoppingTools, reportingTools, navigationTools, insightTools);
 
         // Error path: LLM unreachable / empty response → red indicator + toast.
         // Runs on the background streaming thread; UI mutations need ui.access().
@@ -211,9 +238,6 @@ public class MainLayout extends VerticalLayout
 
     private Div buildHeader(HouseholdService householdService, PlanService planService) {
         // ── Logo + wordmark (left) ───────────────────────────────────────────
-        // Tabler ti-tools-kitchen-2 icon next to the "Mise" text, per the mockup.
-        // Inlined (not via <img>) so stroke="currentColor" picks up the brand's
-        // text color and the logo stays in sync with the header in any theme.
         var logo = new Span();
         logo.addClassName("mise-brand-logo");
         logo.getElement().setAttribute("aria-hidden", "true");
@@ -225,33 +249,57 @@ public class MainLayout extends VerticalLayout
         var brand = new Div(logo, wordmark);
         brand.addClassName("mise-brand");
         brand.getElement().setAttribute("data-testid", "app-header-wordmark");
+        // UC-010: clicking the brand goes "home" (ACTIVE plan, no ?week= param)
+        brand.getElement().setAttribute("role", "button");
+        brand.getElement().setAttribute("aria-label", "Go to current week");
+        brand.addClickListener(e -> UI.getCurrent().navigate("plan"));
 
-        // ── Week navigator (center-right): disabled prev + badge + disabled next ──
-        // Arrows are present for visual completeness per design system but disabled
-        // (week navigation is not in scope for any UC in this build).
-        var prevBtn = new Button(VaadinIcon.ANGLE_LEFT.create());
+        // ── Week navigator: prev + badge + next + hidden DatePicker ──────────
+        // UC-010: buttons are now live. afterNavigation sets enabled state per BR-02.
+        prevBtn = new Button(VaadinIcon.ANGLE_LEFT.create());
         prevBtn.addClassName("mise-header-week-nav-btn");
-        prevBtn.setEnabled(false);
+        prevBtn.setId("mise-week-prev");
         prevBtn.getElement().setAttribute("aria-label", "Previous week");
+        prevBtn.addClickListener(e -> navigateWeek(-1));
 
         String weekLabel = buildWeekLabel(householdService, planService);
-        var weekBadge = new Span(weekLabel);
+        weekBadge = new Span(weekLabel);
         weekBadge.addClassName("mise-week-badge");
+        weekBadge.setId("mise-week-badge");
         weekBadge.getElement().setAttribute("data-testid", "app-header-week");
 
-        var nextBtn = new Button(VaadinIcon.ANGLE_RIGHT.create());
+        nextBtn = new Button(VaadinIcon.ANGLE_RIGHT.create());
         nextBtn.addClassName("mise-header-week-nav-btn");
-        nextBtn.setEnabled(false);
+        nextBtn.setId("mise-week-next");
         nextBtn.getElement().setAttribute("aria-label", "Next week");
+        nextBtn.addClickListener(e -> navigateWeek(+1));
 
-        var weekNav = new Div(prevBtn, weekBadge, nextBtn);
+        // UC-010: DatePicker overlay — input field hidden, only the calendar overlay is used.
+        // Opened programmatically from the badge click / Enter keydown (BR-07).
+        weekPicker = new DatePicker();
+        weekPicker.setId("mise-week-datepicker");
+        weekPicker.getElement().setAttribute("aria-label", "Select week");
+        weekPicker.addClassName("mise-week-datepicker");
+        weekPicker.addValueChangeListener(ev -> {
+            LocalDate picked = ev.getValue();
+            if (picked == null) return;
+            LocalDate monday = viewedWeekService.snapToMonday(picked);
+            navigateToWeek(monday);
+        });
+        // Badge click opens the picker
+        weekBadge.addClickListener(e -> weekPicker.open());
+        weekBadge.getElement().setAttribute("tabindex", "0");
+        weekBadge.getElement().addEventListener("keydown", ev -> weekPicker.open())
+                .addEventData("event.key")
+                .setFilter("event.key === 'Enter' || event.key === ' '");
+
+        // Initially disable nav buttons — afterNavigation enables them
+        prevBtn.setEnabled(false);
+        nextBtn.setEnabled(false);
+
+        var weekNav = new Div(prevBtn, weekBadge, nextBtn, weekPicker);
         weekNav.addClassName("mise-header-week-nav");
 
-        // ── Assemble full-width header bar ───────────────────────────────────
-        // Mockup desktop layout: brand · week-nav (left group) · tabs (right group).
-        // The budget pill that previously sat between week-nav and tabs is dropped —
-        // it isn't in the mockup and householdService is unused after that removal,
-        // but kept on the signature for now since other callers may still inject it.
         var header = new Div(brand, weekNav);
         header.setId("mise-app-header");
         header.getElement().setAttribute("data-testid", "app-header");
@@ -271,7 +319,9 @@ public class MainLayout extends VerticalLayout
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("Week label fell back to the current calendar week: {}", e.getMessage());
+        }
         LocalDate monday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         return "Week of " + monday.format(WEEK_FMT);
     }
@@ -280,7 +330,16 @@ public class MainLayout extends VerticalLayout
         var tab = new Div(new Span(label));
         tab.addClassName("mise-tab");
         if (route != null) {
-            tab.addClickListener(e -> UI.getCurrent().navigate(route));
+            tab.addClickListener(e -> {
+                // UC-010: preserve the current ?week= param when switching tabs (BR-05)
+                String weekParam = viewedWeekState.getCurrentParam();
+                if (weekParam != null) {
+                    UI.getCurrent().navigate(route,
+                            QueryParameters.of("week", weekParam));
+                } else {
+                    UI.getCurrent().navigate(route);
+                }
+            });
         } else {
             // Disabled placeholder tabs show a "coming soon" notification
             tab.addClickListener(e -> {
@@ -369,7 +428,7 @@ public class MainLayout extends VerticalLayout
         return dock;
     }
 
-    /** Sync active tab indicator, orchestrator view context, and insight banner after navigation. */
+    /** Sync active tab indicator, orchestrator view context, insight banner, and week nav after navigation. */
     @Override
     public void afterNavigation(AfterNavigationEvent event) {
         String location = event.getLocation().getPath();
@@ -381,30 +440,159 @@ public class MainLayout extends VerticalLayout
         if (location.startsWith("plan") || location.isEmpty()) {
             planTab.getElement().setAttribute("active", true);
             viewContext = ConversationMessage.ViewContext.PLAN;
+            currentRoutePath = "plan";
         } else if (location.startsWith("shopping")) {
             shoppingTab.getElement().setAttribute("active", true);
             viewContext = ConversationMessage.ViewContext.SHOPPING;
+            currentRoutePath = "shopping";
         } else if (location.startsWith("reports")) {
             reportsTab.getElement().setAttribute("active", true);
             viewContext = ConversationMessage.ViewContext.REPORTS;
+            currentRoutePath = "reports";
         } else {
             viewContext = ConversationMessage.ViewContext.PLAN;
         }
 
         // UC-008 (BR-03): keep the orchestrator's view context in sync with the active route
-        // so every subsequent conversation message is stamped with the correct view.
         household.setCurrentView(viewContext);
 
-        // UC-009: update insight banner — skip on the onboarding/welcome route
-        // *and* on /plan (Plan renders its own inline insight in the cost-by-category
-        // sidebar) *and* on /reports (Reports renders its own non-dismissable
-        // insight block at the bottom of the panel, beneath the leaderboard).
-        // Shopping is the only remaining view that still relies on the top banner
-        // until it grows its own in-context insight area.
+        // UC-010: read ?week= param and update badge + buttons + session state
+        String weekParam = event.getLocation().getQueryParameters()
+                .getParameters().getOrDefault("week", List.of()).stream()
+                .findFirst().orElse(null);
+        updateWeekNav(weekParam);
+
+        // UC-009: update insight banner
         boolean isWelcome = location.startsWith("welcome") || location.startsWith("onboarding");
         boolean isPlan = location.startsWith("plan") || location.isEmpty();
         boolean isReports = location.startsWith("reports");
         updateInsightBanner(isWelcome || isPlan || isReports);
+    }
+
+    /**
+     * UC-010: Updates the week badge label, badge modifier classes, prev/next enabled state,
+     * DatePicker bounds, and the ViewedWeekState session bean after each navigation.
+     */
+    private void updateWeekNav(String weekParam) {
+        try {
+            var hhOpt = householdServiceRef.findHousehold();
+            if (hhOpt.isEmpty()) {
+                // BR-08: pre-onboarding fallback — show placeholder, disable everything
+                weekBadge.setText("Week of " + LocalDate.now()
+                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                        .format(WEEK_FMT));
+                weekBadge.getElement().removeAttribute("tabindex");
+                prevBtn.setEnabled(false);
+                nextBtn.setEnabled(false);
+                viewedWeekState.clear();
+                return;
+            }
+            var hh = hhOpt.get();
+
+            // Resolve the viewed plan
+            var viewedPlan = viewedWeekService.resolveViewedPlan(hh.getId(), weekParam).orElse(null);
+            if (viewedPlan == null) {
+                // No plans at all — same fallback
+                weekBadge.setText("Week of " + LocalDate.now()
+                        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                        .format(WEEK_FMT));
+                prevBtn.setEnabled(false);
+                nextBtn.setEnabled(false);
+                viewedWeekState.clear();
+                return;
+            }
+
+            LocalDate viewedMonday = viewedPlan.getWeekStartDate();
+
+            // Sync session state for chat tools (BR-06)
+            viewedWeekState.setViewedMonday(viewedMonday);
+
+            // Update badge label
+            weekBadge.setText("Week of " + viewedMonday.format(WEEK_FMT));
+
+            // Update badge modifier class (UC-010 visual distinction)
+            weekBadge.removeClassNames("mise-week-badge--past", "mise-week-badge--future");
+            if (viewedPlan.getStatus() == Plan.Status.ACTIVE) {
+                // default styling (no modifier)
+            } else {
+                var activePlanOpt = viewedWeekService.resolveViewedPlan(hh.getId(), null);
+                boolean isAfterActive = activePlanOpt.isPresent()
+                        && viewedMonday.isAfter(activePlanOpt.get().getWeekStartDate());
+                if (isAfterActive) {
+                    weekBadge.addClassName("mise-week-badge--future");
+                } else {
+                    weekBadge.addClassName("mise-week-badge--past");
+                }
+            }
+
+            // Update prev/next enabled state (BR-02)
+            var prevPlan = viewedWeekService.previousPlan(hh.getId(), viewedMonday);
+            var nextPlan = viewedWeekService.nextPlan(hh.getId(), viewedMonday);
+            prevBtn.setEnabled(prevPlan.isPresent());
+            nextBtn.setEnabled(nextPlan.isPresent());
+
+            // Update DatePicker bounds (BR-07)
+            var allPlans = viewedWeekService.allPlansOrderedAsc(hh.getId());
+            if (!allPlans.isEmpty()) {
+                LocalDate minDate = allPlans.get(0).getWeekStartDate();
+                LocalDate maxDate = allPlans.get(allPlans.size() - 1).getWeekStartDate().plusDays(6);
+                weekPicker.setMin(minDate);
+                weekPicker.setMax(maxDate);
+            }
+            // Suppress value-change event when setting picker to the current week
+            weekPicker.setValue(viewedMonday);
+
+        } catch (Exception e) {
+            // Never break navigation for week-nav rendering
+        }
+    }
+
+    /**
+     * UC-010: Navigates to the prev (-1) or next (+1) plan relative to the current viewed week.
+     */
+    private void navigateWeek(int direction) {
+        try {
+            var hhOpt = householdServiceRef.findHousehold();
+            if (hhOpt.isEmpty()) return;
+            var hh = hhOpt.get();
+
+            LocalDate current = viewedWeekState.getViewedMonday();
+            if (current == null) {
+                var activePlan = viewedWeekService.resolveViewedPlan(hh.getId(), null).orElse(null);
+                if (activePlan == null) return;
+                current = activePlan.getWeekStartDate();
+            }
+
+            var targetPlan = direction < 0
+                    ? viewedWeekService.previousPlan(hh.getId(), current)
+                    : viewedWeekService.nextPlan(hh.getId(), current);
+
+            targetPlan.ifPresent(p -> navigateToWeek(p.getWeekStartDate()));
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * UC-010: Navigates to the current route with ?week=YYYY-MM-DD for the given Monday.
+     * If the target is the ACTIVE plan's week, navigates without the param (clean URL).
+     */
+    private void navigateToWeek(LocalDate monday) {
+        try {
+            var hhOpt = householdServiceRef.findHousehold();
+            if (hhOpt.isEmpty()) return;
+            var hh = hhOpt.get();
+
+            // If we're navigating to the same week already shown, skip (no-op per AC)
+            if (monday.equals(viewedWeekState.getViewedMonday())) return;
+
+            // Check if the target is the ACTIVE plan — if so, navigate without param
+            var activePlan = viewedWeekService.resolveViewedPlan(hh.getId(), null).orElse(null);
+            if (activePlan != null && monday.equals(activePlan.getWeekStartDate())) {
+                UI.getCurrent().navigate(currentRoutePath);
+            } else {
+                UI.getCurrent().navigate(currentRoutePath,
+                        QueryParameters.of("week", monday.toString()));
+            }
+        } catch (Exception ignored) {}
     }
 
     /**
@@ -498,6 +686,11 @@ public class MainLayout extends VerticalLayout
 
     public HouseholdOrchestrator household() {
         return household;
+    }
+
+    /** UC-012: the Reports widgets owned by this UI's layout. */
+    public ReportsWidgets reportsWidgets() {
+        return reportsWidgets;
     }
 
     public MessageList messageList() {

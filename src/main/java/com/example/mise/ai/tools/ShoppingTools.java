@@ -11,6 +11,8 @@ import com.example.mise.domain.shopping.ExtraShoppingItemRepository;
 import com.example.mise.domain.shopping.PantryItem;
 import com.example.mise.domain.shopping.PantryService;
 import com.example.mise.domain.shopping.ShoppingService;
+import com.example.mise.ui.ViewedWeekService;
+import com.example.mise.ui.ViewedWeekState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
@@ -39,6 +41,8 @@ public class ShoppingTools {
     private final RecipeCatalog recipeCatalog;
     private final DetourEvaluator detourEvaluator;
     private final PlanSwapSuggester planSwapSuggester;
+    private final ViewedWeekService viewedWeekService;
+    private final ViewedWeekState viewedWeekState;
 
     public ShoppingTools(HouseholdService householdService,
                          PantryService pantryService,
@@ -47,7 +51,9 @@ public class ShoppingTools {
                          PlanService planService,
                          RecipeCatalog recipeCatalog,
                          DetourEvaluator detourEvaluator,
-                         PlanSwapSuggester planSwapSuggester) {
+                         PlanSwapSuggester planSwapSuggester,
+                         ViewedWeekService viewedWeekService,
+                         ViewedWeekState viewedWeekState) {
         this.householdService = householdService;
         this.pantryService = pantryService;
         this.extraShoppingItemRepository = extraShoppingItemRepository;
@@ -56,6 +62,15 @@ public class ShoppingTools {
         this.recipeCatalog = recipeCatalog;
         this.detourEvaluator = detourEvaluator;
         this.planSwapSuggester = planSwapSuggester;
+        this.viewedWeekService = viewedWeekService;
+        this.viewedWeekState = viewedWeekState;
+    }
+
+    /** UC-010: returns the currently viewed plan id, falling back to the active plan. */
+    private Long resolveViewedPlanId(Long householdId) {
+        var plan = viewedWeekService.resolveViewedPlan(householdId, viewedWeekState.getCurrentParam())
+                .orElse(null);
+        return plan != null ? plan.getId() : null;
     }
 
     /**
@@ -237,8 +252,11 @@ public class ShoppingTools {
             var hh = householdService.findHousehold().orElse(null);
             if (hh == null) return "No household found.";
 
-            // Collect contributions from the plan
-            var contributions = shoppingService.collectPlanIngredients(hh.getId());
+            // UC-010: use viewed plan if one is selected
+            Long planId = resolveViewedPlanId(hh.getId());
+            var contributions = planId != null
+                    ? shoppingService.collectPlanIngredientsForPlan(planId)
+                    : shoppingService.collectPlanIngredients(hh.getId());
             if (contributions.isEmpty()) return "No active plan found — shopping list is empty.";
 
             // Total ingredients (before pantry subtraction)

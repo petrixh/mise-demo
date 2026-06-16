@@ -371,6 +371,30 @@ class ShoppingServiceTest {
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
+    // ── Mode trade-off (recommendation panel / toggle summary) ────────────────
+
+    @Test
+    void tradeoff_oneStoreIsSingleStop_mixIsCheaperOrEqual() {
+        when(recipeCatalog.findById("recipe-a")).thenReturn(Optional.of(
+                buildRecipe("recipe-a", "Carrot Soup",
+                        ingredient("carrot", 300, "g", "Produce"),
+                        ingredient("cheese", 1, "piece", "Dairy"))));
+        seedMeals("recipe-a");
+
+        var oneStore = shoppingService.deriveList(household.getId(), StoreMode.ONE_STORE);
+        var oneTradeoff = shoppingService.tradeoff(oneStore);
+        assertThat(oneTradeoff.stops()).isEqualTo(1);
+        // Full basket priced at the recommended store, not the per-item cheapest
+        var recStore = oneStore.recommendedStore();
+        assertThat(recStore).isNotNull();
+
+        var mix = shoppingService.deriveList(household.getId(), StoreMode.CHEAPEST_MIX);
+        var mixTradeoff = shoppingService.tradeoff(mix);
+        assertThat(mixTradeoff.stops()).isGreaterThanOrEqualTo(1);
+        assertThat(mixTradeoff.total()).isLessThanOrEqualTo(oneTradeoff.total());
+        assertThat(mixTradeoff.total()).isEqualByComparingTo(mix.totalCost());
+    }
+
     private void seedMeals(String... recipeIds) {
         for (int i = 0; i < recipeIds.length; i++) {
             var meal = new Meal();

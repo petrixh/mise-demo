@@ -9,9 +9,9 @@ Mise — a weekly meal planner that demonstrates a deeply AI-integrated Vaadin a
 ## Stack
 
 - Java 21, Spring Boot 4.0.6, Maven (wrapper included)
-- Vaadin Flow **25.2.0-alpha5** (Aura theme) — server-side Java UI
-- Vaadin AI components (preview) — `AIOrchestrator`, `GridAIController`, `ChartAIController`; gated by `com.vaadin.experimental.aiComponents=true` in `src/main/resources/vaadin-featureflags.properties`
-- Spring AI **2.0.0-M4** with `spring-ai-starter-model-openai` — points at any OpenAI-compatible endpoint
+- Vaadin Flow **25.2.0-beta1** (Aura theme) — server-side Java UI
+- Vaadin AI components (preview) — `AIOrchestrator`, `GridAIController`, `ChartAIController` (the latter two drive the Reports widgets, UC-012); gated by `com.vaadin.experimental.aiComponents=true` in `src/main/resources/vaadin-featureflags.properties`
+- Spring AI **2.0.0-M5** with `spring-ai-starter-model-openai` — points at any OpenAI-compatible endpoint
 - Spring Data JPA + H2 in file mode (`./data/mise`), with the H2 console explicitly registered at `/h2-console`
 - `@Push` is set on `Application` — required for streaming chat responses
 
@@ -63,7 +63,7 @@ Shared, project-wide gotchas and conventions for agents live under [`.claude/mem
 These are non-obvious behaviors discovered while wiring the prep branches; relevant when working on the AI backbone (more in [`.claude/memory/`](.claude/memory/)):
 
 - **Spring Boot 4 dropped `H2ConsoleAutoConfiguration`.** The `spring.h2.console.*` properties are inert; `H2ConsoleConfig` registers `JakartaWebServlet` manually. If H2 ever stops responding under the Vaadin `/*` mapping, that config is the place to look.
-- **Vaadin AI components are pinned to Spring AI 2.0.0-M4.** Newer milestones (M5/M6) renamed `MessageChatMemoryAdvisor$Builder.conversationId(...)` and break `SpringAILLMProvider` at runtime with `NoSuchMethodError`. Spring AI 1.x is incompatible with Spring Boot 4 entirely. Bump only when Vaadin republishes.
+- **Vaadin AI components pin the Spring AI milestone.** Keep `spring-ai.version` aligned with what `vaadin-ai-components-flow`'s POM declares for the pinned Vaadin version (alpha5 → M4, beta1 → M5); a mismatch breaks `SpringAILLMProvider` at runtime with `NoSuchMethodError` (advisor builder APIs renamed between milestones). Spring AI 1.x is incompatible with Spring Boot 4 entirely. Also: `AIOrchestrator.reconnect()` is deserialization-only — controllers/tools can NOT be attached or detached at runtime; everything registers at build time and is scoped via the system prompt.
 - **The assistant `ChatMessage.messageId` is null.** Vaadin's `AIOrchestrator.streamResponseToMessage` builds the assistant turn with `messageId = null`. Anything that dedupes on messageId will silently drop the assistant message — `ConversationService` syncs by list index against `repository.count()` instead.
 - **Vaadin's CSS bundler is parser-hostile to certain comments.** Multi-line `/* … */` comments inside `@media` blocks — especially ones containing square brackets `[ ]` — can cause Vaadin to truncate the entire `@media` block from the served bundle, silently dropping every rule after the comment. Use single-line comments inside `@media`. After CSS edits, verify with `curl http://localhost:8080/mise-<view>.css | grep <selector>` rather than trusting the source file.
 - **Aura is the theme; Lumo `--lumo-*` custom properties do not resolve.** Several views were originally written against Lumo tokens (`--lumo-base-color`, `--lumo-space-m`, `--lumo-secondary-text-color`, etc.). Those tokens evaluate to nothing under Aura and the component renders unstyled. Use `--vaadin-background-container`, hard-coded px spacing, `--vaadin-secondary-text-color`, and the project's `--mise-*` category tokens instead.

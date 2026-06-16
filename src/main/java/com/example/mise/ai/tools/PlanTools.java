@@ -10,6 +10,8 @@ import com.example.mise.domain.plan.MealEdit;
 import com.example.mise.domain.plan.MealSwapRequest;
 import com.example.mise.domain.plan.PinnedMealException;
 import com.example.mise.domain.plan.PlanService;
+import com.example.mise.ui.ViewedWeekService;
+import com.example.mise.ui.ViewedWeekState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
@@ -39,17 +41,23 @@ public class PlanTools {
     private final RecipeCatalog recipeCatalog;
     private final PriceCatalog priceCatalog;
     private final MealCostCalculator mealCostCalculator;
+    private final ViewedWeekService viewedWeekService;
+    private final ViewedWeekState viewedWeekState;
 
     public PlanTools(HouseholdService householdService,
                      PlanService planService,
                      RecipeCatalog recipeCatalog,
                      PriceCatalog priceCatalog,
-                     MealCostCalculator mealCostCalculator) {
+                     MealCostCalculator mealCostCalculator,
+                     ViewedWeekService viewedWeekService,
+                     ViewedWeekState viewedWeekState) {
         this.householdService = householdService;
         this.planService = planService;
         this.recipeCatalog = recipeCatalog;
         this.priceCatalog = priceCatalog;
         this.mealCostCalculator = mealCostCalculator;
+        this.viewedWeekService = viewedWeekService;
+        this.viewedWeekState = viewedWeekState;
     }
 
     /**
@@ -558,20 +566,32 @@ public class PlanTools {
 
     // ─────────────────────── helpers ────────────────────────────────────────
 
+    /**
+     * UC-010 (BR-06): returns the viewed plan when a week is selected, otherwise
+     * falls back to the household's ACTIVE plan. Chat tools call this so that
+     * "what's on Friday?" answers relative to the viewed week, not necessarily today.
+     */
     private com.example.mise.domain.plan.Plan getActivePlan() {
         try {
             var hh = householdService.findHousehold().orElse(null);
             if (hh == null) return null;
-            return planService.findActivePlan(hh.getId()).orElse(null);
+            return viewedWeekService.resolveViewedPlan(hh.getId(), viewedWeekState.getCurrentParam())
+                    .orElse(null);
         } catch (Exception e) {
-            log.warn("Error finding active plan: {}", e.getMessage());
+            log.warn("Error finding viewed/active plan: {}", e.getMessage());
             return null;
         }
     }
 
     /**
-     * Resolves a day-name / "today" / "tomorrow" / ISO-date string to a LocalDate
-     * within the current week's Mon–Sun window.
+     * Resolves a day-name / "today" / "tomorrow" / ISO-date string to a LocalDate.
+     *
+     * <p>UC-010 (BR-06): day names resolve within the <b>viewed</b> plan's Mon–Sun
+     * window — when the user is looking at the week of May 18, "Friday" means
+     * May 22 even if the real-world week is different. "today"/"tomorrow"/
+     * "yesterday" stay calendar-relative: they name real days, and the
+     * surrounding tools answer "no meal planned" honestly when those days fall
+     * outside the viewed plan.
      */
     LocalDate resolveDate(String input) {
         if (input == null || input.isBlank()) return null;
@@ -588,8 +608,11 @@ public class PlanTools {
             return LocalDate.parse(input.trim());
         } catch (Exception ignored) {}
 
-        // Day name (full or abbreviated, English)
-        LocalDate monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        // Day name (full or abbreviated, English) — anchored to the viewed plan's
+        // week when one is resolved, falling back to the real-world week.
+        LocalDate monday = java.util.Optional.ofNullable(getActivePlan())
+                .map(com.example.mise.domain.plan.Plan::getWeekStartDate)
+                .orElseGet(() -> today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
         var dayOffsets = new java.util.HashMap<String, Integer>();
         dayOffsets.put("monday", 0);   dayOffsets.put("mon", 0);
         dayOffsets.put("tuesday", 1);  dayOffsets.put("tue", 1);   dayOffsets.put("tues", 1);

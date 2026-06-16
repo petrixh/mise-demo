@@ -179,7 +179,6 @@ vaadin-grid.mise-reports-leaderboard {
   border: none;
   color: var(--vaadin-body-text-color);
   --vaadin-grid-background-color: transparent;
-  --lumo-base-color: transparent;
 }
 
 .mise-reports-leaderboard::part(row),
@@ -198,21 +197,6 @@ vaadin-grid.mise-reports-leaderboard {
   letter-spacing: 0.04em;
 }
 
-.mise-reports-extra-col {
-  font-weight: 600;
-  color: var(--vaadin-body-text-color);
-}
-
-/* Mobile card list — hidden on desktop, visible on mobile */
-.mise-reports-leaderboard-cards {
-  display: none;
-}
-
-/* Desktop Grid — visible on desktop, hidden on mobile */
-.mise-reports-leaderboard-desktop {
-  display: block;
-}
-
 /* ── Mobile / tablet overrides ──────────────────────────────────────────── */
 @media (max-width: 1023px) {
   /* Chart row stacks below 1024px; the divider moves from right to bottom. */
@@ -226,79 +210,10 @@ vaadin-grid.mise-reports-leaderboard {
 }
 
 @media (max-width: 639px) {
-  /* KPI strip already collapses to 2x2 in mise-plan.css. Nothing extra here. */
-}
-
-/* ── Mobile leaderboard card layout ────────────────────────────────────── */
-@media (max-width: 639px) {
-  /* Hide the desktop Grid on mobile */
-  .mise-reports-leaderboard-desktop {
-    display: none !important;
-  }
-
-  /* Show card list on mobile */
-  .mise-reports-leaderboard-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
-
-  /* Single-row card: left (rank + name) and right (×N + price) */
-  .mise-reports-leaderboard-card {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.10);
-  }
-
-  .mise-reports-leaderboard-card:last-child {
-    border-bottom: none;
-  }
-
-  /* Left group: rank pill + meal name, takes remaining space */
-  .mise-reports-leaderboard-card-left {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .mise-reports-leaderboard-card-rank {
-    font-size: 11px;
-    color: rgba(255,255,255,0.52);
-    flex-shrink: 0;
-    min-width: 2em;
-  }
-
-  .mise-reports-leaderboard-card-name {
-    font-size: 13px;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* Right group: ×N badge + avg cost, fixed to right edge */
-  .mise-reports-leaderboard-card-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-
-  .mise-reports-leaderboard-card-times {
-    font-size: 11px;
-    color: rgba(255,255,255,0.52);
-  }
-
-  .mise-reports-leaderboard-card-cost {
-    font-size: 13px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.87);
-    min-width: 4em;
-    text-align: right;
+  /* UC-012: the leaderboard is one AI-driven Grid at every width (the static
+     mobile card list is gone — columns are dynamic now). Let it scroll
+     horizontally inside the panel rather than squeezing arbitrary columns. */
+  .mise-reports-leaderboard {
+    overflow-x: auto;
   }
 }

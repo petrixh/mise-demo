@@ -472,13 +472,29 @@
   color: var(--vaadin-color-info, #2B9AF3);
 }
 
-/* Store name headline */
+/* Store name headline + meta on one baseline (mockup: "Prima  €87.40 · 13 items · 1 stop") */
+.mise-shopping-rec-headline-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .mise-shopping-rec-store-name {
   font-size: 22px;
   font-weight: 500;
   color: var(--vaadin-body-text-color);
   margin: 0;
   line-height: 1.2;
+}
+
+/* "€87.40 · 13 items · 1 stop" meta line beside the store name */
+.mise-shopping-rec-meta {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vaadin-secondary-text-color);
+  white-space: nowrap;
 }
 
 /* Collapsible body — always visible on desktop, controlled on mobile */
@@ -495,106 +511,6 @@
   color: var(--vaadin-secondary-text-color);
   line-height: 1.5;
   display: block;
-}
-
-/* Total cost row */
-.mise-shopping-rec-total-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  border-bottom: 0.5px solid rgba(255,255,255,0.06);
-  padding-bottom: 10px;
-}
-
-.mise-shopping-rec-total-label {
-  font-size: 13px;
-  color: var(--vaadin-secondary-text-color);
-}
-
-.mise-shopping-rec-total-value {
-  font-size: 15px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--vaadin-body-text-color);
-}
-
-/* Cost-by-aisle breakdown */
-.mise-shopping-rec-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.mise-shopping-rec-breakdown-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.mise-shopping-rec-breakdown-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--vaadin-secondary-text-color);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* Category color dots via ::before pseudo-element */
-.mise-shopping-rec-breakdown-label.mise-shopping-cat-produce::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--mise-category-produce, #1D9E75);
-  flex-shrink: 0;
-}
-
-.mise-shopping-rec-breakdown-label.mise-shopping-cat-protein::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--mise-category-protein, #7F77DD);
-  flex-shrink: 0;
-}
-
-.mise-shopping-rec-breakdown-label.mise-shopping-cat-dairy::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--mise-category-dairy, #D4537E);
-  flex-shrink: 0;
-}
-
-.mise-shopping-rec-breakdown-label.mise-shopping-cat-pantry::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--mise-category-pantry, #D85A30);
-  flex-shrink: 0;
-}
-
-.mise-shopping-rec-breakdown-label.mise-shopping-cat-other::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--mise-category-other, #B4B2A9);
-  flex-shrink: 0;
-}
-
-.mise-shopping-rec-breakdown-value {
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  color: var(--vaadin-body-text-color);
 }
 
 /* Mode control visibility: panel is always at top so its control is always shown.

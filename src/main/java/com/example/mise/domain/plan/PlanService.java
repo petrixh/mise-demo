@@ -51,6 +51,22 @@ public class PlanService {
         return planRepository.findByHouseholdIdOrderByWeekStartDateDesc(householdId);
     }
 
+    /** Returns all plans for a household, oldest first. */
+    @Transactional(readOnly = true)
+    public List<Plan> findAllPlansOrderedAsc(Long householdId) {
+        var desc = planRepository.findByHouseholdIdOrderByWeekStartDateDesc(householdId);
+        if (desc.isEmpty()) return desc;
+        var asc = new java.util.ArrayList<>(desc);
+        java.util.Collections.reverse(asc);
+        return asc;
+    }
+
+    /** Returns the plan for a specific week start date, if any. */
+    @Transactional(readOnly = true)
+    public Optional<Plan> findByWeekStartDate(Long householdId, LocalDate weekStartDate) {
+        return planRepository.findByHouseholdIdAndWeekStartDate(householdId, weekStartDate);
+    }
+
     /** Returns meals for a given plan. */
     @Transactional(readOnly = true)
     public List<Meal> findMeals(Long planId) {
