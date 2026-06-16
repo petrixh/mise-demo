@@ -1,0 +1,14 @@
+# Keep the build context lean and free of local state.
+.git
+data/
+node_modules/
+docs/
+*.log
+
+# Never bake local LLM endpoint config / keys into an image.
+application-local.properties
+
+# The release target (Dockerfile) copies a host-built JAR from target/;
+# everything else under target/ stays out of the context.
+target/
+!target/*.jar
