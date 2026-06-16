@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @Table(name = "plan")
 public class Plan {
 
-    public enum Status { ACTIVE, HISTORICAL }
+    public enum Status { ACTIVE, HISTORICAL, PLANNED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

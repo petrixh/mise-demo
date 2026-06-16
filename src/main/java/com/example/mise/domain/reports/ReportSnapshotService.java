@@ -72,11 +72,45 @@ public class ReportSnapshotService {
               cost_eur           DECIMAL(8,2) NOT NULL
             );
 
-            -- One row per plan with weekly rollups.
+            -- One row per plan with weekly rollups. Default scope: ACTIVE + HISTORICAL only.
             CREATE TABLE IF NOT EXISTS weekly_kpi (
               plan_id            BIGINT       PRIMARY KEY,
               week_start_date    DATE         NOT NULL,
               plan_status        VARCHAR(16)  NOT NULL,  -- 'ACTIVE','HISTORICAL'
+              total_cost_eur     DECIMAL(8,2) NOT NULL,
+              total_prep_minutes INT          NOT NULL,
+              avg_kcal           INT,
+              veg_meal_count     INT          NOT NULL,
+              edited_meal_count  INT          NOT NULL
+            );
+
+            -- UC-011/UC-012 BR-11: forward-looking variants that ALSO include future PLANNED
+            -- weeks. Same columns as their base tables. Query these ONLY for explicit
+            -- forward-looking questions, otherwise use meal_history / weekly_kpi.
+            CREATE TABLE IF NOT EXISTS meal_history_with_planned (
+              meal_id            BIGINT       PRIMARY KEY,
+              plan_id            BIGINT       NOT NULL,
+              week_start_date    DATE         NOT NULL,
+              meal_date          DATE         NOT NULL,
+              day_of_week        VARCHAR(9)   NOT NULL,
+              recipe_id          VARCHAR(64)  NOT NULL,
+              recipe_name        VARCHAR(200) NOT NULL,
+              category_tags      VARCHAR(255),
+              cuisine            VARCHAR(64),
+              servings           INT          NOT NULL,
+              prep_minutes       INT          NOT NULL,
+              kcal_per_serving   INT,
+              est_cost_eur       DECIMAL(8,2) NOT NULL,
+              status             VARCHAR(16)  NOT NULL,
+              pinned             BOOLEAN      NOT NULL,
+              edited_by_ai       BOOLEAN      NOT NULL,
+              last_edited_at     TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS weekly_kpi_with_planned (
+              plan_id            BIGINT       PRIMARY KEY,
+              week_start_date    DATE         NOT NULL,
+              plan_status        VARCHAR(16)  NOT NULL,  -- 'ACTIVE','HISTORICAL','PLANNED'
               total_cost_eur     DECIMAL(8,2) NOT NULL,
               total_prep_minutes INT          NOT NULL,
               avg_kcal           INT,
@@ -101,6 +135,10 @@ public class ReportSnapshotService {
             - SQL dialect is H2. Issue SELECT statements only.
             - Tables are pre-aggregated snapshots; values are real, never estimates beyond
               the current price catalog. Do not invent columns or values.
+            - meal_history, meal_category_cost and weekly_kpi cover ACTIVE and HISTORICAL weeks
+              only — future PLANNED weeks are excluded by default. For forward-looking questions
+              ("what will next month cost?"), query meal_history_with_planned / weekly_kpi_with_planned,
+              which also include PLANNED weeks (filter on status / plan_status if you want planned only).
             - Use meal_date for chronological ordering, not day_of_week.
             - Currency is EUR. kcal_per_serving may be NULL for recipes without macros.
             - H2 reserves VALUE, KEY, ORDER as keywords; alias accordingly.
@@ -153,22 +191,33 @@ public class ReportSnapshotService {
         jdbc.update("DELETE FROM meal_history");
         jdbc.update("DELETE FROM meal_category_cost");
         jdbc.update("DELETE FROM weekly_kpi");
+        jdbc.update("DELETE FROM meal_history_with_planned");
+        jdbc.update("DELETE FROM weekly_kpi_with_planned");
         jdbc.update("DELETE FROM meal_edit_history");
 
         for (Plan plan : planRepository.findAll()) {
             List<Meal> meals = mealRepository.findByPlanId(plan.getId());
-            insertWeeklyKpi(plan, meals);
+            // UC-012 BR-11: future PLANNED weeks go ONLY into the *_with_planned variants;
+            // the default tables stay ACTIVE/HISTORICAL so past/current analysis is unaffected.
+            boolean planned = plan.getStatus() == Plan.Status.PLANNED;
+
+            insertWeeklyKpi(plan, meals, "weekly_kpi_with_planned");
+            if (!planned) insertWeeklyKpi(plan, meals, "weekly_kpi");
+
             for (Meal meal : meals) {
-                insertMealRow(plan, meal);
-                insertCategoryCosts(plan, meal);
-                for (var edit : mealEditRepository.findByMealIdOrderByChangedAtDesc(meal.getId())) {
-                    jdbc.update("""
-                            INSERT INTO meal_edit_history
-                              (edit_id, meal_id, changed_at, changed_by, previous_recipe_id, reason)
-                            VALUES (?,?,?,?,?,?)""",
-                            edit.getId(), meal.getId(), Timestamp.from(edit.getChangedAt()),
-                            edit.getChangedBy() != null ? edit.getChangedBy().name() : "USER",
-                            edit.getPreviousRecipeRef(), edit.getReason());
+                insertMealRow(plan, meal, "meal_history_with_planned");
+                if (!planned) {
+                    insertMealRow(plan, meal, "meal_history");
+                    insertCategoryCosts(plan, meal);
+                    for (var edit : mealEditRepository.findByMealIdOrderByChangedAtDesc(meal.getId())) {
+                        jdbc.update("""
+                                INSERT INTO meal_edit_history
+                                  (edit_id, meal_id, changed_at, changed_by, previous_recipe_id, reason)
+                                VALUES (?,?,?,?,?,?)""",
+                                edit.getId(), meal.getId(), Timestamp.from(edit.getChangedAt()),
+                                edit.getChangedBy() != null ? edit.getChangedBy().name() : "USER",
+                                edit.getPreviousRecipeRef(), edit.getReason());
+                    }
                 }
             }
         }
@@ -183,15 +232,15 @@ public class ReportSnapshotService {
         }
     }
 
-    private void insertMealRow(Plan plan, Meal meal) {
+    private void insertMealRow(Plan plan, Meal meal, String table) {
         Recipe recipe = recipeCatalog.findById(meal.getRecipeRef()).orElse(null);
         String name = recipe != null ? recipe.getName() : meal.getRecipeRef();
         String tags = recipe != null && recipe.getCategoryTags() != null
                 ? String.join(",", recipe.getCategoryTags()) : null;
         Integer kcal = recipe != null && recipe.getMacros() != null
                 ? recipe.getMacros().getKcal() : null;
-        jdbc.update("""
-                INSERT INTO meal_history
+        // table is an internal constant ("meal_history" / "meal_history_with_planned"), never user input.
+        jdbc.update("INSERT INTO " + table + """
                   (meal_id, plan_id, week_start_date, meal_date, day_of_week, recipe_id,
                    recipe_name, category_tags, cuisine, servings, prep_minutes,
                    kcal_per_serving, est_cost_eur, status, pinned, edited_by_ai, last_edited_at)
@@ -236,7 +285,7 @@ public class ReportSnapshotService {
         });
     }
 
-    private void insertWeeklyKpi(Plan plan, List<Meal> meals) {
+    private void insertWeeklyKpi(Plan plan, List<Meal> meals, String table) {
         BigDecimal totalCost = BigDecimal.ZERO;
         int totalPrep = 0, kcalSum = 0, kcalCount = 0, vegCount = 0, editedCount = 0;
         for (Meal meal : meals) {
@@ -255,8 +304,8 @@ public class ReportSnapshotService {
             }
             if (meal.getStatus() == Meal.Status.EDITED) editedCount++;
         }
-        jdbc.update("""
-                INSERT INTO weekly_kpi
+        // table is an internal constant ("weekly_kpi" / "weekly_kpi_with_planned"), never user input.
+        jdbc.update("INSERT INTO " + table + """
                   (plan_id, week_start_date, plan_status, total_cost_eur,
                    total_prep_minutes, avg_kcal, veg_meal_count, edited_meal_count)
                 VALUES (?,?,?,?,?,?,?,?)""",

@@ -113,6 +113,28 @@ public class HouseholdOrchestrator {
               and offer the closest real proxy (cost or kcal intensity). Never fabricate columns.
             - "Reset the <widget>" → call resetReportsWidget with trendChart, categoryChart or
               leaderboard.
+            - The reporting tables exclude planned (future) weeks by default. ONLY when the user
+              explicitly asks a forward-looking question (e.g. "what will next month cost?", "how does
+              next week compare?") should you query the meal_history_with_planned / weekly_kpi_with_planned
+              tables instead of the default ones. For all past/current analysis, use the default tables.
+
+            UC-011 Plan future weeks:
+            - When the user asks to plan upcoming week(s) — "plan next week", "plan the rest of May",
+              "plan June", "plan the next four weeks", "do next month" — resolve the natural-language
+              range into ISO Monday dates using today's date (given below), then call
+              planFutureWeeks(fromMonday, throughMonday). For a single week, pass the same Monday twice.
+            - planFutureWeeks is available from ANY view — do NOT call goToView first.
+            - "next week" = the Monday after the current active week. "the rest of <month>" = every
+              remaining Monday in that month from next week onward. "<month>" = every Monday in that month.
+            - You can only plan forward: the tool refuses past or current weeks, and skips weeks already
+              planned. If the tool returns a REFUSED or "already planned" result, relay that honestly —
+              do not claim weeks were created.
+            - Summarize the result per the tool's facts: how many weeks were created, the date range, the
+              estimated cost range, and any notable filter outcome (e.g. "no shellfish"). Do NOT narrate
+              the tool call or invent any cost / calorie numbers — use only what the tool returns.
+            - The 8-week cap is PER TURN. If planFutureWeeks reports it stopped at the limit, do NOT call
+              planFutureWeeks again in the same turn to plan the rest. Tell the user how many weeks you
+              planned and that they can ask you to continue with the remaining weeks next.
 
             UC-009 Insights:
             - When the user says "mute insights" / "stop insights" / "no more insights", call muteInsights.
@@ -123,6 +145,24 @@ public class HouseholdOrchestrator {
             - "Dismiss this" / "ignore that" (referring to the current banner insight) → call dismissCurrentInsight.
             - An insight is advisory; never act on it without the user explicitly confirming. If the user says "lock that in" or similar after an insight, proceed with the relevant plan edit (e.g., swapMealOnDay) — but call swapMealOnDay yourself, do NOT silently auto-apply.
             """;
+
+    /**
+     * UC-011: the production system prompt, with today's date appended so the model can resolve
+     * relative date ranges ("next week", "the rest of May", "June") into specific Mondays.
+     *
+     * <p>Both production ({@link com.example.mise.ui.MainLayout}) and the AI integration tests build
+     * the prompt through this single method so live date-resolution behaviour is tested against the
+     * exact text the model sees in production. {@link #SYSTEM_PROMPT} remains the stable base text.
+     */
+    public static String systemPrompt(java.time.LocalDate today) {
+        String dateLine = today == null ? ""
+                : "\n\nToday's date is " + today
+                  + " (a " + today.getDayOfWeek().getDisplayName(
+                          java.time.format.TextStyle.FULL, java.util.Locale.ENGLISH) + ")."
+                  + " Use this to resolve relative date ranges like \"next week\", \"the rest of"
+                  + " this month\", or a named month into specific Mondays.";
+        return SYSTEM_PROMPT + dateLine;
+    }
 
     private final AIOrchestrator orchestrator;
     private final ConversationService conversationService;
@@ -165,7 +205,7 @@ public class HouseholdOrchestrator {
 
         var history = conversationService.loadHistory();
 
-        var builder = AIOrchestrator.builder(provider, SYSTEM_PROMPT)
+        var builder = AIOrchestrator.builder(provider, systemPrompt(java.time.LocalDate.now()))
                 .withMessageList(messageList)
                 .withInput(messageInput)
                 .withAssistantName("Mise")

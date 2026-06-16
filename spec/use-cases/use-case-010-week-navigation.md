@@ -111,5 +111,5 @@
 
 ## Follow-ups (not in this UC)
 
-- **UC-011 (proposed): AI-generated future weeks.** "Generate next week", "generate the rest of May", "plan June" — the assistant creates one or more `Plan` rows with a new `Status.PLANNED` (or extends the enum), populated with meals via the existing meal-generation tooling. Once UC-011 lands, the navigation built here automatically lets the user step forward into those planned weeks, and the `.mise-week-badge--future` modifier defined above becomes load-bearing.
-- The `Plan.Status` enum currently has only `ACTIVE` and `HISTORICAL` (see [`Plan.java:14`](../../src/main/java/com/example/mise/domain/plan/Plan.java)). UC-011 will need to add `PLANNED`; this UC does **not** require that change — it only navigates between plans that already exist.
+- **UC-011 (DONE): AI-generated future weeks.** "Plan next week", "plan the rest of May", "plan June" — the assistant creates one or more `Plan` rows with `Status.PLANNED`, populated via the existing meal-generation pipeline (`PlanService.generatePlannedWeeks`). The navigation built here lets the user step forward into those planned weeks, and the `.mise-week-badge--future` modifier defined above is now load-bearing. Implemented on `feature/uc-011-generate-future-weeks`.
+- The `Plan.Status` enum now has `ACTIVE`, `HISTORICAL`, and `PLANNED` (added by UC-011); this UC did not require the change — it only navigates between plans that already exist.
