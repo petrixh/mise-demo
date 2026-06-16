@@ -76,7 +76,7 @@ Mise is a weekly dinner planner with one defining idea: *a week of dinners is
 always already there*. You never start from a blank page — the app seeds a full
 week (plus several weeks of history) the moment a household exists, and from
 then on you _reshape_ the plan by talking to it: "make Thursday vegetarian",
-"get this week under €80", "should I bother with Lidl this week?".
+"get this week under €80", "should I bother with Lido this week?".
 
 It is also a demo. Mise exists to show how deeply an AI assistant can be woven
 into a regular business application (Vaadin Flow + Spring AI): the same chat
@@ -298,7 +298,7 @@ have" section.
   single cheapest store for the whole basket — and _Cheapest mix_ — items
   split across stores for the lowest total, with per-item store labels.
 - *Store recommendation.* The header strip names the recommended store and the
-  weekly total. Ask "should I bother with Lidl this week?" and Mise weighs the
+  weekly total. Ask "should I bother with Lido this week?" and Mise weighs the
   actual savings against the detour and answers with euro amounts, naming the
   items that drive the difference.
 - *Savings without the detour:* say so — "I want the savings without the
@@ -372,8 +372,8 @@ from anywhere.
   [Meals are swapped to bring the total under €80, respecting the named meal
    _and_ any pins. In our verified run: Monday's roast became Red Lentil
    Soup, the week landed at €79.61, cod and pinned Saturday untouched.],
-  ["Should I bother with Lidl this week?"], [Shopping],
-  [A verdict with euro amounts: the savings at Lidl versus the detour, naming
+  ["Should I bother with Lido this week?"], [Shopping],
+  [A verdict with euro amounts: the savings at Lido versus the detour, naming
    the items that drive the difference ("€2.40 across 5 items, but the detour
    adds 8 minutes — not worth the trip").],
   ["I want the savings without the detour."], [Shopping],
@@ -477,10 +477,10 @@ Store files pair a price catalog with the detour metadata the recommendation
 logic reasons about:
 
 ```yaml
-# demo/data/stores/lidl.yaml (excerpt)
-id: lidl
-name: "Lidl"
-detourMinutesFromRoute: 12   # what "should I bother with Lidl?" actually reads
+# demo/data/stores/lido.yaml (excerpt)
+id: lido
+name: "Lido"
+detourMinutesFromRoute: 12   # what "should I bother with Lido?" actually reads
 defaultStore: false          # exactly ONE store must have true (Prima, by default)
 catalog:
   - ingredientName: chicken breast

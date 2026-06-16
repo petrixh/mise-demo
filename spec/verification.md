@@ -61,7 +61,7 @@ Because most of this app's behavior is driven by an LLM, plain UI verification i
 
 ### Determinism of the demo headline (UC-006)
 
-- [ ] Edit a single price in `demo/data/stores/lidl.yaml`, restart, re-ask the same detour question. The verdict must visibly change. If it does not, `StubbedPriceCatalog` is caching stale data and the demo is broken.
+- [ ] Edit a single price in `demo/data/stores/lido.yaml`, restart, re-ask the same detour question. The verdict must visibly change. If it does not, `StubbedPriceCatalog` is caching stale data and the demo is broken.
 
 ### Latency budget
 
@@ -134,7 +134,7 @@ Each use case carries its own `## Verification` section at the bottom of its `us
 
 These items can't be (or aren't) covered by automated tests — run them by hand before any on-stage demo. Each takes under two minutes against the live local model.
 
-- [ ] **UC-006 seed-edit flip (the teaching moment):** note the current detour verdict for a store (*"is Lidl worth a stop?"*), edit that store's YAML price for a named item, restart the app, re-ask — the verdict (or its € figure) must visibly change.
+- [ ] **UC-006 seed-edit flip (the teaching moment):** note the current detour verdict for a store (*"is Lido worth a stop?"*), edit that store's YAML price for a named item, restart the app, re-ask — the verdict (or its € figure) must visibly change.
 - [ ] **UC-012 live reshape:** on /reports, ask *"rank the leaderboard by kcal per euro"* — the grid reshapes in place and survives a page reload.
 - [ ] **UC-012 refusal:** *"chart my carbon footprint per meal"* → refusal + proxy offer, no invented numbers.
 - [ ] **UC-010 keyboard pass:** tab order reaches prev → week pill → next; Enter/Space on the pill opens the date picker.

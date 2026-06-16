@@ -181,7 +181,7 @@ src/main/resources/
 
 demo/data/
   recipes/*.yaml                         — ~80 recipes
-  stores/*.yaml                          — Prima, Lidl, Local Market
+  stores/*.yaml                          — Prima, Lido, Local Market
   personas/*.json                        — three sample households
   active_persona.txt                     — points to default persona on first boot
 

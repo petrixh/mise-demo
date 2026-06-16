@@ -264,17 +264,17 @@ class ShoppingToolsTest {
 
     /**
      * evaluateDetour for a store with meaningful savings → "Verdict: WORTH_IT" in the result.
-     * Mocks the PriceCatalog so salmon is much cheaper at Lidl.
+     * Mocks the PriceCatalog so salmon is much cheaper at Lido.
      */
     @Test
     void evaluateDetour_worthIt_returnsWorthItVerdict() {
-        // Prima = default (0 detour), Lidl = 8-min detour, salmon much cheaper at Lidl
+        // Prima = default (0 detour), Lido = 8-min detour, salmon much cheaper at Lido
         var prima = buildStoreWithDetour("prima", "Prima Supermarket", 0, true,
                 storeItem("salmon fillet", 13.98));
-        var lidl = buildStoreWithDetour("lidl", "Lidl", 8, false,
+        var lido = buildStoreWithDetour("lido", "Lido", 8, false,
                 storeItem("salmon fillet", 5.99));
 
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
         when(priceCatalog.findPrice("salmon fillet")).thenReturn(Optional.of(13.98));
 
@@ -285,10 +285,10 @@ class ShoppingToolsTest {
 
         seedMeal("salmon-pasta");
 
-        String result = shoppingTools.evaluateDetour("lidl");
+        String result = shoppingTools.evaluateDetour("lido");
 
         assertThat(result).containsIgnoringCase("WORTH_IT");
-        assertThat(result).containsIgnoringCase("Lidl");
+        assertThat(result).containsIgnoringCase("Lido");
         // Should mention savings
         assertThat(result).contains("€");
     }
@@ -318,10 +318,10 @@ class ShoppingToolsTest {
     void suggestPlanSwapForSavings_noSwapsAvailable_reportsNone() {
         var prima = buildStoreWithDetour("prima", "Prima Supermarket", 0, true,
                 storeItem("chicken breast", 4.99));
-        var lidl = buildStoreWithDetour("lidl", "Lidl", 8, false,
+        var lido = buildStoreWithDetour("lido", "Lido", 8, false,
                 storeItem("chicken breast", 3.99));
 
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
 
         // Only one recipe in catalog — the current one; no alternative available
@@ -332,7 +332,7 @@ class ShoppingToolsTest {
 
         seedMeal("chicken-rice");
 
-        String result = shoppingTools.suggestPlanSwapForSavings("lidl");
+        String result = shoppingTools.suggestPlanSwapForSavings("lido");
 
         // Should say there are no swaps OR describe the result gracefully
         assertThat(result).isNotNull();
@@ -348,12 +348,12 @@ class ShoppingToolsTest {
                 si2("salmon fillet", 13.98),
                 si2("chicken breast", 4.99),
                 si2("pasta", 1.29));
-        var lidl = buildStoreWithDetour("lidl", "Lidl", 8, false,
+        var lido = buildStoreWithDetour("lido", "Lido", 8, false,
                 si2("salmon fillet", 5.99),
                 si2("chicken breast", 3.99),
                 si2("pasta", 0.99));
 
-        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lidl));
+        when(priceCatalog.findAllStores()).thenReturn(List.of(prima, lido));
         when(priceCatalog.findDefaultStore()).thenReturn(Optional.of(prima));
 
         var salmonPasta = buildRecipe("salmon-pasta", "Creamy Salmon Pasta",
@@ -372,7 +372,7 @@ class ShoppingToolsTest {
 
         seedMeal("salmon-pasta");
 
-        String result = shoppingTools.suggestPlanSwapForSavings("lidl");
+        String result = shoppingTools.suggestPlanSwapForSavings("lido");
 
         assertThat(result).isNotNull();
         assertThat(result).isNotBlank();

@@ -1,5 +1,5 @@
-id: lidl
-name: "Lidl"
+id: lido
+name: "Lido"
 detourMinutesFromRoute: 8
 defaultStore: false
 catalog:

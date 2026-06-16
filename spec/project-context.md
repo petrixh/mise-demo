@@ -76,7 +76,7 @@ In the demo there is **one household and one user** — no authentication, no sh
 - **Persistent state on H2.** Plans, conversation history, pantry, and preferences persist across restarts using H2 in file mode. Seed data is loaded on first run; in-app changes are written back to H2, not to the seed files.
 - **Mobile-first responsive UI.** The Plan, Shopping list, Reports, and chat must all work at narrow widths. Layout adapts to screen size; orchestrator behavior does not.
 - **Quality bars from the concept** apply as constraints on every feature: AI-driven UI changes reflect in <2s for typical edits (≤5s for multi-constraint reasoning, with progressive chat feedback); the AI never invents prices or macros; every AI change is explainable and reversible; tone is warm, pragmatic, and brief.
-- **Demo inspectability.** Editing a seed file (e.g. `demo/data/stores/lidl.yaml`) and restarting the app must visibly change AI reasoning — this is a teaching feature, not an incidental property.
+- **Demo inspectability.** Editing a seed file (e.g. `demo/data/stores/lido.yaml`) and restarting the app must visibly change AI reasoning — this is a teaching feature, not an incidental property.
 
 > For technology stack and application structure details, see [`architecture.md`](architecture.md).
 

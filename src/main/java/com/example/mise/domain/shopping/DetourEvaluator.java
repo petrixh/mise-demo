@@ -52,7 +52,7 @@ public class DetourEvaluator {
      * household's active shopping week.
      *
      * @param householdId the household to evaluate for
-     * @param storeId     the candidate detour store id (e.g. "lidl")
+     * @param storeId     the candidate detour store id (e.g. "lido")
      * @return a {@link DetourVerdict} with concrete savings numbers and a verdict
      */
     @Transactional(readOnly = true)

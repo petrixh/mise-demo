@@ -603,8 +603,8 @@ public class ShoppingView extends VerticalLayout implements BeforeEnterObserver 
      * Scope: private, inline in this view — no new public service method.
      *
      * Format: "Compared {N} stores — {DefaultStore} covers everything."
-     * If Lidl detour is WORTH_IT: append "Lidl saves €X.XX across {N} items — worth a detour."
-     * If NOT_WORTH_IT: append "Lidl only saves €X.XX — not worth a second stop."
+     * If Lido detour is WORTH_IT: append "Lido saves €X.XX across {N} items — worth a detour."
+     * If NOT_WORTH_IT: append "Lido only saves €X.XX — not worth a second stop."
      * If INSUFFICIENT_DATA: no second sentence.
      */
     private String buildComparisonNarrative(Long householdId, ShoppingList list, String defaultStoreName) {
