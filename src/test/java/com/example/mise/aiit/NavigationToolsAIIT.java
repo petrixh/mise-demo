@@ -1,7 +1,6 @@
 package com.example.mise.aiit;
 
 import com.example.mise.ai.tools.NavigationTools;
-import com.example.mise.domain.preferences.ViewPreference;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,12 +66,21 @@ class NavigationToolsAIIT extends MiseAIIT {
     }
 
     /**
-     * UC-008 AC #2 — "Go to reports and add a kcal-per-euro column" must (a) navigate
-     * to reports AND (b) call addLeaderboardColumn, resulting in a ViewPreference row.
-     * This validates the cross-view chained tool call pattern.
+     * UC-008 AC #2 (navigation half) — a compound command that asks to navigate AND
+     * reshape a widget ("go to reports and add a kcal-per-euro column") must still
+     * navigate to reports.
+     *
+     * <p>The reshape half is no longer a tool call: UC-012 replaced the old
+     * {@code addLeaderboardColumn} tool with the UI-scoped {@code GridAIController}
+     * ({@code update_grid_data}), which is registered at build time on the
+     * {@code AIOrchestrator} and is therefore absent from this headless
+     * {@code ChatClient}. The derived-column / reshape behaviour is covered by
+     * {@code ReportsViewIT#leaderboardKcalPerEuroColumnRestoresOnLoad} at the
+     * Playwright layer instead. Here we assert only that the compound phrasing does
+     * not suppress the navigation tool call.
      */
     @Test
-    void crossViewCommandChainsGoToWithTargetTool() {
+    void compoundReportsCommandStillNavigates() {
         var hh = seedHouseholdAndActivePlan();
         seedFourWeeksHistory(hh);
 
@@ -82,28 +90,11 @@ class NavigationToolsAIIT extends MiseAIIT {
                 .call()
                 .content();
 
-        // (a) Navigation must have been recorded.
         Assertions.assertThat(capturedRoutes)
-                .as("goToView must have been called with 'reports'. "
-                        + "Captured routes: %s. Reply: \"%s\"", capturedRoutes, reply)
+                .as("goToView must have been called with 'reports' even for a compound "
+                        + "navigate-and-reshape command. Captured routes: %s. Reply: \"%s\"",
+                        capturedRoutes, reply)
                 .containsAnyOf("reports");
-
-        // (b) The leaderboard column must have been persisted.
-        var settingsOpt = viewPreferenceService.getSettings(
-                hh.getId(), ViewPreference.View.REPORTS, "leaderboard");
-
-        Assertions.assertThat(settingsOpt)
-                .as("A ViewPreference row for REPORTS/leaderboard must exist. "
-                        + "Reply: \"%s\"", reply)
-                .isPresent();
-
-        @SuppressWarnings("unchecked")
-        List<String> cols = (List<String>) settingsOpt.get().get("extraColumns");
-        Assertions.assertThat(cols)
-                .as("extraColumns must contain 'kcalPerEuro'. "
-                        + "Actual settings: %s. Reply: \"%s\"", settingsOpt.get(), reply)
-                .isNotNull()
-                .contains("kcalPerEuro");
     }
 
     /**
