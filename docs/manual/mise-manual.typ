@@ -62,6 +62,8 @@
 #v(1fr)
 #align(center)[
   #text(size: 9pt, fill: luma(140))[
+    #box(baseline: 22%, image("images/vaadin-symbol.svg", height: 0.82em)) #h(0.15em) #link("https://vaadin.com")[Built with Vaadin] and Spring AI
+    #v(0.5em)
     #link(repo) \
     This manual covers running and using the Mise demo. \
     For architecture and specifications, see the #link(repo + "/tree/main/spec")[spec tree] in the repository.
