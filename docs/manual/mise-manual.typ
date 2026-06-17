@@ -372,6 +372,16 @@ from anywhere.
   [Meals are swapped to bring the total under €80, respecting the named meal
    _and_ any pins. In our verified run: Monday's roast became Red Lentil
    Soup, the week landed at €79.61, cod and pinned Saturday untouched.],
+  ["Plan next week."], [Plan],
+  [A new week is generated for the Monday after your current week — 7 dinners
+   honoring the same allergy / budget constraints — and the next-week chevron
+   lights up so you can navigate into it. In our verified run: "Next week
+   (June 22–28) is planned — 7 dinners, estimated €78."],
+  ["Plan the rest of June."], [Plan],
+  [Mise resolves the relative range and generates every remaining Monday that
+   isn't already on your calendar, skipping the ones that are. In our verified
+   run: "I've planned the week of June 29 (7 dinners, est. €54). The week of
+   June 22 was already planned."],
   ["Should I bother with Lido this week?"], [Shopping],
   [A verdict with euro amounts: the savings at Lido versus the detour, naming
    the items that drive the difference ("€2.40 across 5 items, but the detour
