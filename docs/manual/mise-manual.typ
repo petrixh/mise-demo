@@ -44,8 +44,12 @@
 )
 
 // ----- Title page -----------------------------------------------------------
-#v(3.5cm)
+// Cover graphic (cover.svg): the app's tools-kitchen-2 logo on a dark Mise panel,
+// ringed by the five shopping-category accent colors. Decorative; title is text below.
+#v(2.2cm)
 #align(center)[
+  #image("images/cover.svg", width: 7cm)
+  #v(1.0cm)
   #text(size: 34pt, weight: "bold")[Mise]
   #v(0.3em)
   #text(size: 16pt, fill: luma(90))[User Manual]
