@@ -40,6 +40,15 @@ The manual is `docs/manual/mise-manual.pdf`, built by hand from `docs/manual/mis
 2. Cross-check any hardcoded versions inside `mise-manual.typ` (Java / Spring Boot / Vaadin / Spring AI) against `pom.xml`. Disagreement is an **Error**.
 3. In report-only mode, stop at reporting + the rebuild commands. In `--fix` mode, rebuild the manual (see the `--fix` section).
 
+### Check 1c — Manual feature coverage
+
+Freshness (1b) only proves the manual was recently rebuilt — not that it documents what the code actually does. A newly-shipped feature can be absent from the manual even when the PDF is "fresh". So check coverage, not just timestamps:
+
+1. Build the list of **implemented** use-cases/features: read `spec/use-cases/use-case-*.md` (note the `## Verification` result / `Status`), and scan recent history (`git log --oneline -30`) for `UC-NNN` / feature commits. Treat anything with passing verification or a merged feature commit as "shipped".
+2. For each shipped UC, check it is represented in `mise-manual.typ` — both in the prose sections **and**, for any user-facing chat capability, in the **Example queries** table (the manual's showcase, which claims every entry is "verified against a running build"). A shipped chat-driven UC with **no Example queries row** is a **Warning** (it reads as "the feature doesn't exist"); a UC mentioned nowhere in the manual is an **Error**.
+   - Concretely: map each `UC-NNN` to a query/section. E.g. UC-011 (generate future weeks) → expect a "Plan next week" / "plan June" row; UC-010 (week navigation) → a navigation example or the header description; UC-006 (detour) → the Lido row; etc.
+3. Report the matrix of shipped-UC → covered? and recommend the specific rows/sections to add. Under `--fix`, add them per the `--fix` section (verifying each new example against the running build first).
+
 ### Check 2 — Full test suite
 
 1. **Pre-flight the live endpoint.** Confirm `application-local.properties` exists at the project root — AIIT drives the **live LLM** and onboarding depends on it. If it is missing, emit a **Warning** and **skip** the AIIT layer rather than letting it hang (~30 min on a stale-default endpoint). When present, surface the configured `spring.ai.openai.base-url` (host only — never the key) so the reader knows what it will hit.
@@ -78,6 +87,7 @@ When `$ARGUMENTS` contains `--fix`, after reporting, auto-correct only unambiguo
     - **Critical ordering / data hazard:** the Check 2 unit layer runs non-`@Transactional` `@SpringBootTest`s against the **file** H2 (`./data/mise`) and wipes the dev demo data. So **never trust whatever household is left in `./data/mise` after the tests** — it will be empty or partial, and the capture will silently produce blank `€0.00 / "ask Mise to fill"` screenshots. Before capturing, re-seed/onboard a rich household (via the onboarding chat) and verify the Plan view actually shows a full week. Either capture **before** running the file-H2 tests, or re-seed after them — don't skip this.
     - **Verify the output, don't trust exit 0:** after capture, open at least `plan-desktop.png` and confirm it shows real meals and non-zero costs (and no license banner). If the screenshots are blank/degraded, **discard them** (`git checkout -- docs/manual/images/`), do NOT recompile, and report the manual as still-stale with the cause — a bad PDF is worse than a stale one.
   - **Preflight + graceful fallback** — if `typst` is not on `PATH`, the app will not start, no live endpoint is configured for onboarding, or a seeded household cannot be established, do NOT hang: skip the rebuild, keep the **Error**, and report exactly what is missing plus the manual command to finish by hand.
+- **Add missing feature coverage** (from Check 1c) — for each shipped UC with no Example queries row, add a row to the table in `mise-manual.typ`. **Verify each example against the running build first** (the table claims every entry is "verified against a running build"): with the dev server up and a seeded household, send the query in the chat dock, read the actual assistant reply, and quote it in the "What happens" cell. Never invent a reply. Then recompile the PDF. If you can't run the app to verify, do NOT add a fabricated row — leave the **Warning** and report it.
 
 After fixing, re-run the affected checks and report the updated state. Leave rebuilt artifacts (PDF, screenshots) **staged but uncommitted** for the user to review.
 
