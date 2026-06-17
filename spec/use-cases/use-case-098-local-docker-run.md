@@ -131,11 +131,11 @@ Key artifacts: [`Dockerfile`](../../Dockerfile) (targets: `standalone` default, 
 - [x] Container serves `:8080` in production mode; onboarding chat round-trips against a live LLM endpoint
 - [x] H2 data survives a container restart on the `/data` volume; volume removal factory-resets
 - [x] `release` Dockerfile target builds and runs with a host-built JAR
-- [ ] Multi-arch GHCR publish + anonymous pull — **pending first `v*` tag** (re-verify with `docker manifest inspect` after the first release)
+- [x] Multi-arch GHCR publish — first `v*` tag `v0.0.3` (2026-06-16): the `Release` workflow run (`27615766719`) built and pushed the multi-arch image (QEMU + Buildx, "Build and push" green). *Anonymous pull still requires the one-time manual step of setting GHCR package visibility to public — verify with `docker manifest inspect` once toggled.*
 - [x] Direct-JAR flow (2026-06-11): CI-equivalent keyless build (`clean package -DskipTests -Dvaadin.commercialWithBanner`), JAR + `demo/` staged to a clean directory, `java -jar` boots in production mode, loads 18 recipes / 3 stores / 2 personas from `./demo/data`, serves `:8080`, onboarding chat round-trips against the live LLM endpoint, and `./data/mise` persists across process restarts
-- [ ] Artifact upload on a real tag run — **pending first `v*` tag** (verify the `mise-demo-<version>-jar` artifact appears on the Release run and its zip contains JAR + `demo/`)
+- [x] Artifact upload on a real tag run — first `v*` tag `v0.0.3` (2026-06-16): the Release run (`27615766719`) staged the direct-run bundle and uploaded the `mise-demo-0.0.3-jar` artifact (≈110 MB, present, not expired).
 
 #### Result
 
-- **Status:** Partial (all locally verifiable criteria pass, both flows; GHCR publish and the artifact upload await the first `v*` tag)
-- **Notes:** One-time step after first publish: set GHCR package visibility to public. BR-11 resolved 2026-06-11 as the bundle-zip option, stored as a workflow artifact per the maintainer's call (login + 90-day expiry accepted).
+- **Status:** Pass (first release `v0.0.3` exercised the tag-triggered Release workflow end-to-end: multi-arch GHCR push + runnable-JAR bundle artifact, both green)
+- **Notes:** One remaining manual step to confirm anonymous pull: set the GHCR package visibility to public, then re-verify with `docker manifest inspect`. BR-11 resolved 2026-06-11 as the bundle-zip option, stored as a workflow artifact per the maintainer's call (login + 90-day expiry accepted).
