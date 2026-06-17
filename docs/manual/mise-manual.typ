@@ -280,7 +280,9 @@ week. Things you can do:
   Mise says so rather than inventing one.
 - *Navigate weeks* with the chevrons or the date picker in the header. The
   viewed week is independent of the current week — you can review history or
-  look at planned future weeks.
+  look at planned future weeks, and the chat answers about whichever week you
+  are viewing (ask "what's on Wednesday?" on a past week and you get that
+  week's Wednesday).
 - *Plan ahead.* "Plan next week" (or "plan June") generates future weeks that
   respect the same constraints; the next-week chevron lights up when one
   exists.
@@ -372,6 +374,12 @@ from anywhere.
   [Meals are swapped to bring the total under €80, respecting the named meal
    _and_ any pins. In our verified run: Monday's roast became Red Lentil
    Soup, the week landed at €79.61, cod and pinned Saturday untouched.],
+  ["What's on Wednesday?" (while viewing an earlier week)], [Plan],
+  [Date questions answer for the week you are currently *viewing*, not today's
+   week. Navigated to the week of June 1, this returned "Wednesday's dinner is
+   Spring Pea Risotto on Wednesday, June 3rd" — the viewed week's Wednesday, not
+   the current week's. Step back to today's week via the chevrons or the Mise
+   wordmark and the same question answers for this week instead.],
   ["Plan next week."], [Plan],
   [A new week is generated for the Monday after your current week — 7 dinners
    honoring the same allergy / budget constraints — and the next-week chevron
