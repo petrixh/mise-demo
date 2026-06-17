@@ -4,6 +4,7 @@ import com.example.mise.ai.HouseholdOrchestrator;
 import com.example.mise.ai.tools.InsightTools;
 import com.example.mise.ai.tools.NavigationTools;
 import com.example.mise.ai.tools.PlanTools;
+import com.example.mise.ai.tools.PlanningTools;
 import com.example.mise.ai.tools.ReportingTools;
 import com.example.mise.ai.tools.ShoppingTools;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
@@ -54,6 +55,7 @@ public abstract class MiseAIIT {
 
     @Autowired protected ChatModel chatModel;
     @Autowired protected PlanTools planTools;
+    @Autowired protected PlanningTools planningTools;
     @Autowired protected ShoppingTools shoppingTools;
     @Autowired protected ReportingTools reportingTools;
     @Autowired protected NavigationTools navigationTools;
@@ -130,6 +132,19 @@ public abstract class MiseAIIT {
         return ChatClient.builder(chatModel)
                 .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
                 .defaultTools(planTools)
+                .build();
+    }
+
+    /**
+     * UC-011: Returns a {@link ChatClient} configured with the date-grounded system prompt
+     * (today's date appended so the model can resolve relative ranges like "next week" into
+     * specific Mondays) and both {@link PlanTools} and {@link PlanningTools} registered.
+     * Use this for all UC-011 AI integration tests.
+     */
+    protected ChatClient planningChat() {
+        return ChatClient.builder(chatModel)
+                .defaultSystem(HouseholdOrchestrator.systemPrompt(java.time.LocalDate.now()))
+                .defaultTools(planTools, planningTools)
                 .build();
     }
 

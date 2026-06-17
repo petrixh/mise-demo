@@ -39,10 +39,77 @@ public class PlanService {
         this.mealEditRepository = mealEditRepository;
     }
 
-    /** Returns the active plan for a household, if any. */
-    @Transactional(readOnly = true)
+    /**
+     * Returns the active plan for a household, if any.
+     *
+     * <p>UC-011 (BR-06): before reading, runs the on-demand status-promotion sweep so that
+     * if the real-world week has rolled over into a {@code PLANNED} week, that plan is promoted
+     * to {@code ACTIVE} (and the prior {@code ACTIVE} demoted to {@code HISTORICAL}) inside this
+     * one transaction. No scheduled job — the first {@code findActivePlan} after a rollover does it.
+     */
+    @Transactional
     public Optional<Plan> findActivePlan(Long householdId) {
+        promoteRolledOverWeeks(householdId);
         return planRepository.findByHouseholdIdAndStatus(householdId, Plan.Status.ACTIVE);
+    }
+
+    /**
+     * UC-011 (BR-06): on-demand promotion of a {@code PLANNED} week to {@code ACTIVE} when the
+     * real-world date has moved past the current active week. Public so it can be invoked /
+     * unit-tested directly through the Spring proxy; {@link #findActivePlan} calls the same
+     * private implementation inside its own transaction.
+     */
+    @Transactional
+    public void promoteIfRolledOver(Long householdId) {
+        promoteRolledOverWeeks(householdId);
+    }
+
+    /**
+     * Swaps statuses when the active week has ended and a PLANNED plan covers the current week.
+     * Preserves the "exactly one ACTIVE plan per household" invariant (UC-002 BR-01):
+     * <ul>
+     *   <li>If the active week is still current (or future-dated), this is a no-op.</li>
+     *   <li>If the active week has ended but no PLANNED plan covers the current week (a gap),
+     *       the now-stale ACTIVE is left in place rather than dropped — never zero ACTIVE plans.</li>
+     *   <li>Otherwise the prior ACTIVE and any PLANNED weeks that have already elapsed are demoted
+     *       to HISTORICAL, and the PLANNED plan whose week contains today is promoted to ACTIVE.</li>
+     * </ul>
+     * Runs inside the caller's transaction (plain private call — not self-invoked through the proxy).
+     */
+    private void promoteRolledOverWeeks(Long householdId) {
+        var activeOpt = planRepository.findByHouseholdIdAndStatus(householdId, Plan.Status.ACTIVE);
+        if (activeOpt.isEmpty()) return;
+        var active = activeOpt.get();
+
+        LocalDate currentMonday = currentWeekMonday();
+        // Active week is still the current week (or, defensively, future-dated): nothing to do.
+        if (!active.getWeekStartDate().isBefore(currentMonday)) return;
+
+        var planned = planRepository
+                .findByHouseholdIdAndStatusOrderByWeekStartDateAsc(householdId, Plan.Status.PLANNED);
+        Plan promote = planned.stream()
+                .filter(p -> p.getWeekStartDate().equals(currentMonday))
+                .findFirst().orElse(null);
+        if (promote == null) {
+            // Gap — no plan covers the current week. Keep the (stale) ACTIVE so the invariant holds.
+            log.debug("Active week {} has ended but no PLANNED plan covers current week {}; leaving ACTIVE in place",
+                    active.getWeekStartDate(), currentMonday);
+            return;
+        }
+
+        active.setStatus(Plan.Status.HISTORICAL);
+        planRepository.save(active);
+        // Any PLANNED weeks strictly in the past have elapsed without promotion → HISTORICAL.
+        for (Plan p : planned) {
+            if (p.getWeekStartDate().isBefore(currentMonday)) {
+                p.setStatus(Plan.Status.HISTORICAL);
+                planRepository.save(p);
+            }
+        }
+        promote.setStatus(Plan.Status.ACTIVE);
+        planRepository.save(promote);
+        log.info("UC-011 rollover: promoted PLANNED week {} to ACTIVE; demoted prior ACTIVE week {}",
+                currentMonday, active.getWeekStartDate());
     }
 
     /** Returns all plans for a household, most recent first. */
@@ -77,10 +144,74 @@ public class PlanService {
      * Generates the current active week's plan for the household.
      * weekStartDate is the Monday of the current week.
      */
+    /** Max future weeks a single {@link #generatePlannedWeeks} call may create (UC-011 BR-05). */
+    public static final int MAX_WEEKS_PER_CALL = 8;
+
     @Transactional
     public Plan generateActivePlan(Household household, RecipeCatalog recipeCatalog) {
         LocalDate monday = currentWeekMonday();
-        return generatePlan(household, recipeCatalog, monday, Plan.Status.ACTIVE, Meal.Status.PLANNED);
+        return generatePlan(household, recipeCatalog, monday,
+                Plan.Status.ACTIVE, Meal.Status.PLANNED, Meal.Editor.USER);
+    }
+
+    /**
+     * UC-011: generates one or more future {@code PLANNED} weeks in the inclusive Monday range
+     * {@code [fromMonday, throughMonday]}, reusing the same eligible-recipe pipeline as
+     * {@link #generateActivePlan} (BR-04).
+     *
+     * <p>Enforces the business rules: forward-only (BR-02 — anything before "active week + 1" is
+     * clamped forward), idempotent per week (BR-03 — existing weeks are skipped), and an 8-week cap
+     * on weeks actually created (BR-05). Inputs are snapped to Monday defensively. Runs a rollover
+     * sweep first so "earliest allowed" is computed against the true current ACTIVE week.
+     *
+     * @return a {@link PlannedWeeksResult} describing what was created / skipped (for the tool's
+     *         non-fabricated summary, BR-08)
+     */
+    @Transactional
+    public PlannedWeeksResult generatePlannedWeeks(Household household, LocalDate fromMonday,
+                                                   LocalDate throughMonday, RecipeCatalog recipeCatalog) {
+        promoteRolledOverWeeks(household.getId());
+
+        var activeOpt = planRepository.findByHouseholdIdAndStatus(household.getId(), Plan.Status.ACTIVE);
+        if (activeOpt.isEmpty()) {
+            return new PlannedWeeksResult(List.of(), List.of(), false, null, true);
+        }
+        // BR-02: earliest plannable Monday is the week after the current ACTIVE week.
+        LocalDate earliestAllowed = activeOpt.get().getWeekStartDate().plusWeeks(1);
+
+        LocalDate start = snapMonday(fromMonday);
+        LocalDate end = snapMonday(throughMonday);
+        if (start == null || end == null) {
+            return new PlannedWeeksResult(List.of(), List.of(), false, earliestAllowed, false);
+        }
+        // Clamp the start forward to the earliest allowed week (BR-02).
+        if (start.isBefore(earliestAllowed)) start = earliestAllowed;
+        if (end.isBefore(start)) {
+            // Whole request resolved to the past / current week — nothing to generate.
+            return new PlannedWeeksResult(List.of(), List.of(), false, earliestAllowed, false);
+        }
+
+        List<Plan> created = new ArrayList<>();
+        List<LocalDate> skipped = new ArrayList<>();
+        LocalDate monday = start;
+        while (!monday.isAfter(end) && created.size() < MAX_WEEKS_PER_CALL) {
+            boolean exists = planRepository
+                    .findByHouseholdIdAndWeekStartDate(household.getId(), monday).isPresent();
+            if (exists) {
+                skipped.add(monday); // BR-03 idempotence: leave existing week untouched
+            } else {
+                created.add(generatePlan(household, recipeCatalog, monday,
+                        Plan.Status.PLANNED, Meal.Status.PLANNED, Meal.Editor.AI));
+            }
+            monday = monday.plusWeeks(1);
+        }
+        // BR-05: cap hit only if we stopped at the limit with weeks still left in the requested range.
+        boolean capHit = created.size() >= MAX_WEEKS_PER_CALL && !monday.isAfter(end);
+        return new PlannedWeeksResult(created, skipped, capHit, earliestAllowed, false);
+    }
+
+    private static LocalDate snapMonday(LocalDate any) {
+        return any == null ? null : any.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     }
 
     /**
@@ -93,7 +224,8 @@ public class PlanService {
         List<Plan> seeded = new ArrayList<>();
         for (int i = 1; i <= seedWeeks; i++) {
             LocalDate weekStart = monday.minusWeeks(i);
-            var plan = generatePlan(household, recipeCatalog, weekStart, Plan.Status.HISTORICAL, Meal.Status.COOKED);
+            var plan = generatePlan(household, recipeCatalog, weekStart,
+                    Plan.Status.HISTORICAL, Meal.Status.COOKED, Meal.Editor.USER);
             seeded.add(plan);
         }
         return seeded;
@@ -106,7 +238,8 @@ public class PlanService {
     }
 
     private Plan generatePlan(Household household, RecipeCatalog recipeCatalog,
-                               LocalDate weekStart, Plan.Status planStatus, Meal.Status mealStatus) {
+                               LocalDate weekStart, Plan.Status planStatus, Meal.Status mealStatus,
+                               Meal.Editor editor) {
         var plan = new Plan();
         plan.setHouseholdId(household.getId());
         plan.setWeekStartDate(weekStart);
@@ -124,7 +257,7 @@ public class PlanService {
             meal.setSlot(Meal.Slot.DINNER);
             meal.setServings(household.getSize());
             meal.setStatus(mealStatus);
-            meal.setLastEditedBy(Meal.Editor.USER);
+            meal.setLastEditedBy(editor);
 
             if (day < chosen.size()) {
                 meal.setRecipeRef(chosen.get(day).getId());

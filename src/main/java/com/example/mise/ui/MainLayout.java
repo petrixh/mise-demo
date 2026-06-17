@@ -5,6 +5,7 @@ import com.example.mise.ai.MiseDatabaseProvider;
 import com.example.mise.ai.tools.InsightTools;
 import com.example.mise.ai.tools.NavigationTools;
 import com.example.mise.ai.tools.PlanTools;
+import com.example.mise.ai.tools.PlanningTools;
 import com.example.mise.ai.tools.ReportingTools;
 import com.example.mise.ai.tools.ShoppingTools;
 import com.example.mise.domain.conversation.ConversationMessage;
@@ -104,6 +105,7 @@ public class MainLayout extends VerticalLayout
                       HouseholdService householdService,
                       PlanService planService,
                       PlanTools planTools,
+                      PlanningTools planningTools,
                       ShoppingTools shoppingTools,
                       ReportingTools reportingTools,
                       NavigationTools navigationTools,
@@ -161,6 +163,10 @@ public class MainLayout extends VerticalLayout
                             updateLastAiMessage(text);
                             // Streaming finished — clear the thinking indicator.
                             if (chatDock != null) chatDock.removeClassName("ai-working");
+                            // UC-011: a chat turn may have generated future weeks. Refresh the
+                            // header week-nav so the next chevron / DatePicker bounds reflect any
+                            // newly-created PLANNED plans without waiting for the next navigation.
+                            updateWeekNav(viewedWeekState.getCurrentParam());
                         });
                     }
                     // UC-008 BR-08: one refresh channel — every attached view
@@ -168,7 +174,7 @@ public class MainLayout extends VerticalLayout
                     refreshBroadcaster.fireRefresh();
                 },
                 List.of(reportsWidgets.controller()),
-                planTools, shoppingTools, reportingTools, navigationTools, insightTools);
+                planTools, planningTools, shoppingTools, reportingTools, navigationTools, insightTools);
 
         // Error path: LLM unreachable / empty response → red indicator + toast.
         // Runs on the background streaming thread; UI mutations need ui.access().

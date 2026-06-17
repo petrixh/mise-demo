@@ -51,7 +51,7 @@
 | BR-08 | The assistant must refuse a request whose required data isn't in the reporting schema and propose the closest reachable proxy. No fabricated columns, no invented values. |
 | BR-09 | After a successful AI reshape, a brief inset-shadow highlight fades on the affected widget (driven by the controller's state-change listener, which does not fire on restore — so reloads don't flash). Widget titles are static; beta1's controllers have no title tool. |
 | BR-10 | Reload (or JVM restart) restores each customized widget; reset deletes the row and the widget falls back to the default query baked into `ReportsWidgets`. |
-| BR-11 | `PLANNED` plans don't exist yet (UC-011 not implemented), so the schema currently contains only `ACTIVE`/`HISTORICAL` data. When UC-011 lands, the snapshot must exclude `PLANNED` rows by default and offer an opt-in view for forward-looking questions. |
+| BR-11 | UC-011 introduced `PLANNED` plans. The default snapshot tables (`meal_history`, `meal_category_cost`, `weekly_kpi`) **exclude** `PLANNED` rows so past/current reporting is unaffected. Forward-looking variants `meal_history_with_planned` / `weekly_kpi_with_planned` include all weeks and are surfaced to the AI for opt-in use only — the system prompt instructs the model to query them solely for explicit forward-looking questions ("what will next month cost?"). Implemented in `ReportSnapshotService` (UC-011). |
 
 ---
 
