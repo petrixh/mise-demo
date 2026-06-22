@@ -5,7 +5,7 @@
 | Check | Result |
 |---|---|
 | App boots (`./mvnw spring-boot:run`) | ✅ Serves on `localhost:8080`, redirects `/` → `/plan` (household seeded in H2) |
-| LLM endpoint reachable | ✅ `http://ru-dolfs-macbook-pro.tailea4a5d.ts.net:8080/v1/models` responds (llama-swap, ~23 models) |
+| LLM endpoint reachable | ✅ `$MISE_MODEL_BASE_URL/v1/models` responds (llama-swap, ~23 models) |
 | Configured model exists | ✅ `Qwen3.6-35B-A3B-UD-Q4_K_XL-128k-coding-paralel-2` is in the model list |
 | Full chat round-trip through the UI | ✅ Sent *"What's for dinner on Friday?"* via `vaadin-message-input`; assistant streamed a reply through `AIOrchestrator` → live LLM |
 | Visual check | ✅ Plan view renders correctly (stats bar, meal grid, cost-by-category sidebar, insight callout with "Act on it", undo strip) |

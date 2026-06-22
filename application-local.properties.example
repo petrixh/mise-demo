@@ -8,7 +8,7 @@
 # --- LLM endpoint (OpenAI-compatible) ---
 # NOTE: include the /v1 path — Spring AI 2.0.0-M5 (official OpenAI SDK) appends
 # /chat/completions directly to this URL.
-spring.ai.openai.base-url=http://10.0.55.2:8080/v1
+spring.ai.openai.base-url=http://your-llm-host:8080/v1
 spring.ai.openai.api-key=not-needed
 spring.ai.openai.chat.options.model=Qwen3.6-35B-A3B-UD-Q4_K_XL-128k-coding-paralel-2
 # spring.ai.openai.chat.options.max-tokens=16384

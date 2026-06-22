@@ -7,9 +7,9 @@ The product concept and rough mockups live under [`ai-meal-planner/mise/`](ai-me
 ## Stack
 
 - **Java 21** · **Spring Boot 4.0.6** · **Maven** (wrapper included)
-- **Vaadin Flow 25.2.0-alpha5** with the **Aura** theme — server-side Java UI
+- **Vaadin Flow 25.2.0-beta1** with the **Aura** theme — server-side Java UI
 - **Vaadin AI components (preview)** — `AIOrchestrator`, `GridAIController`, `ChartAIController`, gated by the `com.vaadin.experimental.aiComponents` feature flag
-- **Spring AI 2.0.0-M4** with the OpenAI starter — default chat model is a local **Qwen3.6-35B-A3B-UD-Q5_K_XL** instance; point at any OpenAI-compatible endpoint by copying [`application-local.properties.example`](application-local.properties.example) → `application-local.properties` (gitignored) and editing the URL / model
+- **Spring AI 2.0.0-M5** with the OpenAI starter — default chat model is a local **Qwen3.6-35B-A3B-UD-Q5_K_XL** instance; point at any OpenAI-compatible endpoint by copying [`application-local.properties.example`](application-local.properties.example) → `application-local.properties` (gitignored) and editing the URL / model
 - **Spring Data JPA + H2** (file mode at `./data/mise`) — conversation history and application state persist across restarts; the **H2 console** is reachable at `/h2-console` (also linked from the side drawer)
 
 ## Run
@@ -97,6 +97,18 @@ The `debug-ui` profile flips Playwright out of headless mode so you can watch th
 ./mvnw -Pit -Pdebug-ui verify -Dit.test=HomeViewIT
 ```
 
+### AI tool tests
+
+`*AIIT.java` tests under `src/test/java/.../aiit/` drive the production tool beans and system prompt through Spring AI's `ChatClient` against the **live LLM** endpoint (no browser, no dev server). They are **opt-in via the `ai-it` Maven profile** and run in two parallel forks, so point at a model endpoint that advertises a `parallel-2` slot. Configure the endpoint in `application-local.properties` first (see [`application-local.properties.example`](application-local.properties.example)).
+
+```bash
+# run all AI tool tests against the configured live model
+./mvnw -Pai-it verify
+
+# run a single AI tool test
+./mvnw -Pai-it verify -Dit.test=PlanToolsAIIT
+```
+
 ### Pointing at a different chat model
 
 The default model and endpoint are baked into `application.properties` but can be overridden without recompiling:
@@ -131,7 +143,7 @@ spec/                   — spec-driven development docs (single source of truth
   project-context.md
   architecture.md
   datamodel/datamodel.md
-  use-cases/            — UC-001..UC-009
+  use-cases/            — UC-001..UC-012 (+ UC-098 local/Docker run, UC-099 user manual)
   verification.md
 src/main/java/com/example/mise/
   Application.java
@@ -147,12 +159,9 @@ data/                   — H2 file-mode database (gitignored)
 
 ## Current state
 
-The first three commits on `dev-main` carry the spec. Two prep branches build the runtime backbone:
+The spec (`spec/`) covers use cases **UC-001..UC-012** plus UC-098 (local/Docker run) and UC-099 (user manual). On top of the runtime backbone (persistent H2 + H2 console; the Spring AI ↔ Vaadin `AIOrchestrator` ↔ persisted-conversation wiring), the application implements the core meal-planner flows: onboarding, viewing and editing the weekly plan via chat, undo/explain, the shopping list with detour reasoning, dynamic Reports widgets, insights, week navigation, and generating future weeks.
 
-- **`app/mise-prep`** — project skeleton + persistent H2 + H2 console, Playwright-verified.
-- **`app/mise-prep-2`** — AI backbone (Spring AI ↔ Vaadin `AIOrchestrator` ↔ persisted conversation), Playwright-verified against the live Qwen endpoint.
-
-Use cases (UC-001..UC-009) are specified and ready to implement.
+Behaviour is covered across three test layers — unit + browserless (`./mvnw test`), Playwright IT (`./mvnw -Pit verify`), and AI tool IT against the live model (`./mvnw -Pai-it verify`).
 
 ## Getting started with Vaadin
 

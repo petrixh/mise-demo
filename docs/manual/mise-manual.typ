@@ -44,8 +44,12 @@
 )
 
 // ----- Title page -----------------------------------------------------------
-#v(3.5cm)
+// Cover graphic (cover.svg): the app's tools-kitchen-2 logo on a dark Mise panel,
+// ringed by the five shopping-category accent colors. Decorative; title is text below.
+#v(2.2cm)
 #align(center)[
+  #image("images/cover.svg", width: 7cm)
+  #v(1.0cm)
   #text(size: 34pt, weight: "bold")[Mise]
   #v(0.3em)
   #text(size: 16pt, fill: luma(90))[User Manual]
@@ -58,6 +62,8 @@
 #v(1fr)
 #align(center)[
   #text(size: 9pt, fill: luma(140))[
+    #box(baseline: 22%, image("images/vaadin-symbol.svg", height: 0.82em)) #h(0.15em) #link("https://vaadin.com")[Built with Vaadin] and Spring AI
+    #v(0.5em)
     #link(repo) \
     This manual covers running and using the Mise demo. \
     For architecture and specifications, see the #link(repo + "/tree/main/spec")[spec tree] in the repository.
@@ -280,7 +286,9 @@ week. Things you can do:
   Mise says so rather than inventing one.
 - *Navigate weeks* with the chevrons or the date picker in the header. The
   viewed week is independent of the current week — you can review history or
-  look at planned future weeks.
+  look at planned future weeks, and the chat answers about whichever week you
+  are viewing (ask "what's on Wednesday?" on a past week and you get that
+  week's Wednesday).
 - *Plan ahead.* "Plan next week" (or "plan June") generates future weeks that
   respect the same constraints; the next-week chevron lights up when one
   exists.
@@ -372,6 +380,22 @@ from anywhere.
   [Meals are swapped to bring the total under €80, respecting the named meal
    _and_ any pins. In our verified run: Monday's roast became Red Lentil
    Soup, the week landed at €79.61, cod and pinned Saturday untouched.],
+  ["What's on Wednesday?" (while viewing an earlier week)], [Plan],
+  [Date questions answer for the week you are currently *viewing*, not today's
+   week. Navigated to the week of June 1, this returned "Wednesday's dinner is
+   Spring Pea Risotto on Wednesday, June 3rd" — the viewed week's Wednesday, not
+   the current week's. Step back to today's week via the chevrons or the Mise
+   wordmark and the same question answers for this week instead.],
+  ["Plan next week."], [Plan],
+  [A new week is generated for the Monday after your current week — 7 dinners
+   honoring the same allergy / budget constraints — and the next-week chevron
+   lights up so you can navigate into it. In our verified run: "Next week
+   (June 22–28) is planned — 7 dinners, estimated €78."],
+  ["Plan the rest of June."], [Plan],
+  [Mise resolves the relative range and generates every remaining Monday that
+   isn't already on your calendar, skipping the ones that are. In our verified
+   run: "I've planned the week of June 29 (7 dinners, est. €54). The week of
+   June 22 was already planned."],
   ["Should I bother with Lido this week?"], [Shopping],
   [A verdict with euro amounts: the savings at Lido versus the detour, naming
    the items that drive the difference ("€2.40 across 5 items, but the detour

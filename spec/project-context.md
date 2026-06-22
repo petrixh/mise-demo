@@ -70,7 +70,7 @@ In the demo there is **one household and one user** — no authentication, no sh
 ## 5. Constraints
 
 - **Vaadin AI orchestrator on Spring AI.** The AI integration uses the Vaadin Flow AI support documented at <https://vaadin.com/docs/next/flow/ai-support>. The orchestrator mediates between services and the UI; it does not own data.
-- **Configurable chat model.** The model is swappable via Spring configuration. The demo default is a **local, unlimited-use** OpenAI-compatible endpoint: `Qwen3.6-35B-A3B-UD-Q5_K_XL` at `http://192.168.1.196:8080`. The system must run against any OpenAI-compatible endpoint by changing config alone.
+- **Configurable chat model.** The model is swappable via Spring configuration. The demo default is a **local, unlimited-use** OpenAI-compatible endpoint running `Qwen3.6-35B-A3B-UD-Q5_K_XL`. The system must run against any OpenAI-compatible endpoint by changing config alone.
 - **Service-oriented architecture.** Domain capabilities (`RecipeCatalog`, `PriceCatalog`, `NutritionEstimator`, plan service, conversation service, etc.) sit behind interfaces. Stub implementations in the demo are backed by seed YAML / JSON files; production implementations can replace them without touching the orchestrator or UI.
 - **Bounded AI capabilities.** The AI can only do what the application exposes to it as tools/capabilities. Adding capabilities is a deliberate development act.
 - **Persistent state on H2.** Plans, conversation history, pantry, and preferences persist across restarts using H2 in file mode. Seed data is loaded on first run; in-app changes are written back to H2, not to the seed files.
@@ -84,7 +84,7 @@ In the demo there is **one household and one user** — no authentication, no sh
 
 ## 6. Assumptions
 
-1. The local Qwen endpoint at `http://192.168.1.196:8080` is reachable from the development and demo machines and provides OpenAI-compatible chat completions with tool-calling support sufficient for the orchestrator's tool-use patterns.
+1. The local Qwen endpoint is reachable from the development and demo machines and provides OpenAI-compatible chat completions with tool-calling support sufficient for the orchestrator's tool-use patterns.
 2. The seed dataset (recipes, stores, personas, historical plans) is small enough to load into memory at startup and persist into H2 without performance concerns.
 3. Demo usage is single-user, low-concurrency. No load-testing, rate-limiting, or horizontal-scaling concerns apply.
 4. The default persona ("two adults, omnivore, midweek cooking, ~€90/week, occasional hosting") is the one used unless a developer explicitly switches it.
@@ -97,7 +97,7 @@ In the demo there is **one household and one user** — no authentication, no sh
 
 - **Model quality.** A local 3B-active-parameter model may produce inconsistent tool-call structure or hallucinate ingredients/prices, undermining the "AI reasons over real data" pitch. *Mitigation:* model is configurable — swap to a larger hosted model for high-stakes demos; structured-output validation in the orchestrator rejects malformed tool calls; the "numerical honesty" rule means the AI must say "I don't have that" rather than guess.
 - **Latency.** The 2s / 5s latency bars may be hard to hit against a local model on modest hardware, especially for multi-constraint negotiations. *Mitigation:* progressive feedback in chat; cache plan-level computations; keep tool-call surface area small per turn.
-- **Endpoint availability.** The hard-coded local IP `192.168.1.196:8080` is a single point of failure for the default config. *Mitigation:* model and endpoint are config properties, not source-coded; documented fallback to a hosted OpenAI-compatible endpoint.
+- **Endpoint availability.** The single local endpoint is a single point of failure for the default config. *Mitigation:* model and endpoint are config properties, not source-coded; documented fallback to a hosted OpenAI-compatible endpoint.
 - **Stubbed data drifting from "feels real."** Static prices and a fixed recipe library can feel canned if the seed dataset is too small or too uniform. *Mitigation:* target ~80 recipes with cuisine and difficulty spread; three stores with meaningfully different price points and detour costs; four weeks of seeded plan history.
 - **Orchestrator/UI coupling creep.** It is tempting to let the orchestrator know about specific UI components. *Mitigation:* the architectural principle "orchestrator mediates, does not store" is load-bearing; AI output is structured data the UI applies, not direct UI manipulation.
 - **Persistence/seed-data confusion.** If users edit seed YAML expecting changes to take effect, but H2 has already snapshotted the state, the "edit a file and see AI reasoning change" demo moment breaks. *Mitigation:* document the reload behavior clearly; consider a developer flag to re-seed from files on startup.

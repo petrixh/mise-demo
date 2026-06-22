@@ -23,3 +23,43 @@
   box-sizing: border-box;
   max-width: 860px;
 }
+
+/*
+ * Framework tribute: a subtle "Built with Vaadin and Spring AI" credit beneath
+ * the onboarding chat (the welcome screen is the app's natural credits spot).
+ * Muted secondary text; the Vaadin brandmark is the only splash of color.
+ */
+.mise-onboarding-footer {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--vaadin-secondary-text-color);
+  opacity: 0.75;
+  transition: opacity 0.15s ease;
+}
+
+.mise-onboarding-footer:hover {
+  opacity: 1;
+}
+
+.mise-credit-mark {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 5px;
+}
+
+/* Height tracks the line so the mark sits inline with the text. */
+.mise-credit-mark svg {
+  height: 0.95em;
+  width: auto;
+  vertical-align: middle;
+}
+
+.mise-vaadin-credit {
+  color: inherit;
+  text-decoration: none;
+}
+
+.mise-vaadin-credit:hover {
+  text-decoration: underline;
+}
