@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.format.TextStyle;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -22,8 +23,11 @@ import static java.time.temporal.TemporalAdjusters.previousOrSame;
 /**
  * UC-011 AI integration tests: live LLM + date-grounded system prompt + PlanningTools.
  *
- * <p>Today's real date is 2026-06-16 (Tuesday). The current active week starts on Monday
- * 2026-06-15. "Next week" therefore resolves to Monday 2026-06-22.
+ * <p>All date expectations are derived from {@code LocalDate.now()} at run time — the prompt is
+ * grounded with today's real date (via {@link #planningChat()}) and the active week is seeded at the
+ * current week, so the tests resolve the same way no matter when they run. Never hard-code absolute
+ * dates in assertions here: that silently rots as the calendar advances (it did — see
+ * {@link #monthRequest_resolvesToCorrectMondays}).
  *
  * <p>Each test seeds its own household + active plan, sends a single chat turn, and
  * asserts on DB side-effects via {@link com.example.mise.domain.plan.PlanRepository} /
@@ -121,17 +125,36 @@ class GenerateFutureWeeksAIIT extends MiseAIIT {
     // ── Test 3: "Plan the rest of June." resolves to exactly the right Mondays ──
 
     /**
-     * UC-011 AC#2 — "Plan the rest of June" from today (2026-06-16, current week starts 2026-06-15)
-     * must create PLANNED plans for exactly {2026-06-22, 2026-06-29} — the two remaining Mondays
-     * in June that are strictly after the current active week.
+     * UC-011 AC#2 — "Plan the rest of &lt;current month&gt;" must create PLANNED plans for exactly the
+     * Mondays of the current month that are strictly after the active week (BR-02: earliest allowed =
+     * active week + 1). Both the requested month and the expected Mondays are derived from
+     * {@code LocalDate.now()} so the test holds on any run date (it previously hard-coded
+     * {June 22, June 29} against a {@code LocalDate.now()}-grounded prompt and silently broke once the
+     * real date passed mid-June).
+     *
+     * <p>Edge case: when today is in the last week of the month there are no later Mondays in it, so
+     * {@code expected} is empty and the model must create nothing — also a valid BR-02 assertion.
      */
     @Test
     void monthRequest_resolvesToCorrectMondays() {
         var hh = seedHouseholdAndActivePlan();
 
+        LocalDate today = LocalDate.now();
+        LocalDate activeMonday = today.with(previousOrSame(DayOfWeek.MONDAY));
+        String monthName = today.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+
+        // The weeks generatePlannedWeeks would create: every Monday in the current month strictly
+        // after the active week. (A month has at most 5 Mondays, so the 8-week cap never bites here.)
+        Set<LocalDate> expectedMondays = new java.util.TreeSet<>();
+        for (LocalDate m = activeMonday.plusWeeks(1);
+             m.getMonthValue() == today.getMonthValue() && m.getYear() == today.getYear();
+             m = m.plusWeeks(1)) {
+            expectedMondays.add(m);
+        }
+
         var reply = planningChat()
                 .prompt()
-                .user("Plan the rest of June.")
+                .user("Plan the rest of " + monthName + ".")
                 .call()
                 .content();
 
@@ -142,21 +165,16 @@ class GenerateFutureWeeksAIIT extends MiseAIIT {
                 .map(Plan::getWeekStartDate)
                 .collect(Collectors.toSet());
 
-        Set<LocalDate> expectedMondays = Set.of(
-                LocalDate.of(2026, 6, 22),
-                LocalDate.of(2026, 6, 29)
-        );
-
         // All created Mondays must be Monday-aligned (sanity).
         actualMondays.forEach(d ->
                 Assertions.assertThat(d.getDayOfWeek())
                         .as("Created plan date %s is not a Monday", d)
                         .isEqualTo(DayOfWeek.MONDAY));
 
-        // Core assertion: the set of created weeks equals the two remaining June Mondays.
+        // Core assertion: the created weeks equal the current month's Mondays after the active week.
         Assertions.assertThat(actualMondays)
-                .as("'Plan the rest of June' from 2026-06-16 must produce plans for June 22 and June 29."
-                        + " Reply was: \"%s\"", reply)
+                .as("'Plan the rest of %s' from %s must produce exactly that month's Mondays after the "
+                        + "active week (%s). Reply was: \"%s\"", monthName, today, expectedMondays, reply)
                 .isEqualTo(expectedMondays);
     }
 
