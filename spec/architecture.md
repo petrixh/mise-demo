@@ -211,7 +211,7 @@ spring.datasource.password=
 spring.jpa.hibernate.ddl-auto=update
 
 # Spring AI — OpenAI-compatible endpoint (default: local Qwen)
-spring.ai.openai.base-url=${MISE_MODEL_BASE_URL:http://192.168.1.196:8080}
+spring.ai.openai.base-url=${MISE_MODEL_BASE_URL:http://localhost:8080}
 spring.ai.openai.api-key=${MISE_MODEL_API_KEY:not-needed}
 spring.ai.openai.chat.options.model=${MISE_MODEL_NAME:Qwen3.6-35B-A3B-UD-Q5_K_XL}
 spring.ai.openai.chat.options.temperature=0.2

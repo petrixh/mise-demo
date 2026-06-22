@@ -255,7 +255,7 @@ This is the **lightweight** visual check — main-flow walkthrough against the U
 ### Orchestrator pre-flight (do this BEFORE delegating)
 
 1. **Decide on DB state.** Read the UC's Business Rules / Main Flow. If it begins from a state that requires empty H2 (cold-open scenarios like UC-001's `/welcome` redirect, or any "first launch" semantics), wipe `data/` before starting the server. Otherwise leave it alone — later UCs depend on state laid down by earlier ones. Record the decision in the progress file's Iteration entry.
-2. **Check the model endpoint.** `curl -s -o /dev/null -w "%{http_code}" "$MISE_MODEL_BASE_URL/v1/models"` (default `http://192.168.1.196:8080`). Non-2xx → STOP and ask the user; AI flows will silently hang otherwise.
+2. **Check the model endpoint.** `curl -s -o /dev/null -w "%{http_code}" "$MISE_MODEL_BASE_URL/v1/models"` (the endpoint configured in `application-local.properties`). Non-2xx → STOP and ask the user; AI flows will silently hang otherwise.
 3. **Start the dev server** if not running. `Bash` with `run_in_background: true`: `./mvnw -q`. Capture the shell id. Poll with `until curl -sf http://localhost:8080/ -o /dev/null; do sleep 2; done` until ready (Monitor tool is fine; expect 30–90s on cold start). If the server fails to start, STOP and surface the log tail.
 4. Record server shell id + DB-state decision in the progress file so a resumed run knows what's already up.
 

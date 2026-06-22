@@ -45,7 +45,7 @@ Because most of this app's behavior is driven by an LLM, plain UI verification i
 
 ### Model & endpoint sanity
 
-- [ ] `application.properties` (or the active profile) points to a reachable model endpoint. Default: `http://192.168.1.196:8080` for the local Qwen.
+- [ ] `application.properties` (or the active profile) points to a reachable model endpoint — the local Qwen by default, configured via `MISE_MODEL_BASE_URL` / `application-local.properties`.
 - [ ] A `curl <base-url>/v1/models` returns a 2xx response before testing.
 - [ ] The model name in `spring.ai.openai.chat.options.model` exists on the endpoint.
 
