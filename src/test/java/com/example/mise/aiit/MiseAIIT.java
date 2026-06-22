@@ -1,6 +1,7 @@
 package com.example.mise.aiit;
 
 import com.example.mise.ai.HouseholdOrchestrator;
+import com.example.mise.ai.MiseDatabaseProvider;
 import com.example.mise.ai.tools.InsightTools;
 import com.example.mise.ai.tools.NavigationTools;
 import com.example.mise.ai.tools.PlanTools;
@@ -28,6 +29,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -60,6 +63,7 @@ public abstract class MiseAIIT {
     @Autowired protected ReportingTools reportingTools;
     @Autowired protected NavigationTools navigationTools;
     @Autowired protected InsightTools insightTools;
+    @Autowired protected MiseDatabaseProvider databaseProvider;
 
     @Autowired protected HouseholdService householdService;
     @Autowired protected HouseholdRepository householdRepository;
@@ -168,7 +172,7 @@ public abstract class MiseAIIT {
     protected ChatClient reportsChat() {
         return ChatClient.builder(chatModel)
                 .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
-                .defaultTools(planTools, shoppingTools, reportingTools)
+                .defaultTools(planTools, shoppingTools, reportingTools, new ReportingSchemaTool(databaseProvider))
                 .build();
     }
 
@@ -179,7 +183,8 @@ public abstract class MiseAIIT {
     protected ChatClient navigationChat() {
         return ChatClient.builder(chatModel)
                 .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
-                .defaultTools(planTools, shoppingTools, reportingTools, navigationTools)
+                .defaultTools(planTools, shoppingTools, reportingTools, navigationTools,
+                        new ReportingSchemaTool(databaseProvider), new ReportsGridStubTool())
                 .build();
     }
 
@@ -190,7 +195,8 @@ public abstract class MiseAIIT {
     protected ChatClient insightsChat() {
         return ChatClient.builder(chatModel)
                 .defaultSystem(HouseholdOrchestrator.SYSTEM_PROMPT)
-                .defaultTools(planTools, shoppingTools, reportingTools, navigationTools, insightTools)
+                .defaultTools(planTools, shoppingTools, reportingTools, navigationTools, insightTools,
+                        new ReportingSchemaTool(databaseProvider))
                 .build();
     }
 
@@ -200,5 +206,66 @@ public abstract class MiseAIIT {
      */
     protected void seedFourWeeksHistory(Household h) {
         planService.seedHistory(h, 4, recipeCatalog);
+    }
+
+    /**
+     * Test-only bridge that exposes {@link MiseDatabaseProvider#getSchema()} as a
+     * Spring-AI tool named {@code get_database_schema}.
+     *
+     * <p>In production this tool is contributed by the Reports {@code AIController}
+     * (the Vaadin {@code GridAIController}/{@code ChartAIController}), which is
+     * registered at build time and therefore available from every view — exactly
+     * what {@code SYSTEM_PROMPT} advertises ("Available from ANY view:
+     * queryReportingData and get_database_schema"). The AIIT harness drives a plain
+     * {@link ChatClient} with no Vaadin controllers, so without this the prompt would
+     * promise a tool that isn't registered: a model that obeys the prompt and calls
+     * {@code get_database_schema} first (as {@code queryReportingData}'s description
+     * tells it to) crashes the turn with "No ToolCallback found". This restores
+     * harness/production parity — same schema string, same tool name.
+     */
+    static final class ReportingSchemaTool {
+        private final MiseDatabaseProvider databaseProvider;
+
+        ReportingSchemaTool(MiseDatabaseProvider databaseProvider) {
+            this.databaseProvider = databaseProvider;
+        }
+
+        @Tool(name = "get_database_schema", description = """
+                Return the tables and columns of the read-only reporting schema. Call this
+                before queryReportingData so the SQL references only real columns.""")
+        public String getDatabaseSchema() {
+            return databaseProvider.getSchema();
+        }
+    }
+
+    /**
+     * Test-only no-op stubs for the leaderboard {@code GridAIController} tools that the
+     * Reports system prompt advertises ({@code get_grid_state}, {@code update_grid_data}).
+     *
+     * <p>Like {@link ReportingSchemaTool}, these are contributed in production by a Vaadin
+     * controller registered at build time, and are therefore missing from the headless
+     * AIIT {@link ChatClient}. The cross-view navigation tests issue compound
+     * "navigate AND reshape a widget" commands and assert only that navigation fired — the
+     * actual reshape is covered at the Playwright layer ({@code ReportsViewIT}). Without
+     * these stubs a model that obeys the prompt's widget workflow calls a grid tool, and
+     * Spring AI aborts the whole turn with "No ToolCallback found" before the navigation
+     * assertion can run. The stubs return benign acknowledgments so the turn completes; no
+     * grid is actually reshaped here. Registered only on {@code navigationChat()} so the
+     * reporting-grounding tests' tool surface is unaffected.
+     */
+    static final class ReportsGridStubTool {
+
+        @Tool(name = "get_grid_state",
+                description = "Return the leaderboard grid's current columns and ordering.")
+        public String getGridState() {
+            return "{\"columns\":[\"meal\",\"timesCooked\",\"avgCost\"],\"orderBy\":\"timesCooked DESC\"}";
+        }
+
+        @Tool(name = "update_grid_data",
+                description = "Reshape the leaderboard grid with a SQL SELECT (explicit columns, AS aliases).")
+        public String updateGridData(
+                @ToolParam(description = "A single SQL SELECT for the grid's columns and rows.") String sql) {
+            return "Leaderboard updated.";
+        }
     }
 }

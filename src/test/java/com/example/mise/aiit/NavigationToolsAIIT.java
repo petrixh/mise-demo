@@ -74,7 +74,10 @@ class NavigationToolsAIIT extends MiseAIIT {
      * {@code addLeaderboardColumn} tool with the UI-scoped {@code GridAIController}
      * ({@code update_grid_data}), which is registered at build time on the
      * {@code AIOrchestrator} and is therefore absent from this headless
-     * {@code ChatClient}. The derived-column / reshape behaviour is covered by
+     * {@code ChatClient}. {@code navigationChat()} registers no-op stubs for those
+     * grid tools (see {@code MiseAIIT.ReportsGridStubTool}) so a prompt-obeying model's
+     * compound call completes instead of aborting on a missing tool; the real
+     * derived-column / reshape behaviour is covered by
      * {@code ReportsViewIT#leaderboardKcalPerEuroColumnRestoresOnLoad} at the
      * Playwright layer instead. Here we assert only that the compound phrasing does
      * not suppress the navigation tool call.
