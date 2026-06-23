@@ -11,20 +11,21 @@
         <java.version>21</java.version>
         <vaadin.version>25.2.0-rc1</vaadin.version>
         <!-- Vaadin AI components are built against a specific Spring AI milestone
-             (alpha5 -> M4, beta1 -> M5, rc1 -> 2.0.0 GA). Normally keep this
-             aligned with what the vaadin-ai-components-flow POM for
-             ${vaadin.version} declares; a mismatched milestone can break
-             SpringAILLMProvider at runtime (advisor builder APIs were renamed
-             between milestones).
-             EXCEPTION (Vaadin 25.2.0-rc1): we intentionally stay on M5 instead
-             of the GA (2.0.0) that rc1 declares. Spring AI 2.0.0 GA pulls in
-             Jackson 2.x (com.fasterxml 2.21), which knocks the Jackson 3
-             tools.jackson:jackson-dataformat-yaml artifact off the compile
-             classpath and breaks StubbedPriceCatalog / FilesystemRecipeCatalog.
-             M5 is runtime-compatible with rc1's AI components (the full AIIT
-             suite passes against the live LLM), so hold at M5 until the GA
-             Jackson 2/3 conflict is resolved. -->
-        <spring-ai.version>2.0.0-M5</spring-ai.version>
+             (alpha5 -> M4, beta1 -> M5, rc1 -> 2.0.0 GA). Keep this aligned with
+             what the vaadin-ai-components-flow POM for ${vaadin.version} declares;
+             a mismatched milestone can break SpringAILLMProvider at runtime
+             (advisor builder APIs were renamed between milestones).
+             Vaadin 25.2.0-rc1 declares Spring AI 2.0.0 GA, so we track GA here —
+             verified across all three test layers (unit/browserless, Playwright
+             IT, and the live-LLM AIIT suite).
+             Gotcha: GA adds an <exclusion> for
+             tools.jackson.dataformat:jackson-dataformat-yaml on its
+             spring-ai-client-chat -> json-schema-validator dependency (M5 left it
+             un-excluded, which is how that artifact used to reach our classpath).
+             Our YAML seed loaders import it directly, so it is declared as a
+             direct dependency below. This is NOT a Jackson 2/3 downgrade — both
+             coexist under Spring Boot 4 on every milestone. -->
+        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
     
     <parent>
@@ -106,6 +107,19 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+
+        <!-- Jackson 3 YAML dataformat: used directly by StubbedPriceCatalog and
+             FilesystemRecipeCatalog (tools.jackson.dataformat.yaml.YAMLMapper) to
+             read the demo/data/*.yaml seed files. Must be declared directly under
+             Spring AI 2.0.0 GA: GA <exclusion>s this artifact from its
+             spring-ai-client-chat -> com.networknt:json-schema-validator dependency
+             (Spring AI <= M5 left it un-excluded, which is why it used to arrive
+             transitively). Without this direct declaration the code does not compile.
+             Version managed by the Spring Boot BOM. -->
+        <dependency>
+            <groupId>tools.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
         </dependency>
     </dependencies>
     
