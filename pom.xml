@@ -24,7 +24,7 @@
              M5 is runtime-compatible with rc1's AI components (the full AIIT
              suite passes against the live LLM), so hold at M5 until the GA
              Jackson 2/3 conflict is resolved. -->
-        <spring-ai.version>2.0.0-M5</spring-ai.version>
+        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
     
     <parent>
