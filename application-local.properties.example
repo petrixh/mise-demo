@@ -12,3 +12,6 @@ spring.ai.openai.base-url=http://your-llm-host:8080/v1
 spring.ai.openai.api-key=not-needed
 spring.ai.openai.chat.options.model=Qwen3.6-35B-A3B-UD-Q4_K_XL-128k-coding-paralel-2
 # spring.ai.openai.chat.options.max-tokens=16384
+# Per-call timeout (read + overall). Default 180s; raise for slow CPU-only hosts whose big
+# Reports reshapes would otherwise abort mid-stream at the old 60s default (issue #90).
+# spring.ai.openai.timeout=180s

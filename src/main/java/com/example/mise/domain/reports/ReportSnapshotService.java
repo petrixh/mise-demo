@@ -136,8 +136,8 @@ public class ReportSnapshotService {
             - Dates: to bucket by month use FORMATDATETIME(meal_date, 'yyyy-MM'); by year use
               FORMATDATETIME(meal_date, 'yyyy') or YEAR(meal_date); MONTH(meal_date) gives 1..12.
               The MySQL function DATE_FORMAT(...) does NOT exist in H2 and will error — never use it.
-              Example: SELECT FORMATDATETIME(meal_date, 'yyyy-MM') AS month, COUNT(*) AS meals
-              FROM meal_history GROUP BY FORMATDATETIME(meal_date, 'yyyy-MM') ORDER BY month.
+              Example: SELECT FORMATDATETIME(meal_date, 'yyyy-MM') AS month_bucket, COUNT(*) AS meals
+              FROM meal_history GROUP BY FORMATDATETIME(meal_date, 'yyyy-MM') ORDER BY month_bucket.
             - Tables are pre-aggregated snapshots; values are real, never estimates beyond
               the current price catalog. Do not invent columns or values.
             - meal_history, meal_category_cost and weekly_kpi cover ACTIVE and HISTORICAL weeks
@@ -146,7 +146,9 @@ public class ReportSnapshotService {
               which also include PLANNED weeks (filter on status / plan_status if you want planned only).
             - Use meal_date for chronological ordering, not day_of_week.
             - Currency is EUR. kcal_per_serving may be NULL for recipes without macros.
-            - H2 reserves VALUE, KEY, ORDER as keywords; alias accordingly.
+            - H2 reserves words like VALUE, KEY, ORDER, MONTH, YEAR, DAY as keywords; never use them
+              as a column alias (H2 rejects `AS month` with "expected identifier") — alias to a
+              distinct name like month_bucket, or quote it ("Month").
             """;
 
     private final JdbcTemplate jdbc;
