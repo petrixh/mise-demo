@@ -142,6 +142,11 @@ Ollama. Configuration is via environment variables:
   [`MISE_MODEL_API_KEY`], [API key, if the endpoint needs one.], [`not-needed`],
   [`MISE_MODEL_NAME`], [Model id as the endpoint knows it.], [a local Qwen],
   [`MISE_MODEL_MAX_TOKENS`], [Response-length cap per turn.], [`16384`],
+  [`MISE_MODEL_TIMEOUT`],
+  [Per-call timeout for the model — covers both silence between streamed tokens and
+   the whole turn. Raise it if big Reports reshapes abort mid-answer on a slow host
+   (see Troubleshooting). Accepts `180s`, `3m`, `PT3M`.],
+  [`180s`],
   [`PORT`], [HTTP port the app listens on.], [`8080`],
 )
 
@@ -411,6 +416,12 @@ from anywhere.
    across restarts.],
   ["In the leaderboard, rank by kcal per euro."], [Reports],
   [The leaderboard grid is reshaped with the computed column/ordering.],
+  ["For the leaderboard, show one row per week with columns for fish, meat, veg and
+    chicken meals, plus the average kcal per euro that week."], [Reports],
+  [A fuller reshape: the grid pivots to a week-per-row table with category-count
+   columns and a computed value column — all from one sentence. (A heavy turn on a
+   slow model; if it aborts mid-answer, raise `MISE_MODEL_TIMEOUT` — see
+   Troubleshooting.)],
   ["Reset the leaderboard."], [Reports],
   [The widget returns to its default shape.],
   ["Chart my carbon footprint per meal."], [Reports],
@@ -553,6 +564,13 @@ moved.
 Check, in order: `MISE_MODEL_BASE_URL` *includes `/v1`* (the classic miss);
 the endpoint is reachable _from inside the container_; `MISE_MODEL_API_KEY`
 and `MISE_MODEL_NAME` are what your provider expects.
+
+*A big Reports reshape spins, then the answer cuts off.* On a slow or loaded
+model the request can outlast the default per-call timeout (60s out of the box)
+and get dropped mid-stream — the widget never updates. Raise `MISE_MODEL_TIMEOUT`
+(it ships at `180s`; try `300s` for CPU-only hosts). This covers both long silences
+between streamed tokens and the overall length of a single turn. A faster or
+less-loaded model is the other lever.
 
 *All my data disappeared after a container restart.* No volume was mounted at
 `/data`. Mount one (`-v mise-data:/data`) — the database can't survive the
