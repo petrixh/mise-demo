@@ -1,5 +1,6 @@
 package com.example.mise.it;
 
+import com.example.mise.ai.MiseDatabaseProvider;
 import com.example.mise.capabilities.recipes.RecipeCatalog;
 import com.example.mise.domain.conversation.ConversationMessageRepository;
 import com.example.mise.domain.household.Household;
@@ -27,6 +28,10 @@ import org.vaadin.addons.dramafinder.element.MessageInputElement;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Release-gate verification of the manual's two Reports <b>widget-reshape</b> example queries
@@ -53,8 +58,15 @@ import java.util.List;
 @Tag("manual-example")
 class ManualExamplesReportsIT extends AbstractBasePlaywrightIT {
 
-    /** How long to wait for the live model's turn (tool calls + reshape persist) to land. */
-    private static final long REPLY_TIMEOUT_MS = 180_000L;
+    /**
+     * How long to wait for the live model's turn (tool calls + reshape persist) to land. These
+     * widget reshapes chain several model calls (schema → state → config → data-source, often with
+     * a self-correction round-trip), so the budget must exceed the per-call LLM timeout
+     * (spring.ai.openai.timeout, 180s) with room for the chain — otherwise one slow call eats the
+     * whole budget and a correct-but-slow reshape times out (observed flaky at 180s in the model
+     * bake-off). 300s ≈ the per-call ceiling plus headroom for the multi-call chain.
+     */
+    private static final long REPLY_TIMEOUT_MS = 300_000L;
 
     @LocalServerPort
     protected int port;
@@ -69,6 +81,7 @@ class ManualExamplesReportsIT extends AbstractBasePlaywrightIT {
     @Autowired private ConversationMessageRepository conversationMessageRepository;
     @Autowired private ViewPreferenceRepository viewPreferenceRepository;
     @Autowired private ViewPreferenceService viewPreferenceService;
+    @Autowired private MiseDatabaseProvider databaseProvider;
 
     private Household household;
 
@@ -129,6 +142,49 @@ class ManualExamplesReportsIT extends AbstractBasePlaywrightIT {
                 .isTrue();
     }
 
+    // ── #14 (issue #90) — heavier leaderboard pivot that historically blew the 60s LLM timeout. ─
+    // This long, tool-heavy turn is the one #90 reported aborting mid-stream at the default 60s
+    // call/read timeout; with spring.ai.openai.timeout raised it completes. Beyond persistence, we
+    // assert the table actually reshaped to the REQUESTED columns: we execute the persisted
+    // leaderboard query and inspect its result shape (week-per-row + fish/meat/veg/chicken + a
+    // kcal-per-euro value), tolerating the model's exact alias wording.
+    @Test
+    void leaderboardWeeklyMealTypePivot_reshapesViaChat() throws InterruptedException {
+        Assertions.assertThat(pref("leaderboard"))
+                .as("Precondition: the leaderboard must start with no saved ViewPreference").isFalse();
+
+        sendToDock("For the leaderboard, show one row per week with columns for fish, meat, veg "
+                + "and chicken meals, plus the average kcal per euro that week.");
+
+        Assertions.assertThat(pollForPref("leaderboard"))
+                .as("Manual example: the live model must reshape the leaderboard (update_grid_data) "
+                        + "within %d ms — the heavy turn that used to abort at the 60s timeout (#90).",
+                        REPLY_TIMEOUT_MS)
+                .isTrue();
+
+        String query = leaderboardQuery();
+        Assertions.assertThat(query)
+                .as("The reshape must persist a SQL query for the leaderboard").isNotBlank();
+
+        // Executing the persisted query re-proves it is valid H2 AND that the resulting table has the
+        // requested shape — the grid is rendered straight from this query's columns and rows.
+        List<Map<String, Object>> rows = databaseProvider.executeQuery(query);
+        Assertions.assertThat(rows)
+                .as("Pivot must yield multiple week rows, not a single aggregate").hasSizeGreaterThan(1);
+
+        Set<String> columns = rows.get(0).keySet().stream()
+                .map(c -> c.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
+        Assertions.assertThat(columns)
+                .as("Pivot columns %s must include a week bucket + fish/meat/veg/chicken + a "
+                        + "kcal-per-euro value column", columns)
+                .anyMatch(c -> c.contains("week"))
+                .anyMatch(c -> c.contains("fish"))
+                .anyMatch(c -> c.contains("meat"))
+                .anyMatch(c -> c.contains("veg"))
+                .anyMatch(c -> c.contains("chicken"))
+                .anyMatch(c -> c.contains("kcal") || c.contains("eur") || c.contains("value") || c.contains("avg"));
+    }
+
     // ── #12 — "Show me a chart of how often I cook vegetarian dinners by month." ─
     // Was the #85 regression: the model emitted MySQL `DATE_FORMAT(...)` against H2 (Function not
     // found), so every chart data-source update failed and the reshape never persisted. Fixed by
@@ -161,6 +217,15 @@ class ManualExamplesReportsIT extends AbstractBasePlaywrightIT {
         return viewPreferenceService
                 .getSettings(household.getId(), ViewPreference.View.REPORTS, widgetKey)
                 .isPresent();
+    }
+
+    /** The SQL query the leaderboard reshape persisted (the grid renders directly from it). */
+    private String leaderboardQuery() {
+        return viewPreferenceService
+                .getSettings(household.getId(), ViewPreference.View.REPORTS, "leaderboard")
+                .map(s -> s.get("query"))
+                .map(Object::toString)
+                .orElse("");
     }
 
     private boolean pollForPref(String widgetKey) throws InterruptedException {
