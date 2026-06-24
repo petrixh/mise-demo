@@ -130,9 +130,10 @@ class ManualExamplesReportsIT extends AbstractBasePlaywrightIT {
     }
 
     // ── #12 — "Show me a chart of how often I cook vegetarian dinners by month." ─
-    // KNOWN FAILING — tracked by #85: the model emits MySQL `DATE_FORMAT(...)` against H2
-    // (Function not found), so the chart data-source update fails and the reshape never persists.
-    // Left enabled on purpose: the release gate should keep surfacing this until #85 is fixed.
+    // Was the #85 regression: the model emitted MySQL `DATE_FORMAT(...)` against H2 (Function not
+    // found), so every chart data-source update failed and the reshape never persisted. Fixed by
+    // steering the reporting schema notes to H2's FORMATDATETIME(...) plus a self-correcting error
+    // hint in MiseDatabaseProvider (see ReportSnapshotService.SCHEMA_NOTES).
     @Test
     void chartVegetarianByMonth_reshapesViaChat() throws InterruptedException {
         Assertions.assertThat(pref("trendChart") || pref("categoryChart"))
