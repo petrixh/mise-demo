@@ -2,6 +2,7 @@ package com.example.mise.ai;
 
 import com.example.mise.domain.reports.ReportSnapshotService;
 import com.vaadin.flow.component.ai.provider.DatabaseProvider;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -44,6 +45,20 @@ public class MiseDatabaseProvider implements DatabaseProvider {
                     "Only single SELECT statements are allowed against the reporting schema.");
         }
         snapshot.rebuildIfDirty();
-        return jdbc.queryForList(trimmed);
+        try {
+            return jdbc.queryForList(trimmed);
+        } catch (DataAccessException e) {
+            // The error text is fed back to the model as a tool result so it can self-correct.
+            // A bare "Function DATE_FORMAT not found" leaves the model retrying the same MySQL
+            // syntax blindly (#85); append an H2-dialect hint so the next attempt switches.
+            String detail = e.getMostSpecificCause().getMessage();
+            String hint = "";
+            if (detail != null && detail.toUpperCase().contains("DATE_FORMAT")) {
+                hint = " H2 has no DATE_FORMAT(); for month bucketing use "
+                        + "FORMATDATETIME(col, 'yyyy-MM') (or YEAR(col)/MONTH(col)).";
+            }
+            throw new IllegalArgumentException(
+                    "Query failed (H2): " + detail + hint, e);
+        }
     }
 }

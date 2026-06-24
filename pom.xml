@@ -205,6 +205,8 @@
                             <excludes>
                                 <exclude>**/*AIIT.java</exclude>
                             </excludes>
+                            <!-- Manual-example release-gate ITs are opt-in (-Pmanual-verify); never in -Pit. -->
+                            <excludedGroups>manual-example</excludedGroups>
                             <systemPropertyVariables>
                                 <headless>${headless}</headless>
                             </systemPropertyVariables>
@@ -249,9 +251,55 @@
                             <includes>
                                 <include>**/*AIIT.java</include>
                             </includes>
+                            <!-- Manual-example release-gate AIITs are opt-in (-Pmanual-verify); never in the regular -Pai-it regression/bake-off run. -->
+                            <excludedGroups>manual-example</excludedGroups>
                             <forkCount>2</forkCount>
                             <reuseForks>true</reuseForks>
                             <systemPropertyVariables>
+                                <miseit.forkNumber>${surefire.forkNumber}</miseit.forkNumber>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!--
+            ./mvnw -Pmanual-verify verify  -> RELEASE GATE: verify the user-manual "Example queries"
+            actually work against the LIVE model. Opt-in, run by intention before a release (wired into
+            the /pre-release skill), NOT in regular CI. Runs only @Tag("manual-example") tests, which
+            span the headless live-LLM ManualExamplesAIIT (ai-it profile) and the Playwright + live-LLM
+            ManualExamplesReportsIT (manual profile — real browser + real model). forkCount=1 keeps the
+            browser and a single-slot local endpoint happy. Requires a live endpoint configured in
+            application-local.properties (base-url MUST end in /v1). The **/*IT.java include also matches
+            **/*AIIT.java (suffix overlap), so the single pattern + the tag filter cover both classes.
+        -->
+        <profile>
+            <id>manual-verify</id>
+            <properties>
+                <headless>true</headless>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <includes>
+                                <include>**/*IT.java</include>
+                            </includes>
+                            <groups>manual-example</groups>
+                            <forkCount>1</forkCount>
+                            <reuseForks>true</reuseForks>
+                            <systemPropertyVariables>
+                                <headless>${headless}</headless>
                                 <miseit.forkNumber>${surefire.forkNumber}</miseit.forkNumber>
                             </systemPropertyVariables>
                         </configuration>

@@ -132,7 +132,12 @@ public class ReportSnapshotService {
     /** Plain-language notes appended to the DDL for the model. */
     public static final String SCHEMA_NOTES = """
             NOTES:
-            - SQL dialect is H2. Issue SELECT statements only.
+            - SQL dialect is H2 (NOT MySQL/Postgres). Issue SELECT statements only.
+            - Dates: to bucket by month use FORMATDATETIME(meal_date, 'yyyy-MM'); by year use
+              FORMATDATETIME(meal_date, 'yyyy') or YEAR(meal_date); MONTH(meal_date) gives 1..12.
+              The MySQL function DATE_FORMAT(...) does NOT exist in H2 and will error — never use it.
+              Example: SELECT FORMATDATETIME(meal_date, 'yyyy-MM') AS month, COUNT(*) AS meals
+              FROM meal_history GROUP BY FORMATDATETIME(meal_date, 'yyyy-MM') ORDER BY month.
             - Tables are pre-aggregated snapshots; values are real, never estimates beyond
               the current price catalog. Do not invent columns or values.
             - meal_history, meal_category_cost and weekly_kpi cover ACTIVE and HISTORICAL weeks
