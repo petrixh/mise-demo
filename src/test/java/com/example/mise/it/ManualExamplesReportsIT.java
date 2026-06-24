@@ -58,8 +58,15 @@ import java.util.stream.Collectors;
 @Tag("manual-example")
 class ManualExamplesReportsIT extends AbstractBasePlaywrightIT {
 
-    /** How long to wait for the live model's turn (tool calls + reshape persist) to land. */
-    private static final long REPLY_TIMEOUT_MS = 180_000L;
+    /**
+     * How long to wait for the live model's turn (tool calls + reshape persist) to land. These
+     * widget reshapes chain several model calls (schema → state → config → data-source, often with
+     * a self-correction round-trip), so the budget must exceed the per-call LLM timeout
+     * (spring.ai.openai.timeout, 180s) with room for the chain — otherwise one slow call eats the
+     * whole budget and a correct-but-slow reshape times out (observed flaky at 180s in the model
+     * bake-off). 300s ≈ the per-call ceiling plus headroom for the multi-call chain.
+     */
+    private static final long REPLY_TIMEOUT_MS = 300_000L;
 
     @LocalServerPort
     protected int port;

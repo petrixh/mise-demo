@@ -172,6 +172,12 @@ multi-step negotiations, nuanced "why" explanations) the bigger model is
 noticeably more capable, so don't judge what Mise can do by the small
 model's ceiling. The 4B is the budget pick; the 35B is the experience.
 
+One concrete spot the 4B struggles: the most complex Reports reshape — the
+month-bucketed "vegetarian dinners by month" chart — where it tends to get
+stuck retrying SQL variations rather than recovering cleanly. Simpler reshapes
+(the leaderboard examples) and the day-to-day chat work fine on it. If a chart
+reshape spins, retry or switch to the 35B.
+
 What the bake-off taught us, if you want to substitute your own: at this
 size, *quantization and instruct discipline matter more than parameter
 count* (a 9B at default quant scored 59% where the 4B at Q8 scored 100% —
