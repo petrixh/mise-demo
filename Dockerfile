@@ -20,28 +20,15 @@ COPY . $HOME
 
 # The app uses vaadin-chart (commercial, pulled in via the AI components), so a
 # production build needs a license. Without one we fall back to Vaadin's
-# watermarked build (-Dvaadin.commercialWithBanner).
-#
-# FIXME(banner-only): the license-key-aware build below is temporarily disabled.
-# The release build was failing, so for now every image is the watermarked
-# keyless build (commercial banner enabled). Restore the Pro/Offline key support
-# — the secret mounts + jq parsing block below — once the release build is fixed.
-# The jq-stage COPY at the top of this stage is only used by that block and can
-# come back with it.
-#
-# RUN --mount=type=cache,target=/root/.m2 \
-#     --mount=type=secret,id=proKey \
-#     --mount=type=secret,id=offlineKey \
-#     sh -c 'PRO_KEY=$(jq -r ".proKey // empty" /run/secrets/proKey 2>/dev/null || echo "") && \
-#     OFFLINE_KEY=$(cat /run/secrets/offlineKey 2>/dev/null || echo "") && \
-#     if [ -z "${PRO_KEY}" ] && [ -z "${OFFLINE_KEY}" ]; then BANNER=-Dvaadin.commercialWithBanner; fi && \
-#     ./mvnw clean package -DskipTests -Dvaadin.proKey=${PRO_KEY} -Dvaadin.offlineKey=${OFFLINE_KEY} ${BANNER}'
-
-# Banner-only build: no license key required, always produces Vaadin's
-# watermarked commercial build. Verified on Vaadin 25.2.0 — builds clean and
-# the container starts and serves in production mode.
+# watermarked build (-Dvaadin.commercialWithBanner) so a keyless
+# `docker build .` still succeeds.
 RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw clean package -DskipTests -Dvaadin.commercialWithBanner
+    --mount=type=secret,id=proKey \
+    --mount=type=secret,id=offlineKey \
+    sh -c 'PRO_KEY=$(jq -r ".proKey // empty" /run/secrets/proKey 2>/dev/null || echo "") && \
+    OFFLINE_KEY=$(cat /run/secrets/offlineKey 2>/dev/null || echo "") && \
+    if [ -z "${PRO_KEY}" ] && [ -z "${OFFLINE_KEY}" ]; then BANNER=-Dvaadin.commercialWithBanner; fi && \
+    ./mvnw clean package -DskipTests -Dvaadin.proKey=${PRO_KEY} -Dvaadin.offlineKey=${OFFLINE_KEY} ${BANNER}'
 
 # --- Runtime base: everything except the JAR --------------------------------
 FROM eclipse-temurin:21-jre-alpine AS runtime
