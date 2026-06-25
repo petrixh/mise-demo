@@ -39,8 +39,24 @@ public class TestChatModel implements ChatModel {
      */
     private final AtomicReference<CountDownLatch> pauseLatch = new AtomicReference<>();
 
+    /**
+     * When non-null, {@link #stream(Prompt)} emits this text as one chunk and then stays
+     * open indefinitely (a {@code Flux.never()} tail) — the stream ends only when the
+     * subscriber cancels it. Used by UC-013 "stop" tests so the turn is genuinely in
+     * flight and it is the cancel (not a natural completion) that ends it. One-shot.
+     */
+    private final AtomicReference<String> holdOpenReply = new AtomicReference<>();
+
     public void queueReply(String text) {
         queuedReplies.add(text);
+    }
+
+    /**
+     * Make the NEXT streaming response emit {@code partialText} as one chunk and then hang
+     * open until the subscription is cancelled. Use within a single test only (one-shot).
+     */
+    public void holdNextResponseOpen(String partialText) {
+        holdOpenReply.set(partialText);
     }
 
     /**
@@ -57,6 +73,7 @@ public class TestChatModel implements ChatModel {
     public void reset() {
         queuedReplies.clear();
         receivedPrompts.clear();
+        holdOpenReply.set(null);
         CountDownLatch leftover = pauseLatch.getAndSet(null);
         if (leftover != null) leftover.countDown();
     }
@@ -75,6 +92,16 @@ public class TestChatModel implements ChatModel {
         // Defer the build so the latch.await() runs on the subscriber thread,
         // not on the test thread that called stream().
         return Flux.defer(() -> {
+            String held = holdOpenReply.getAndSet(null);
+            if (held != null) {
+                receivedPrompts.add(prompt);
+                // Non-terminal chunk (no finishReason) then an open tail: the stream only
+                // ends when the subscriber cancels it (UC-013 stop), at which point the
+                // partial text is what survives.
+                ChatResponse chunk = new ChatResponse(
+                        List.of(new Generation(new AssistantMessage(held))));
+                return Flux.concat(Flux.just(chunk), Flux.never());
+            }
             CountDownLatch latch = pauseLatch.getAndSet(null);
             if (latch != null) {
                 try {

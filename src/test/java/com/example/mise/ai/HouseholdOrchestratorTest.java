@@ -103,6 +103,35 @@ class HouseholdOrchestratorTest {
         assertThat(orchestrator.getCurrentView()).isEqualTo(ConversationMessage.ViewContext.PLAN);
     }
 
+    // ── UC-013: cancelActiveResponse ────────────────────────────────────────
+
+    @Test
+    void cancelActiveResponse_withNonCancellableProvider_returnsFalse() {
+        when(conversationService.loadHistory()).thenReturn(List.of());
+
+        // The @Mock llmProvider is a plain LLMProvider, not a CancellableLLMProvider.
+        var orchestrator = buildOrchestrator();
+
+        assertThat(orchestrator.cancelActiveResponse()).isFalse();
+    }
+
+    @Test
+    void cancelActiveResponse_withCancellableProvider_delegatesToCancel() {
+        when(conversationService.loadHistory()).thenReturn(List.of());
+
+        // No stream has started, so the wrapped provider's cancel() returns false —
+        // proving the call is routed to the CancellableLLMProvider rather than no-oped.
+        var cancellable = new CancellableLLMProvider(
+                req -> reactor.core.publisher.Flux.empty());
+        var orchestrator = new HouseholdOrchestrator(
+                cancellable, conversationService,
+                new MessageList(), new MessageInput(),
+                null, List.of());
+
+        assertThat(orchestrator.cancelActiveResponse()).isFalse();
+        assertThat(cancellable.cancel()).isFalse();
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     /**

@@ -364,6 +364,15 @@ so "what's on Friday?" means Friday of the viewed week. The conversation
 itself is persisted; after a restart you can still ask "what did I ask
 earlier?".
 
+Mise works on one request at a time. While it is composing a reply you'll see
+it working in the dock; if you send another message before it finishes, that
+message isn't lost into silence — a light note tells you Mise is still working
+and the new prompt is ignored rather than queued. If a reply is taking too long
+or heading the wrong way, type *stop* (just the word, any capitalization) to
+cancel it: Mise halts immediately, keeps whatever it had already written and
+marks it _(stopped)_, and the input is ready again for your next message. Typing
+*stop* when nothing is running simply says so.
+
 From time to time Mise volunteers an *insight* ("next week is trending €15
 over budget"). Insights are advisory: they change nothing on their own, and
 you can dismiss them or follow up in chat.
@@ -443,6 +452,10 @@ from anywhere.
   [*Graceful failure:* Mise declines — there is no carbon data — and offers
    the nearest real proxy (e.g. cost or calorie intensity) instead of
    inventing numbers.],
+  ["Stop."], [Any],
+  [Sent while Mise is composing a reply, *stop* cancels the in-flight turn:
+   streaming halts, the partial answer is kept and marked _(stopped)_, and the
+   dock is ready again. Sent with nothing running, Mise just says nothing is.],
 )
 
 #block(text(size: 9pt)[

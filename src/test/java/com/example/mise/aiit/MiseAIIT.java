@@ -27,6 +27,7 @@ import com.example.mise.domain.shopping.PantryRepository;
 import com.example.mise.domain.shopping.ShoppingService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.annotation.Tool;
@@ -37,6 +38,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Base class for the AI integration tests (`./mvnw -Pai-it verify`).
@@ -52,6 +54,14 @@ import java.util.List;
  * without worrying about cross-fork interference. Within a fork, tests run
  * sequentially and clean up rows in {@link #cleanUp()}.
  */
+// Per-test ceiling for the live-LLM AIITs. SEPARATE_THREAD (overriding the global
+// SAME_THREAD default in junit-platform.properties) is required because a wedged
+// socket read on a looping model does NOT unwind on a same-thread interrupt — the
+// separate-thread watchdog fails the test and moves on regardless. Safe here: AIITs
+// are not @Transactional (explicit @AfterEach cleanup), so there's no thread-bound
+// transaction to lose. 5 min comfortably clears real turns on the slow 35B; past it
+// the model is looping. The -Pai-it fork timeout (pom.xml) is the coarser backstop.
+@Timeout(value = 5, unit = TimeUnit.MINUTES, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("ai-it")
 public abstract class MiseAIIT {

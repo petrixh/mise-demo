@@ -274,6 +274,18 @@
   opacity: 0.7;
 }
 
+/* UC-013: transient busy/stop note above the input — lighter, italic, low-key.
+ * Shown only when the user submits while a turn is in flight (or types "stop"
+ * with nothing running); cleared when the reply completes. */
+.mise-chat-dock .mise-chat-busy-note {
+  display: block;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--mise-info, var(--vaadin-secondary-text-color));
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+
 /*
  * Chat dock history is hidden by default (compact dock = single-line preview +
  * input pill), and expands on focus so the user can see recent conversation

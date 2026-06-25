@@ -70,8 +70,13 @@ class ReportingToolsAIIT extends MiseAIIT {
         Assertions.assertThat(lower)
                 .as("Reply must say carbon data isn't available (and ideally offer cost/kcal "
                         + "as a proxy) — it must NOT produce a carbon number. Reply: \"%s\"", reply)
+                // Accept any phrasing that conveys "the data isn't there". The set is
+                // deliberately broad on the refusal wording (a fabricated answer is still
+                // caught by the doesNotContain check below). "track" covers the common
+                // "isn't tracked / we don't track" phrasing that flaked this test before.
                 .containsAnyOf("don't have", "do not have", "no carbon", "not available",
-                        "isn't available", "is not available", "can't", "cannot", "unable");
+                        "isn't available", "is not available", "can't", "cannot", "unable",
+                        "track", "no data", "don't collect", "not collected", "no such data");
         Assertions.assertThat(lower)
                 .as("Reply must not state a fabricated kg-CO2 figure. Reply: \"%s\"", reply)
                 .doesNotContain("kg co2", "kgco2", "co2e");

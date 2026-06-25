@@ -165,6 +165,8 @@ public class HouseholdOrchestrator {
     }
 
     private final AIOrchestrator orchestrator;
+    /** UC-013: kept so {@link #cancelActiveResponse} can stop the in-flight stream. */
+    private final LLMProvider provider;
     private final ConversationService conversationService;
     private final Consumer<String> responseCompleteCallback;
     /** Called when an AI turn ends with a null/blank response, typically because
@@ -200,14 +202,20 @@ public class HouseholdOrchestrator {
                                  Consumer<String> responseCompleteCallback,
                                  List<AIController> controllers,
                                  Object... tools) {
+        this.provider = provider;
         this.conversationService = conversationService;
         this.responseCompleteCallback = responseCompleteCallback;
 
         var history = conversationService.loadHistory();
 
+        // UC-013: the MessageInput is deliberately NOT bound via .withInput(). Binding it
+        // routes submits straight into AIOrchestrator.doPrompt, which silently drops a prompt
+        // while a turn is in flight and cannot be intercepted. MainLayout owns the submit
+        // listener instead, so it can show a busy note, suppress the dropped prompt, and
+        // route "stop" to cancelActiveResponse() before anything reaches the LLM. The user
+        // bubble + streaming still happen via the public prompt() entry point.
         var builder = AIOrchestrator.builder(provider, systemPrompt(java.time.LocalDate.now()))
                 .withMessageList(messageList)
-                .withInput(messageInput)
                 .withAssistantName("Mise")
                 .withResponseListener(this::onResponseComplete);
 
@@ -227,6 +235,20 @@ public class HouseholdOrchestrator {
 
     public AIOrchestrator orchestrator() {
         return orchestrator;
+    }
+
+    /**
+     * UC-013: cancels the response currently streaming, if any. The provider completes the
+     * in-flight {@link reactor.core.publisher.Flux} early, which makes the orchestrator reset
+     * its busy flag and fire its response listener with the partial text (marked "(stopped)").
+     *
+     * @return {@code true} if a stream was active and the cancel was signalled
+     */
+    public boolean cancelActiveResponse() {
+        if (provider instanceof CancellableLLMProvider cancellable) {
+            return cancellable.cancel();
+        }
+        return false;
     }
 
     /**
