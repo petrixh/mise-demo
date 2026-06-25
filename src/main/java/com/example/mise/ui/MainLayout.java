@@ -72,6 +72,15 @@ public class MainLayout extends VerticalLayout
     private final ReportsWidgets reportsWidgets;
     private final MessageList messageList;
     private final Span lastAiMessageText;
+    /** UC-013: transient, lighter-styled "busy"/"stop" note in the chat dock. Shown only
+     *  when the user submits while a turn is in flight (or types "stop" with nothing running);
+     *  cleared when the reply completes. Ephemeral — never persisted. */
+    private final Span chatBusyNote;
+    /** UC-013: true while a turn is streaming. Set when MainLayout sends a prompt; cleared in
+     *  the response-complete and error callbacks. Drives the busy/stop dispatch in
+     *  {@link #dispatchUserPrompt}. Volatile: written on the UI thread, the callbacks that
+     *  clear it run on the streaming thread inside ui.access(). */
+    private volatile boolean aiBusy;
     /** The chat dock container — assigned in buildChatDock(); referenced by the
      *  submit + responseComplete hooks to toggle the .ai-working class for the
      *  thinking indicator (wand pulse when collapsed, avatar glow when expanded). */
@@ -134,18 +143,10 @@ public class MainLayout extends VerticalLayout
         var messageInput = new MessageInput();
         messageInput.setWidthFull();
 
-        // AI-thinking indicator (paired with the removeClassName in the response-
-        // complete callback below). Set on submit, cleared when streaming finishes.
-        // chatDock is assigned later in buildChatDock(); null-check guards the
-        // (impossible-in-practice) case where a submit fires before that runs.
-        // Also clears any prior .ai-error class so the indicator returns to blue
-        // for each new attempt (a successful turn afterwards keeps it cleared).
-        messageInput.addSubmitListener(e -> {
-            if (chatDock != null) {
-                chatDock.removeClassName("ai-error");
-                chatDock.addClassName("ai-working");
-            }
-        });
+        // UC-013: MainLayout owns chat submit (the orchestrator's input is NOT bound, see
+        // HouseholdOrchestrator). Every submit routes through dispatchUserPrompt, which
+        // either sends the prompt, shows a busy note, or cancels the in-flight turn on "stop".
+        messageInput.addSubmitListener(e -> dispatchUserPrompt(e.getValue()));
 
         // Capture UI reference (on UI thread) for use in the response-complete
         // callback and NavigationTools which both run on background streaming threads.
@@ -158,11 +159,14 @@ public class MainLayout extends VerticalLayout
         this.household = new HouseholdOrchestrator(
                 llmProvider, conversationService, messageList, messageInput,
                 text -> {
+                    // UC-013: turn finished (normally or via "stop") — chat is free again.
+                    aiBusy = false;
                     if (ui != null && !ui.isClosing()) {
                         ui.access(() -> {
                             updateLastAiMessage(text);
-                            // Streaming finished — clear the thinking indicator.
+                            // Streaming finished — clear the thinking indicator + busy note.
                             if (chatDock != null) chatDock.removeClassName("ai-working");
+                            clearBusyNote();
                             // UC-011: a chat turn may have generated future weeks. Refresh the
                             // header week-nav so the next chevron / DatePicker bounds reflect any
                             // newly-created PLANNED plans without waiting for the next navigation.
@@ -179,12 +183,15 @@ public class MainLayout extends VerticalLayout
         // Error path: LLM unreachable / empty response → red indicator + toast.
         // Runs on the background streaming thread; UI mutations need ui.access().
         this.household.setResponseErrorCallback(errorText -> {
+            // UC-013: failed turn also frees the chat.
+            aiBusy = false;
             if (ui == null || ui.isClosing()) return;
             ui.access(() -> {
                 if (chatDock != null) {
                     chatDock.removeClassName("ai-working");
                     chatDock.addClassName("ai-error");
                 }
+                clearBusyNote();
                 var n = Notification.show(errorText, 4000, Notification.Position.BOTTOM_CENTER);
                 n.addThemeVariants(NotificationVariant.LUMO_ERROR);
             });
@@ -229,6 +236,11 @@ public class MainLayout extends VerticalLayout
 
         // Chat dock
         lastAiMessageText = new Span();
+        // UC-013: transient busy/stop note — lighter styling, hidden until needed.
+        chatBusyNote = new Span();
+        chatBusyNote.addClassName("mise-chat-busy-note");
+        chatBusyNote.getElement().setAttribute("data-testid", "chat-busy-note");
+        chatBusyNote.setVisible(false);
         chatUndoStrip = new Div();
         chatUndoStrip.addClassName("mise-chat-undo-strip");
         chatUndoStrip.setId("mise-chat-undo-last");
@@ -413,8 +425,9 @@ public class MainLayout extends VerticalLayout
 
         messageInput.setWidthFull();
 
-        // UC-004: undo strip sits between the last-AI-message row and the input field
-        var dock = new Div(messageList, lastMsgRow, undoStrip, messageInput);
+        // UC-004: undo strip sits between the last-AI-message row and the input field.
+        // UC-013: the transient busy/stop note sits just above the input.
+        var dock = new Div(messageList, lastMsgRow, undoStrip, chatBusyNote, messageInput);
         dock.addClassName("mise-chat-dock");
         dock.getElement().setAttribute("data-testid", "chat-dock");
         this.chatDock = dock;  // exposed to constructor hooks for .ai-working toggling
@@ -707,11 +720,64 @@ public class MainLayout extends VerticalLayout
      * UC-004: Programmatically submits a message to the AI orchestrator as if the user typed it.
      * Used by MealGrid's "why?" button to pre-fill and send the chat prompt.
      * Must be called from the UI thread (or wrapped in {@code UI.access(...)}).
+     *
+     * <p>UC-013: routed through {@link #dispatchUserPrompt} so it respects the busy/stop rules
+     * (a programmatic submit while a turn is in flight is suppressed with a busy note, exactly
+     * like a typed one).
      */
     public void submitChatMessage(String text) {
-        if (text != null && !text.isBlank()) {
-            household.orchestrator().prompt(text);
+        dispatchUserPrompt(text);
+    }
+
+    /**
+     * UC-013: single entry point for every chat submission (typed or programmatic). Decides
+     * between sending the prompt, cancelling the in-flight turn ("stop"), or showing a
+     * transient busy note. Runs on the UI thread.
+     */
+    private void dispatchUserPrompt(String raw) {
+        if (raw == null) return;
+        String text = raw.strip();
+        if (text.isEmpty()) return;
+
+        if (text.equalsIgnoreCase("stop")) {
+            if (aiBusy) {
+                // Cancel the in-flight turn. The partial reply is kept and marked "(stopped)";
+                // aiBusy / ai-working / the busy note are cleared by the response-complete path.
+                household.cancelActiveResponse();
+            } else {
+                // Nothing to stop — brief note, and crucially never sent to the LLM.
+                showBusyNote("Nothing is running.");
+            }
+            return;
         }
+
+        if (aiBusy) {
+            // A turn is already streaming; the orchestrator would silently drop this prompt.
+            // Surface that instead, and don't echo the ignored prompt.
+            showBusyNote("Mise is still working — one moment. (Type “stop” to cancel.)");
+            return;
+        }
+
+        // Normal path: send it.
+        aiBusy = true;
+        if (chatDock != null) {
+            chatDock.removeClassName("ai-error");
+            chatDock.addClassName("ai-working");
+        }
+        clearBusyNote();
+        household.orchestrator().prompt(text);
+    }
+
+    /** UC-013: shows the transient lighter note in the chat dock. */
+    private void showBusyNote(String message) {
+        chatBusyNote.setText(message);
+        chatBusyNote.setVisible(true);
+    }
+
+    /** UC-013: hides the transient note (called when a turn completes/fails or a new one starts). */
+    private void clearBusyNote() {
+        chatBusyNote.setText("");
+        chatBusyNote.setVisible(false);
     }
 
     /**

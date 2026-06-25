@@ -143,7 +143,7 @@ spec/                   — spec-driven development docs (single source of truth
   project-context.md
   architecture.md
   datamodel/datamodel.md
-  use-cases/            — UC-001..UC-012 (+ UC-098 local/Docker run, UC-099 user manual)
+  use-cases/            — UC-001..UC-013 (+ UC-098 local/Docker run, UC-099 user manual)
   verification.md
 src/main/java/com/example/mise/
   Application.java
@@ -159,7 +159,7 @@ data/                   — H2 file-mode database (gitignored)
 
 ## Current state
 
-The spec (`spec/`) covers use cases **UC-001..UC-012** plus UC-098 (local/Docker run) and UC-099 (user manual). On top of the runtime backbone (persistent H2 + H2 console; the Spring AI ↔ Vaadin `AIOrchestrator` ↔ persisted-conversation wiring), the application implements the core meal-planner flows: onboarding, viewing and editing the weekly plan via chat, undo/explain, the shopping list with detour reasoning, dynamic Reports widgets, insights, week navigation, and generating future weeks.
+The spec (`spec/`) covers use cases **UC-001..UC-013** plus UC-098 (local/Docker run) and UC-099 (user manual). On top of the runtime backbone (persistent H2 + H2 console; the Spring AI ↔ Vaadin `AIOrchestrator` ↔ persisted-conversation wiring), the application implements the core meal-planner flows: onboarding, viewing and editing the weekly plan via chat, undo/explain, the shopping list with detour reasoning, dynamic Reports widgets, insights, week navigation, generating future weeks, and chat busy feedback with a "stop" to cancel a running turn.
 
 Behaviour is covered across three test layers — unit + browserless (`./mvnw test`), Playwright IT (`./mvnw -Pit verify`), and AI tool IT against the live model (`./mvnw -Pai-it verify`).
 
