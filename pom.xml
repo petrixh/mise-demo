@@ -255,6 +255,10 @@
                             <excludedGroups>manual-example</excludedGroups>
                             <forkCount>2</forkCount>
                             <reuseForks>true</reuseForks>
+                            <!-- Coarse backstop: kills a whole fork (the ~4 AIIT classes it runs back-to-back)
+                                 if it exceeds 20 min. The real per-test guard is @Timeout(5m) on MiseAIIT; this
+                                 only catches a fully-wedged JVM. Sized for the slow 35B's full batch, not per-test. -->
+                            <forkedProcessTimeoutInSeconds>1200</forkedProcessTimeoutInSeconds>
                             <systemPropertyVariables>
                                 <miseit.forkNumber>${surefire.forkNumber}</miseit.forkNumber>
                             </systemPropertyVariables>
