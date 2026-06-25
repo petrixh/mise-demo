@@ -44,18 +44,35 @@ jobs:
       # blow the job timeout.
       #
       # vaadin-chart (commercial, via the AI components) needs a license for
-      # production builds. Set the VAADIN_OFFLINE_KEY repo secret for a clean
-      # build; without it the image ships Vaadin's watermarked banner build.
+      # production builds.
+      #
+      # FIXME(banner-only): forced to the watermarked banner build for now.
+      # The VAADIN_OFFLINE_KEY secret is set, but it belongs to a DAU-model
+      # subscription, so an offlineKey build bakes "dau.enable=true" into
+      # flow-build-info.json. At runtime that requires com.vaadin:license-checker
+      # on the classpath AND a VAADIN_SUBSCRIPTION_KEY — neither is present in
+      # the published image, so the container crashes at startup with
+      # NoClassDefFoundError: com/vaadin/pro/licensechecker/dau/DauIntegration.
+      # A keyless commercialWithBanner build does NOT enable DAU and runs fine,
+      # so we force it here to ship a working (watermarked) image.
+      #
+      # To restore the licensed, watermark-free image: drop the override below
+      # and re-enable the offlineKey branch, AND make the runtime satisfy DAU
+      # (add license-checker as a runtime dependency + provide
+      # VAADIN_SUBSCRIPTION_KEY to the container). See the commented branch.
       - name: Build JAR
         env:
           VAADIN_OFFLINE_KEY: ${{ secrets.VAADIN_OFFLINE_KEY }}
         run: |
-          if [ -n "$VAADIN_OFFLINE_KEY" ]; then
-            ./mvnw -B -ntp clean package -DskipTests -Dvaadin.offlineKey="$VAADIN_OFFLINE_KEY"
-          else
-            echo "::warning::No VAADIN_OFFLINE_KEY secret set — publishing a watermarked (commercialWithBanner) build"
-            ./mvnw -B -ntp clean package -DskipTests -Dvaadin.commercialWithBanner
-          fi
+          # Banner-only (keyless, no DAU). Verified to start and serve.
+          ./mvnw -B -ntp clean package -DskipTests -Dvaadin.commercialWithBanner
+          # --- licensed path, disabled for now (see FIXME above) ---
+          # if [ -n "$VAADIN_OFFLINE_KEY" ]; then
+          #   ./mvnw -B -ntp clean package -DskipTests -Dvaadin.offlineKey="$VAADIN_OFFLINE_KEY"
+          # else
+          #   echo "::warning::No VAADIN_OFFLINE_KEY secret set — publishing a watermarked (commercialWithBanner) build"
+          #   ./mvnw -B -ntp clean package -DskipTests -Dvaadin.commercialWithBanner
+          # fi
 
       # Direct-JAR flow (UC-098 Alternate Flow B): the seed catalogs are read
       # from demo/data on the filesystem, so a bare JAR boots empty. Stage the
