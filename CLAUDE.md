@@ -8,10 +8,11 @@ Mise — a weekly meal planner that demonstrates a deeply AI-integrated Vaadin a
 
 ## Stack
 
-- Java 21, Spring Boot 4.0.6, Maven (wrapper included)
-- Vaadin Flow **25.2.0-beta1** (Aura theme) — server-side Java UI
+- Java 21, Spring Boot 4, Maven (wrapper included)
+- Vaadin Flow 25 (Aura theme) — server-side Java UI
 - Vaadin AI components (preview) — `AIOrchestrator`, `GridAIController`, `ChartAIController` (the latter two drive the Reports widgets, UC-012); gated by `com.vaadin.experimental.aiComponents=true` in `src/main/resources/vaadin-featureflags.properties`
-- Spring AI **2.0.0** (GA) with `spring-ai-starter-model-openai` — points at any OpenAI-compatible endpoint
+- Spring AI 2 with `spring-ai-starter-model-openai` — points at any OpenAI-compatible endpoint
+- Exact pinned versions live in `pom.xml` (`vaadin.version`, `spring-ai.version`, the Spring Boot parent) — see the version-pinning note under "Sharp edges". The bullets above name the major lines only so they don't drift on every bump.
 - Spring Data JPA + H2 in file mode (`./data/mise`), with the H2 console explicitly registered at `/h2-console`
 - `@Push` is set on `Application` — required for streaming chat responses
 
@@ -35,6 +36,8 @@ There are three test layers, each with its own purpose:
 - **Unit + Browserless** (`./mvnw test`) — fast in-JVM tests. Unit tests live under their domain packages; Browserless tests use Vaadin's [`browserless-test-spring`](https://vaadin.com/docs/latest/flow/testing/browserless/getting-started) under `src/test/java/com/example/mise/browserless/` and assert on the live Vaadin component tree without a Chromium browser. Browserless is the right tool for click-handler / repository-side-effect tests with no CSS / layout concerns.
 - **Playwright IT** (`./mvnw -Pit verify`) — real Chromium via [Microsoft Playwright](https://playwright.dev/java/) with [DramaFinder](https://github.com/parttio/dramafinder) wrappers for Vaadin locators. Headless by default. Lives under `src/test/java/com/example/mise/it/` and uses an in-memory H2 (`application-it.properties`). First run rebuilds the Vaadin frontend bundle (3–5 min); subsequent runs are ~25 s. Reach for it when CSS / layout / rendering / responsive breakpoints matter.
 - **AI Tool IT** (`./mvnw -Pai-it verify`) — `*AIIT.java` under `src/test/java/com/example/mise/aiit/` that drive the production tool beans + system prompt through Spring AI's `ChatClient` against the **live LLM** endpoint. No Playwright, no dev server; each test seeds its own household + active plan in an in-memory H2 (`application-ai-it.properties`). Two failsafe forks run in parallel — match this with a model endpoint that advertises a `parallel-2` slot (the default Qwen-local model does). Use for tool-invocation correctness, no-fabrication checks, BR clarification rules, and reply tone / length — anything that's about the model's behaviour against real tool descriptions, not about UI integration.
+
+> **Don't run two test layers (separate Maven/JVM processes) at the same time.** The `verify` lifecycle for `-Pit` and `-Pai-it` re-runs the unit/Browserless suite in its surefire phase, and those `@SpringBootTest`s hit the **file** H2 at `./data/mise` (`AUTO_SERVER=TRUE`, shared across JVMs). Two concurrent builds collide on that shared DB and one tears the session out from under the other — surfacing as spurious `Connection is broken: "session closed"` / `Database is already closed` errors (typically in `PlanServiceUC011Test`), not real failures. Run the layers sequentially. The clean fix is to put the unit `@SpringBootTest`s on an in-memory H2 like the IT/AIIT profiles already use — tracked as a future optimization, not done yet.
 
 ## Specifications
 
