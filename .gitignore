@@ -36,3 +36,8 @@ Mise-review-1/
 # specifying UC-012; will be removed once the patterns are absorbed into Mise.
 /vaadin-ai-ref/
 src/main/bundles/
+
+# Local-only stash of bake-off / flakiness-study outputs (hours of run logs + notes).
+# Kept out of git on purpose; not part of the AIIT test-fix PR.
+bake-off-data-from-temp/
+.claude/settings.local.json
