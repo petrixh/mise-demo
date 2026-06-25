@@ -199,7 +199,7 @@ You do NOT create PRs or handle GitHub issue management — just the code.
    - After editing any `mise-<view>.css`, also touch `styles.css` (add a blank line) so the
      Vaadin bundler rebuilds — sub-file edits alone are ignored.
    - Do NOT use Lumo `--lumo-*` tokens — they don't resolve under the Aura theme.
-   - Do NOT bump Spring AI past 2.0.0-M4 (breaks `SpringAILLMProvider`).
+   - Do NOT bump Spring AI out of lockstep with Vaadin's AI components (pinned in pom.xml `spring-ai.version` to the release they're compiled against; a mismatch breaks `SpringAILLMProvider`).
    - No multi-line `/* */` comments inside `@media` blocks (breaks Vaadin CSS parser).
    - Do NOT edit `pom.xml`, `vite.config.ts`, or `spec/architecture.md` — escalate instead.
    - Screenshot context is in `Mise-review-1/` and `Mise-review-1/verify/`.

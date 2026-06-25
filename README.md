@@ -6,11 +6,13 @@ The product concept and rough mockups live under [`ai-meal-planner/mise/`](ai-me
 
 ## Stack
 
-- **Java 21** · **Spring Boot 4.0.6** · **Maven** (wrapper included)
-- **Vaadin Flow 25.2.0-beta1** with the **Aura** theme — server-side Java UI
+- **Java 21** · **Spring Boot 4** · **Maven** (wrapper included)
+- **Vaadin Flow 25** with the **Aura** theme — server-side Java UI
 - **Vaadin AI components (preview)** — `AIOrchestrator`, `GridAIController`, `ChartAIController`, gated by the `com.vaadin.experimental.aiComponents` feature flag
-- **Spring AI 2.0.0-M5** with the OpenAI starter — default chat model is a local **Qwen3.6-35B-A3B-UD-Q5_K_XL** instance; point at any OpenAI-compatible endpoint by copying [`application-local.properties.example`](application-local.properties.example) → `application-local.properties` (gitignored) and editing the URL / model
+- **Spring AI 2** with the OpenAI starter — default chat model is a local Qwen instance; point at any OpenAI-compatible endpoint by copying [`application-local.properties.example`](application-local.properties.example) → `application-local.properties` (gitignored) and editing the URL / model
 - **Spring Data JPA + H2** (file mode at `./data/mise`) — conversation history and application state persist across restarts; the **H2 console** is reachable at `/h2-console` (also linked from the side drawer)
+
+> Exact pinned versions live in [`pom.xml`](pom.xml) (`vaadin.version`, `spring-ai.version`, the Spring Boot parent). The bullets above name the major lines only, so they don't need touching on every dependency bump.
 
 ## Run
 

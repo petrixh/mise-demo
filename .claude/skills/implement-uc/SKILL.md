@@ -132,7 +132,7 @@ If the next UC's Phase 1 wants to land changes that affect the prior UC's AI sur
 Prompt skeleton:
 
 ```
-You are implementing UC-NNN for the Mise meal-planner demo (Vaadin 25 Flow + Spring Boot 4 + Spring AI 2.0.0-M4).
+You are implementing UC-NNN for the Mise meal-planner demo (Vaadin 25 Flow + Spring Boot 4 + Spring AI 2; exact versions in pom.xml).
 
 ## Spec
 {paste the full use case file content}
@@ -142,7 +142,7 @@ You are implementing UC-NNN for the Mise meal-planner demo (Vaadin 25 Flow + Spr
 
 ## Sharp edges (from CLAUDE.md — do not relitigate)
 - Spring Boot 4 dropped H2ConsoleAutoConfiguration; existing H2ConsoleConfig is intentional.
-- Vaadin AI components are pinned to Spring AI 2.0.0-M4. Do not bump.
+- Spring AI is pinned (pom.xml `spring-ai.version`) to the release Vaadin's AI components are compiled against. Do not bump it out of lockstep with Vaadin.
 - AIOrchestrator builds the assistant ChatMessage with messageId = null — sync by list index, not by id.
 
 ## Guardrails
