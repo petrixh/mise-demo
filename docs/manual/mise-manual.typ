@@ -159,11 +159,22 @@ issue \#4 in the repo). Two models passed everything and are the
 recommended picks:
 
 - *Qwen 3.6 35B-A3B* (`Q4_K_XL` quant) — the reference baseline. 22/22.
+  Download the GGUF from
+  #link("https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF")[`unsloth/Qwen3.6-35B-A3B-GGUF`].
 - *Qwen 3.5 4B* (`Q8_K_XL` quant) — also 22/22, and the surprise headliner:
   it matched the 35B's quality while running the suite ~30% faster
   (sub-half-second first token). At a ~4 GB weight footprint it fits with
-  usable context on an 8 GB-class GPU — a perfectly good way to run Mise on
-  modest hardware.
+  usable context on an 8 GB-class GPU — a perfectly good way to try Mise on
+  modest hardware. Download the GGUF from
+  #link("https://huggingface.co/unsloth/Qwen3.5-4B-GGUF")[`unsloth/Qwen3.5-4B-GGUF`].
+
+Size the context window generously: Mise's tool-heavy turns can push the
+prompt to *32768 tokens*, so give the model that much usable context. That
+budget is also what makes the small model a tight fit on an 8 GB card — the
+4B was tested on one (llama.cpp with the CUDA backend) only after dropping
+the *K and V cache to 8-bit quantization*, which is what frees enough VRAM
+for both the weights and a full 32k context. Without the quantized KV cache
+it won't fit.
 
 One expectation-management note on the small model: passing the test suite
 means it operates Mise's tools correctly — it doesn't make a 4B model as
@@ -417,17 +428,15 @@ from anywhere.
   ["Why was last week more expensive?"], [Reports],
   [An answer computed from your data, citing the meals/categories that drove
    the difference (in our run it named one €59 salmon dinner as the culprit).],
-  ["Show me a chart of how often I cook vegetarian dinners by month."], [Reports],
+  ["Show me a chart of how often I cook vegetarian dinners by month." #super[†]], [Reports],
   [The trend chart is repointed to that data — and the new shape persists
    across restarts.],
   ["In the leaderboard, rank by kcal per euro."], [Reports],
   [The leaderboard grid is reshaped with the computed column/ordering.],
   ["For the leaderboard, show one row per week with columns for fish, meat, veg and
-    chicken meals, plus the average kcal per euro that week."], [Reports],
+    chicken meals, plus the average kcal per euro that week." #super[‡]], [Reports],
   [A fuller reshape: the grid pivots to a week-per-row table with category-count
-   columns and a computed value column — all from one sentence. (A heavy turn on a
-   slow model; if it aborts mid-answer, raise `MISE_MODEL_TIMEOUT` — see
-   Troubleshooting.)],
+   columns and a computed value column — all from one sentence.],
   ["Reset the leaderboard."], [Reports],
   [The widget returns to its default shape.],
   ["Chart my carbon footprint per meal."], [Reports],
@@ -435,6 +444,17 @@ from anywhere.
    the nearest real proxy (e.g. cost or calorie intensity) instead of
    inventing numbers.],
 )
+
+#block(text(size: 9pt)[
+  *†* This one tends to challenge smaller models. The month-bucketed chart
+  reshape is the 4B's known weak spot — it can get stuck retrying SQL variants
+  rather than recovering cleanly. If it spins, retry or switch to the 35B.
+
+  *‡* A heavy turn that can be slow on a slower or loaded host: it can outlast
+  the default per-call timeout and get dropped mid-stream. If it aborts
+  mid-answer, raise `MISE_MODEL_TIMEOUT` (see Troubleshooting), or use a
+  faster, less-loaded model.
+])
 
 = Make it yours — extending the seed data
 
@@ -574,7 +594,7 @@ and `MISE_MODEL_NAME` are what your provider expects.
 *A big Reports reshape spins, then the answer cuts off.* On a slow or loaded
 model the request can outlast the default per-call timeout (60s out of the box)
 and get dropped mid-stream — the widget never updates. Raise `MISE_MODEL_TIMEOUT`
-(it ships at `180s`; try `300s` for CPU-only hosts). This covers both long silences
+(it ships at `180s`; try `300s` for slower hosts). This covers both long silences
 between streamed tokens and the overall length of a single turn. A faster or
 less-loaded model is the other lever.
 
