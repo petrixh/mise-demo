@@ -5,12 +5,10 @@ import com.example.mise.domain.conversation.ConversationMessage;
 import com.example.mise.domain.conversation.ConversationService;
 import com.example.mise.domain.household.HouseholdService;
 import com.vaadin.flow.component.UI;
-import com.vaadin.flow.component.ai.common.AIAttachment;
 import com.vaadin.flow.component.ai.common.ChatMessage;
 import com.vaadin.flow.component.ai.orchestrator.AIOrchestrator;
 import com.vaadin.flow.component.ai.orchestrator.ResponseListener;
 import com.vaadin.flow.component.ai.provider.LLMProvider;
-import reactor.core.publisher.Flux;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
@@ -124,13 +122,11 @@ public class OnboardingView extends VerticalLayout implements BeforeEnterObserve
         initialHistory.add(greetingMsg);
 
         // Build the orchestrator with the onboarding system prompt and tools.
-        // The provider is wrapped in UserFirstHistory: the greeting above is an assistant
-        // turn shown purely for UX, but strict chat templates (e.g. qwen on LM Studio) reject
-        // a model message sequence that opens with an assistant turn before any user turn
-        // ("No user query found in messages"). UserFirstHistory drops leading assistant turns
-        // from what reaches the model, so turn one is [system, user]. Scoped to onboarding:
-        // other views restore real user-first conversation history and are not wrapped.
-        var builder = AIOrchestrator.builder(new UserFirstHistory(llmProvider), SYSTEM_PROMPT)
+        // The greeting above is an assistant turn shown purely for UX; the injected provider
+        // strips leading assistant turns from the model-bound history (see UserFirstHistoryProvider
+        // in AIConfig), so turn one reaches the model as [system, user] even on strict chat
+        // templates (qwen on LM Studio).
+        var builder = AIOrchestrator.builder(llmProvider, SYSTEM_PROMPT)
                 .withMessageList(messageList)
                 .withInput(messageInput)
                 .withAssistantName("Mise")
@@ -195,36 +191,6 @@ public class OnboardingView extends VerticalLayout implements BeforeEnterObserve
             if (ui != null && !ui.isClosing()) {
                 ui.access(() -> ui.navigate("plan"));
             }
-        }
-    }
-
-    /**
-     * LLMProvider decorator (onboarding-only) that drops leading assistant turns from the
-     * history sent to the model. The onboarding opener is seeded as an assistant message
-     * for display, but strict chat templates (qwen on LM Studio) error with "No user query
-     * found in messages" when a conversation begins with an assistant turn. Stripping the
-     * leading assistant turn(s) makes turn one a clean [system, user] sequence. Display and
-     * persistence are unaffected — only what reaches {@link LLMProvider#setHistory} is trimmed.
-     */
-    private static final class UserFirstHistory implements LLMProvider {
-        private final LLMProvider delegate;
-
-        UserFirstHistory(LLMProvider delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public Flux<String> stream(LLMRequest request) {
-            return delegate.stream(request);
-        }
-
-        @Override
-        public void setHistory(List<ChatMessage> history, Map<String, List<AIAttachment>> attachments) {
-            var trimmed = new ArrayList<>(history);
-            while (!trimmed.isEmpty() && trimmed.get(0).role() == ChatMessage.Role.ASSISTANT) {
-                trimmed.remove(0);
-            }
-            delegate.setHistory(trimmed, attachments);
         }
     }
 }

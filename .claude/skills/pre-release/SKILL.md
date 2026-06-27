@@ -87,17 +87,21 @@ Freshness (1b) only proves the manual was recently rebuilt — not that it docum
 
 ### Check 4 — Live-runtime smoke test (real UI streaming path)
 
-Check 2's AIIT layer drives a plain Spring AI `ChatClient` and **bypasses Vaadin's `SpringAILLMProvider` + `AIOrchestrator` streaming path — the path the running app actually uses.** So endpoint- and chat-template-specific failures that hit real users pass AIIT silently: e.g. a strict chat template rejecting onboarding's opening turn (`No user query found in messages`), or a missing `/v1` surfacing as `conversationId cannot be null`. This check exercises the real path through a browser.
+Check 2's AIIT layer drives a plain Spring AI `ChatClient` and **bypasses Vaadin's `SpringAILLMProvider` + `AIOrchestrator` streaming path — the path the running app actually uses.** So endpoint- and chat-template-specific failures that hit real users pass AIIT silently: e.g. a strict chat template rejecting an assistant-led history (`No user query found in messages`), or a missing `/v1` surfacing as `conversationId cannot be null`. This check exercises the real path through a browser.
+
+**Must go past turn one.** Onboarding alone is too light — the nastiest failures appear on the **second** query, once a view loads *persisted* history that is assistant-led (the onboarding greeting, or the rolling-window breadcrumb). So drive a full core use-case (a meal swap) *after* onboarding, on `/plan`, with history loaded.
 
 Run it for each runtime named in Check 0 — **llama.cpp** (must pass) and **LM Studio** (smoke only); add **ollama** once validated. Run them **sequentially** (only one process can bind 8080); never two at once.
 
 For each endpoint:
 
 1. Point the app at it (env vars `MISE_MODEL_BASE_URL` (with `/v1`) + `MISE_MODEL_NAME`, or `application-local.properties`) and start the dev server on 8080. Ensure **no Household exists** so `/welcome` shows onboarding — move `./data/mise.mv.db` aside if needed (mind the file-H2 data hazard noted in Check 1c).
-2. Drive **one real onboarding turn** through the browser. The Playwright **MCP cannot launch Chromium in this sandbox** — use a short headless **node script** against the global `playwright` lib: load `/welcome`, type a household description (size + budget + a restriction) into the message input, submit, and wait for the streamed assistant reply. Poll for it — a real tool-calling turn can take 20–40 s, so do **not** conclude "done" the instant the user bubble appears.
-3. **Pass** = a non-empty assistant reply streams in **and** the server log shows none of: `Error during LLM streaming`, `conversationId cannot be null`, `No user query found`, `Aggregation Error`. A turn that reaches `recordHousehold` → redirect to `/plan` is a stronger pass.
-4. **Severity:** a streaming failure on **llama.cpp** is an **Error** (the baseline). On **LM Studio** it is a **Warning** — surfaced for the operator's call; it does not block release, since the test suite runs on llama.cpp.
-5. **Stop the server** before moving to the next runtime.
+2. Drive a real session through the browser. The Playwright **MCP cannot launch Chromium in this sandbox** — use a short headless **node script** against the global `playwright` lib:
+   - **Onboard to completion:** from `/welcome`, send a household description (size + budget + a restriction), confirming if the model asks a follow-up, until it redirects to `/plan`. Let the chat dock settle, then **confirm the user message actually landed** before polling for a reply (post-redirect timing can drop a too-early submit).
+   - **Run UC-003 (swap a meal):** send e.g. "Swap Wednesday's dinner for a vegetarian meal." Poll for the reply — a tool-calling turn (`findCandidateRecipes` → `swapMealOnDay`) can take 30–60 s, so don't conclude "done" when the user bubble appears.
+3. **Pass** = onboarding reaches `/plan`, the swap reply streams in, **and the swap actually took effect** — the named meal changes in the `/plan` grid. Verify the grid: `swapMealOnDay` does **not** log, and a "Done" reply over an unchanged grid is a *fabrication* failure. The server log must show none of: `Error during LLM streaming`, `conversationId cannot be null`, `No user query found`, `Aggregation Error`.
+4. **Severity:** any failure on **llama.cpp** is an **Error** (the baseline). On **LM Studio** it is a **Warning** — surfaced for the operator's call; it does not block release, since the test suite runs on llama.cpp.
+5. **Stop the server** before moving to the next runtime. (Killing the mvnw process can return a non-zero code to the shell — isolate the `kill` in its own step so it doesn't abort the surrounding script.)
 
 Never hang: if an endpoint is unreachable or the app won't start within a couple of minutes, skip that runtime with a clear message and keep going.
 
