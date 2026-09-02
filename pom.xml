@@ -26,7 +26,7 @@
              Our YAML seed loaders import it directly, so it is declared as a
              direct dependency below. This is NOT a Jackson 2/3 downgrade — both
              coexist under Spring Boot 4 on every milestone. -->
-        <spring-ai.version>2.0.0</spring-ai.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
     </properties>
     
     <parent>
