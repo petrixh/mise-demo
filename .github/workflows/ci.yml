@@ -31,7 +31,7 @@ jobs:
       - name: Set up Node (Vaadin frontend bundle)
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
 
       # Runs Surefire only — unit + Browserless tests. No Playwright IT,
       # no AIIT. Playwright IT (`-Pit verify`) is left to local runs where
