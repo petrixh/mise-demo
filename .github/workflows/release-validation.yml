@@ -47,7 +47,7 @@ jobs:
       - name: Set up Node (Vaadin frontend bundle)
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
 
       # Mirrors release.yml: the fat JAR is architecture-independent, so build
       # it once natively and let buildx multi-arch only the `release` stage.
