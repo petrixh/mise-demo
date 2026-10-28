@@ -1,6 +1,6 @@
 FROM ghcr.io/jqlang/jq:latest AS jq-stage
 
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:24-jdk AS build
 COPY --from=jq-stage /jq /usr/bin/jq
 # Test that jq works after copying
 RUN jq --version
@@ -31,7 +31,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw clean package -DskipTests -Dvaadin.proKey=${PRO_KEY} -Dvaadin.offlineKey=${OFFLINE_KEY} ${BANNER}'
 
 # --- Runtime base: everything except the JAR --------------------------------
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:25-jre-alpine AS runtime
 WORKDIR /app
 # Seed catalogs (recipes/stores/personas) are read from the filesystem at
 # startup — application-prod.properties points at /app/demo/data. Mount your
