@@ -39,8 +39,13 @@ jobs:
       # overlays the chat dock and reliably blocks Send-button clicks even
       # with a server license key wired up, so the value isn't worth the
       # chase for a demo project. Run it locally before merging.
+      # AI Extensions checks the development license even in Browserless tests.
+      # Use production mode with the commercial banner opt-in for this suite.
       - name: Run tests
-        run: ./mvnw -B -ntp test
+        run: >-
+          ./mvnw -B -ntp test
+          -Dvaadin.productionMode=true
+          -Dvaadin.commercialWithBanner=true
 
       - name: Upload Surefire reports on failure
         if: failure()
